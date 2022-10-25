@@ -26,17 +26,18 @@ Two options can be considered:
 On this idea, each entity should pay the tokens to a script and collect, 
 when corresponding, the required tokens. 
 
-**Option 2:**  In this idea, the user who starts the contract blocks their 
+**Option 2:**  In this idea, the user who starts the contract locks their 
 tokens in a script and waits for the other user to resolve it. 
-That means that the second user pays their tokens directly to the user 
-and not to the script. In the same transaction, both users receive their required tokens. 
+That means that the second user pays their tokens directly to the first one,
+and receives the tokens locked in the script. 
+In the same transaction, both users receive their required tokens. 
 
 The main difference between the options is that Option 2 takes two transactions to 
 resolve and the other one takes four. We’ll follow option 2 in this project.
 
 ## Use cases
 
-**********************************Use case: Connecting to the escrows**********************************
+**Use case: Connecting to the escrows**
 
 Context: Alice wants to interact with the Simple Escrow dApp and see which escrows she is involved in. 
 
@@ -46,7 +47,7 @@ Context: Alice wants to interact with the Simple Escrow dApp and see which escro
     - Every escrow started by Alice, that is waiting for resolution.
     - Every escrow started by another user, where the receiver is Alice.
 
-**Use case:**  ************************************Starting a new escrow************************************
+**Use case: Starting a new escrow**
 
 Context: Alice is connected to the Simple Escrow dApp (previous use case).
 
@@ -64,7 +65,7 @@ Alice wants to exchange `k1` amount of token `A` to user Bob with address `bobAd
 - dApp builds the `startEscrow` transaction using the information 
 (including Alice’s address, which is obtained at connection) and asks Alice to sign it with her wallet.
 - Alice signs the transaction.
-- dApp submits the transaction that blocks `k1` tokens `A`  from Alice's wallet to the escrow script.
+- dApp submits the transaction that locks `k1` tokens `A`  from Alice's wallet to the escrow script.
 
 **Use case: Canceling an existing escrow**
 
@@ -77,11 +78,11 @@ The corresponding escrow script is locking `k1` amount of token `A` from Alice.
 - Alice signs the transaction.
 - dApp submits the transaction that pays back the `k1` amount of token `A` to Alice.
 
-************************************Use case: Resolving an escrow************************************
+**Use case: Resolving an escrow**
 
 Context: Alice started an escrow with Bob as the receiver. 
 
-The escrow script has blocked `k1` amounts of tokens `A` from Alice and the required payment for resolving it is `k2` tokens `B` from Bob.
+The escrow script has locked `k1` amounts of tokens `A` from Alice and the required payment for resolving it is `k2` tokens `B` from Bob.
 
 - Bob selects in the list of escrows to be resolved, the escrow he wants to resolve.
 - dApp builds the `resolveEscrow` transaction and asks Bob to sign with his wallet.
