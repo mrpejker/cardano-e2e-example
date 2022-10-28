@@ -20,15 +20,13 @@ The script is parameterized by the receiver address. So that each user can find 
 
 ### **Datum**
 
-The datum contains:
-
 - Sender’s address
 - The amount and asset class of the receiver’s payment
 
 ### **Value**
 
 - Control Token
-- `k1` tokens of asset class `A`
+- The sender’s tokens to exchange
 - min-ADA
 
 ## Transactions
@@ -64,8 +62,8 @@ In the **Cancel operation**, the validator checks:
 
 In the **Resolve operation** the validator checks:
 
-- The address that is trying to resolve is the same as the Receiver’s address.
-- The Sender’s address receives the `k2` tokens `B`
+- The address that is trying to resolve is the same as the Receiver’s address
+- The Sender’s address receives the tokens specified on the datum
 - The control token is burned after the transaction
 
 ### **Control Token minting policy**
