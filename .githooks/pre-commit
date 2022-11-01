@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# Run Hlint and check trailing whitespaces on staged haskell files
+for file in $(git diff --diff-filter=d --cached --name-only | grep -E '\.(hs)$')
+do
+  echo ""
+  echo "Hlint Suggestions:"
+  echo ""
+  hlint $file
+  if [ $? -ne 0 ]; then
+    echo "Hlint failed on staged file '$file'."
+    exit 1 # exit with failure status
+  fi
+
+  echo ""
+  echo "Lines Ending With Whitespaces:"
+  echo ""
+  git show ":$file" | grep --line-number --extended-regexp "[\ $(printf '\t')]+$"
+  if [ $? -eq 0 ]; then
+    echo "Grep failed on staged file '$file'. Please check your trailing spaces and try again."
+    exit 1 # exit with failure status
+  else
+    echo "No files with trailing spaces found."
+    echo ""
+  fi
+
+done
