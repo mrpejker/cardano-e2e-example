@@ -11,3 +11,11 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 -}
 
 module Escrow.Types where
+
+-- IOG imports
+import Ledger (Address)
+
+type ContractAddress = Address
+
+data EscrowDatum
+data EscrowRedeemer

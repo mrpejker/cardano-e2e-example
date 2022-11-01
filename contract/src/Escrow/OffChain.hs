@@ -11,3 +11,77 @@ building unbalanced transactions.
 -}
 
 module Escrow.OffChain where
+
+-- Non-IOG imports
+import Data.Aeson    (FromJSON, ToJSON)
+import Data.Text     (Text)
+import Control.Monad (forever)
+import GHC.Generics  (Generic)
+
+-- IOG imports
+import Ledger
+import Plutus.Contract
+
+import Escrow.Business
+
+-- | Contract Schema
+type EscrowSchema = Endpoint "start"   StartParams
+                .\/ Endpoint "cancel"  CancelParams
+                .\/ Endpoint "resolve" ResolveParams
+
+data StartParams   = StartParams
+                     { receiverAddress   :: ReceiverAddress
+                     , sendAmount        :: Integer
+                     , sendAssetClass    :: AssetClass
+                     , receiveAmount     :: Integer
+                     , receiveAssetClass :: AssetClass
+                     }
+  deriving (Generic)
+  deriving anyclass (FromJSON, ToJSON)
+newtype CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef }
+  deriving (Generic)
+  deriving anyclass (FromJSON, ToJSON)
+newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
+  deriving (Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
+endpoints
+    :: Address
+    -> Contract () EscrowSchema Text ()
+endpoints raddr = forever $ handleError logError $ awaitPromise $
+                  startEp `select` cancelEp `select` resolveEp
+  where
+    startEp :: Promise () EscrowSchema Text ()
+    startEp = endpoint @"start" $ startOp raddr
+
+    cancelEp :: Promise () EscrowSchema Text ()
+    cancelEp = endpoint @"cancel" $ cancelOp raddr
+
+    resolveEp :: Promise () EscrowSchema Text ()
+    resolveEp = endpoint @"resolve" $ resolveOp raddr
+
+{- | A user, using its `addr`, locks the tokens they want to exchange and
+     specifies the tokens they want to receive and from whom, all these
+     information is contained on `sParams`. The control Token is minted.
+-}
+startOp :: Address
+        -> StartParams
+        -> Contract () EscrowSchema Text ()
+startOp _addr _sParams = undefined
+
+{- | The user, using its `addr`, cancels the escrow placed on the utxo referenced
+     on `cParams`, to receive the locked tokens back. The control Token is burned.
+-}
+cancelOp :: Address
+         -> CancelParams
+         -> Contract () EscrowSchema Text ()
+cancelOp _addr _cParams = undefined
+
+{- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
+     on `rParams`, to pay the corresponding tokens to the other user and to receive
+     the locked tokens.
+-}
+resolveOp :: Address
+          -> ResolveParams
+          -> Contract () EscrowSchema Text ()
+resolveOp _addr _rParams = undefined

@@ -7,16 +7,16 @@ Stability   : develop
 -}
 
 module Escrow
-    ( module Escrow.Types
-    , module Escrow.Business
+    ( module Escrow.Business
     , module Escrow.OffChain
     , module Escrow.OnChain
+    , module Escrow.Types
     , module Escrow.Validator
     )
 where
 
-import Escrow.Types
 import Escrow.Business
 import Escrow.OffChain
 import Escrow.OnChain
+import Escrow.Types
 import Escrow.Validator
