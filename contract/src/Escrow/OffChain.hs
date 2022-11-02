@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Escrow.OffChain
 Description : OffChain code for Escrow Contract.
@@ -20,9 +22,13 @@ import GHC.Generics  (Generic)
 
 -- IOG imports
 import Ledger
+import Ledger.Constraints as Constraints
+import Ledger.Value
 import Plutus.Contract
 
 import Escrow.Business
+import Escrow.Validator
+import Escrow.Types
 
 -- | Contract Schema
 type EscrowSchema = Endpoint "start"   StartParams
@@ -38,9 +44,11 @@ data StartParams   = StartParams
                      }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
+
 newtype CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
+
 newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
@@ -67,7 +75,28 @@ endpoints raddr = forever $ handleError logError $ awaitPromise $
 startOp :: Address
         -> StartParams
         -> Contract () EscrowSchema Text ()
-startOp _addr _sParams = undefined
+startOp _addr StartParams{..} = do
+    let contractAddress = escrowAddress receiverAddress
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset 1
+        receiveVal      = assetClassValue receiveAssetClass receiveAmount
+        val             = minAda <> cTokenVal <> receiveVal
+        datum           = mkEscrowDatum (SenderAddress { sAddr = _addr }) receiveAmount receiveAssetClass
+
+        lkp = mconcat
+              [ Constraints.typedValidatorLookups (escrowInst receiverAddress)
+              , Constraints.otherScript (escrowValidator receiverAddress)
+              , Constraints.mintingPolicy (controlTokenMP contractAddress)
+              ]
+        tx  = mconcat
+              [ Constraints.mustPayToTheScript datum val
+              , Constraints.mustMintValue cTokenVal
+              ]
+
+    mkTxConstraints lkp tx >>= yieldUnbalancedTx
+    logInfo @String $ "Addr: " ++ show (escrowAddress receiverAddress)
+    logInfo @String "Contract started"
 
 {- | The user, using its `addr`, cancels the escrow placed on the utxo referenced
      on `cParams`, to receive the locked tokens back. The control Token is burned.
@@ -85,3 +114,6 @@ resolveOp :: Address
           -> ResolveParams
           -> Contract () EscrowSchema Text ()
 resolveOp _addr _rParams = undefined
+
+cTokenName :: TokenName
+cTokenName = "controlToken"

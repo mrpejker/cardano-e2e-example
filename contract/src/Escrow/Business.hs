@@ -1,5 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-
+{-# LANGUAGE TemplateHaskell   #-}
 {-|
 Module      : Escrow.Business
 Description : Business logic for escrow contract.
@@ -20,6 +20,7 @@ import Data.Aeson (FromJSON, ToJSON)
 
 -- IOG imports
 import Ledger           (Address, AssetClass)
+import PlutusTx qualified
 import PlutusTx.Prelude
 
 newtype SenderAddress   = SenderAddress { sAddr :: Address }
@@ -43,3 +44,6 @@ mkEscrowInfo sAdd amount assetClass = EscrowInfo { sender = sAdd
                                                  , rAmount = amount
                                                  , rAssetClass = assetClass
                                                  }
+
+PlutusTx.makeIsDataIndexed ''EscrowInfo    [ ('EscrowInfo, 0) ]
+PlutusTx.makeIsDataIndexed ''SenderAddress [ ('SenderAddress, 0) ]
