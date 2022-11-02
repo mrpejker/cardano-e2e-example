@@ -13,7 +13,7 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 module Escrow.Types where
 
 -- IOG imports
-import Ledger (Address)
+import Ledger (Address, AssetClass)
 
 import Escrow.Business
 
@@ -22,6 +22,9 @@ type ContractAddress = Address
 newtype Parameter = Parameter { rAddress :: ReceiverAddress }
 
 newtype EscrowDatum = EscrowDatum { eInfo :: EscrowInfo }
+
+mkEscrowDatum :: SenderAddress -> Integer -> AssetClass -> EscrowDatum
+mkEscrowDatum sAdd amount asset = EscrowDatum { eInfo = mkEscrowInfo sAdd amount asset}
 
 data EscrowRedeemer = CancelEscrow
                     | ResolveEscrow
