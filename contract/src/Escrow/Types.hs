@@ -15,7 +15,13 @@ module Escrow.Types where
 -- IOG imports
 import Ledger (Address)
 
+import Escrow.Business
+
 type ContractAddress = Address
 
-data EscrowDatum
-data EscrowRedeemer
+newtype Parameter = Parameter { rAddress :: ReceiverAddress }
+
+newtype EscrowDatum = EscrowDatum { eInfo :: EscrowInfo }
+
+data EscrowRedeemer = CancelEscrow
+                    | ResolveEscrow
