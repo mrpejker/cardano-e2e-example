@@ -17,7 +17,6 @@ module Escrow.Business where
 
 -- Non-IOG imports
 import Data.Aeson (FromJSON, ToJSON)
-import Prelude (undefined) -- REMOVE ME
 
 -- IOG imports
 import Ledger           (Address, AssetClass)
@@ -34,7 +33,13 @@ Stores most of the information of the escrow:
  - Sender’s address.
  - The amount and asset class of the receiver’s payment.
 -}
-data EscrowInfo
+data EscrowInfo = EscrowInfo { sender      :: SenderAddress
+                             , rAmount     :: Integer
+                             , rAssetClass :: AssetClass
+                             }
 
-mkEscrowInfo :: ReceiverAddress -> Integer -> AssetClass -> EscrowInfo
-mkEscrowInfo = undefined
+mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo
+mkEscrowInfo sAdd amount assetClass = EscrowInfo { sender = sAdd
+                                                 , rAmount = amount
+                                                 , rAssetClass = assetClass
+                                                 }
