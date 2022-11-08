@@ -110,8 +110,7 @@ cancelOp addr CancelParams{..} = do
     datum      <- loadDatumWithError utxo
     senderPpkh <- getPpkhFromAddress addr
     validateSenderAddr addr datum
-    let
-        contractAddress = _ciTxOutAddress utxo
+    let contractAddress = _ciTxOutAddress utxo
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset (-1)
@@ -147,19 +146,18 @@ resolveOp :: Address
           -> ResolveParams
           -> Contract () EscrowSchema Text ()
 resolveOp addr ResolveParams{..} = do
-    let
-        contractAddress = escrowAddress (ReceiverAddress { rAddr = addr })
+    let contractAddress = escrowAddress (ReceiverAddress { rAddr = addr })
         validator       = escrowValidator (ReceiverAddress { rAddr = addr })
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset (-1)
 
-    utxos <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findContractUtxo rpTxOutRef utxos
-    datum <- loadDatumWithError utxo
-    escrowInfo <- getEscrowInfoFromDatum datum
+    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo)  <- findContractUtxo rpTxOutRef utxos
+    datum        <- loadDatumWithError utxo
+    escrowInfo   <- getEscrowInfoFromDatum datum
     receiverPpkh <- getPpkhFromAddress addr
-    senderPpkh <- getPpkhFromAddress (sAddr $ sender escrowInfo)
+    senderPpkh   <- getPpkhFromAddress (sAddr $ sender escrowInfo)
 
     let senderPayment = assetClassValue (rAssetClass escrowInfo) (rAmount escrowInfo)
 
