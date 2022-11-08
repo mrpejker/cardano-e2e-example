@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Escrow.OffChain
 Description : OffChain code for Escrow Contract.
@@ -16,6 +14,7 @@ module Escrow.OffChain where
 
 -- Non-IOG imports
 import Data.Aeson    (FromJSON, ToJSON)
+import Data.Map      qualified as Map
 import Data.Text     (Text)
 import Control.Monad (forever)
 import GHC.Generics  (Generic)
@@ -25,10 +24,12 @@ import Ledger
 import Ledger.Constraints as Constraints
 import Ledger.Value
 import Plutus.Contract
+import PlutusTx (fromBuiltinData)
 
 import Escrow.Business
 import Escrow.Validator
 import Escrow.Types
+import Utils.OffChain
 
 -- | Contract Schema
 type EscrowSchema = Endpoint "start"   StartParams
@@ -53,9 +54,8 @@ newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-endpoints
-    :: Address
-    -> Contract () EscrowSchema Text ()
+endpoints :: Address
+          -> Contract () EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
                   startEp `select` cancelEp `select` resolveEp
   where
@@ -75,14 +75,14 @@ endpoints raddr = forever $ handleError logError $ awaitPromise $
 startOp :: Address
         -> StartParams
         -> Contract () EscrowSchema Text ()
-startOp _addr StartParams{..} = do
+startOp addr StartParams{..} = do
     let contractAddress = escrowAddress receiverAddress
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset 1
         receiveVal      = assetClassValue receiveAssetClass receiveAmount
         val             = minAda <> cTokenVal <> receiveVal
-        datum           = mkEscrowDatum (SenderAddress { sAddr = _addr }) receiveAmount receiveAssetClass
+        datum           = mkEscrowDatum (SenderAddress { sAddr = addr }) receiveAmount receiveAssetClass
 
         lkp = mconcat
               [ Constraints.typedValidatorLookups (escrowInst receiverAddress)
@@ -104,7 +104,40 @@ startOp _addr StartParams{..} = do
 cancelOp :: Address
          -> CancelParams
          -> Contract () EscrowSchema Text ()
-cancelOp _addr _cParams = undefined
+cancelOp addr CancelParams{..} = do
+    utxo       <- findUtxoFromRef cpTxOutRef
+    validator  <- loadValidatorWithError utxo
+    datum      <- loadDatumWithError utxo
+    senderPpkh <- getPpkhFromAddress addr
+    validateSenderAddr addr datum
+    let
+        contractAddress = _ciTxOutAddress utxo
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset (-1)
+
+        lkp = mconcat
+            [ Constraints.otherScript validator
+            , Constraints.unspentOutputs (Map.singleton cpTxOutRef utxo)
+            , Constraints.mintingPolicy (controlTokenMP contractAddress)
+            ]
+        tx = mconcat
+            [ Constraints.mustSpendScriptOutput cpTxOutRef cancelRedeemer
+            , Constraints.mustMintValue cTokenVal
+            , Constraints.mustBeSignedBy senderPpkh
+            ]
+
+    mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
+    logInfo @String "Contract canceled"
+  where
+    validateSenderAddr :: Address
+                       -> Datum
+                       -> Contract () EscrowSchema Text ()
+    validateSenderAddr senderAddr dat = case fromBuiltinData (getDatum dat) of
+        Nothing -> throwError "Datum format invalid"
+        Just d  -> if (sAddr . sender . eInfo) d /= senderAddr
+                then throwError "Sender address invalid"
+                else pure ()
 
 {- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
      on `rParams`, to pay the corresponding tokens to the other user and to receive

@@ -13,7 +13,7 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 module Escrow.Types where
 
 -- IOG imports
-import Ledger (Address, AssetClass, minAdaTxOut, Value)
+import Ledger (Address, AssetClass, minAdaTxOut, Redeemer(..), Value)
 import Ledger.Ada qualified as Ada
 import PlutusTx qualified
 
@@ -30,6 +30,9 @@ mkEscrowDatum sAdd amount asset = EscrowDatum { eInfo = mkEscrowInfo sAdd amount
 
 data EscrowRedeemer = CancelEscrow
                     | ResolveEscrow
+
+cancelRedeemer :: Redeemer
+cancelRedeemer = Redeemer $ PlutusTx.toBuiltinData CancelEscrow
 
 -- | Minimum amount of ADAs that every UTxO must have
 {-# INLINABLE minAda #-}
