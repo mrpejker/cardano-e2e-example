@@ -133,11 +133,11 @@ cancelOp addr CancelParams{..} = do
     validateSenderAddr :: Address
                        -> Datum
                        -> Contract () EscrowSchema Text ()
-    validateSenderAddr senderAddr dat = case fromBuiltinData (getDatum dat) of
-        Nothing -> throwError "Datum format invalid"
-        Just d  -> if (sAddr . sender . eInfo) d /= senderAddr
-                then throwError "Sender address invalid"
-                else pure ()
+    validateSenderAddr senderAddr dat =
+        getEscrowInfoFromDatum dat >>= \eInfo ->
+        if (sAddr . sender) eInfo /= senderAddr
+        then throwError "Sender address invalid"
+        else pure ()
 
 {- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
      on `rParams`, to pay the corresponding tokens to the other user and to receive
@@ -146,7 +146,49 @@ cancelOp addr CancelParams{..} = do
 resolveOp :: Address
           -> ResolveParams
           -> Contract () EscrowSchema Text ()
-resolveOp _addr _rParams = undefined
+resolveOp addr ResolveParams{..} = do
+    let
+        contractAddress = escrowAddress (ReceiverAddress { rAddr = addr })
+        validator       = escrowValidator (ReceiverAddress { rAddr = addr })
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset (-1)
+
+    utxos <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo) <- findContractUtxo rpTxOutRef utxos
+    datum <- loadDatumWithError utxo
+    escrowInfo <- getEscrowInfoFromDatum datum
+    receiverPpkh <- getPpkhFromAddress addr
+    senderPpkh <- getPpkhFromAddress (sAddr $ sender escrowInfo)
+
+    let senderPayment = assetClassValue (rAssetClass escrowInfo) (rAmount escrowInfo)
+
+        lkp = mconcat
+            [ Constraints.otherScript validator
+            , Constraints.unspentOutputs (Map.singleton ref utxo)
+            , Constraints.mintingPolicy (controlTokenMP contractAddress)
+            ]
+        tx = mconcat
+            [ Constraints.mustSpendScriptOutput ref resolveRedeemer
+            , Constraints.mustMintValue cTokenVal
+            , Constraints.mustBeSignedBy receiverPpkh
+            , Constraints.mustPayToPubKey senderPpkh senderPayment
+            ]
+
+    mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
+    logInfo @String "Contract resolved"
+
+  where
+    findContractUtxo :: TxOutRef -> [(TxOutRef, ChainIndexTxOut)] -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+    findContractUtxo ref utxos = case filter ((==) ref . fst) utxos of
+        [utxo] -> pure utxo
+        _      -> throwError "Specified Utxo not found"
+
+getEscrowInfoFromDatum :: Datum
+                       -> Contract () EscrowSchema Text EscrowInfo
+getEscrowInfoFromDatum dat = case fromBuiltinData (getDatum dat) of
+        Nothing -> throwError "Datum format invalid"
+        Just d  -> pure $ eInfo d
 
 cTokenName :: TokenName
 cTokenName = "controlToken"

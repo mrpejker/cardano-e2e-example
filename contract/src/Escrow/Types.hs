@@ -34,6 +34,9 @@ data EscrowRedeemer = CancelEscrow
 cancelRedeemer :: Redeemer
 cancelRedeemer = Redeemer $ PlutusTx.toBuiltinData CancelEscrow
 
+resolveRedeemer :: Redeemer
+resolveRedeemer = Redeemer $ PlutusTx.toBuiltinData ResolveEscrow
+
 -- | Minimum amount of ADAs that every UTxO must have
 {-# INLINABLE minAda #-}
 minAda :: Value
