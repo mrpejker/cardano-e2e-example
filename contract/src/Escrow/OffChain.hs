@@ -16,7 +16,7 @@ module Escrow.OffChain where
 import Data.Aeson    (FromJSON, ToJSON)
 import Data.Map      qualified as Map
 import Data.Text     (Text)
-import Control.Monad (forever)
+import Control.Monad (forever, unless)
 import GHC.Generics  (Generic)
 
 -- IOG imports
@@ -107,9 +107,10 @@ cancelOp :: Address
 cancelOp addr CancelParams{..} = do
     utxo       <- findUtxoFromRef cpTxOutRef
     validator  <- loadValidatorWithError utxo
-    datum      <- loadDatumWithError utxo
     senderPpkh <- getPpkhFromAddress addr
-    validateSenderAddr addr datum
+    eInfo      <- getEscrowInfo utxo
+    unless ((sAddr . sender) eInfo == addr)
+           (throwError "Sender address invalid")
     let contractAddress = _ciTxOutAddress utxo
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
@@ -128,15 +129,6 @@ cancelOp addr CancelParams{..} = do
 
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
     logInfo @String "Contract canceled"
-  where
-    validateSenderAddr :: Address
-                       -> Datum
-                       -> Contract () EscrowSchema Text ()
-    validateSenderAddr senderAddr dat =
-        getEscrowInfoFromDatum dat >>= \eInfo ->
-        if (sAddr . sender) eInfo /= senderAddr
-        then throwError "Sender address invalid"
-        else pure ()
 
 {- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
      on `rParams`, to pay the corresponding tokens to the other user and to receive
@@ -154,8 +146,7 @@ resolveOp addr ResolveParams{..} = do
 
     utxos        <- lookupScriptUtxos contractAddress cTokenAsset
     (ref, utxo)  <- findContractUtxo rpTxOutRef utxos
-    datum        <- loadDatumWithError utxo
-    escrowInfo   <- getEscrowInfoFromDatum datum
+    escrowInfo   <- getEscrowInfo utxo
     receiverPpkh <- getPpkhFromAddress addr
     senderPpkh   <- getPpkhFromAddress (sAddr $ sender escrowInfo)
 
@@ -177,16 +168,19 @@ resolveOp addr ResolveParams{..} = do
     logInfo @String "Contract resolved"
 
   where
-    findContractUtxo :: TxOutRef -> [(TxOutRef, ChainIndexTxOut)] -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+    findContractUtxo :: TxOutRef
+                     -> [(TxOutRef, ChainIndexTxOut)]
+                     -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
     findContractUtxo ref utxos = case filter ((==) ref . fst) utxos of
         [utxo] -> pure utxo
         _      -> throwError "Specified Utxo not found"
 
-getEscrowInfoFromDatum :: Datum
-                       -> Contract () EscrowSchema Text EscrowInfo
-getEscrowInfoFromDatum dat = case fromBuiltinData (getDatum dat) of
-        Nothing -> throwError "Datum format invalid"
-        Just d  -> pure $ eInfo d
+{- | Off-chain function for getting the Typed Datum (EscrowInfo) from a ChainIndexTxOut.
+-}
+getEscrowInfo :: ChainIndexTxOut
+              -> Contract () EscrowSchema Text EscrowInfo
+getEscrowInfo txOut = loadDatumWithError txOut >>=
+    maybe (throwError "Datum format invalid") (pure . eInfo) . (fromBuiltinData . getDatum)
 
 cTokenName :: TokenName
 cTokenName = "controlToken"

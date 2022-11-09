@@ -28,12 +28,15 @@ lookupScriptUtxos
     -> AssetClass
     -> Contract w s Text [(TxOutRef, ChainIndexTxOut)]
 lookupScriptUtxos addr token =
-    Map.toList . Map.filter (checkTxHasToken token . (^. ciTxOutValue))
+    Map.toList . Map.filter (txOutHasToken . (^. ciTxOutValue))
         <$> utxosAt addr
   where
-    checkTxHasToken :: AssetClass -> Value -> Bool
-    checkTxHasToken asc v = assetClassValueOf v asc == 1
+    txOutHasToken :: Value -> Bool
+    txOutHasToken v = assetClassValueOf v token == 1
 
+{- | Off-chain function for getting the validator from a ChainIndexTxOut.
+     Calls throwError if it can't find it.
+-}
 loadValidatorWithError
     :: forall w s
     .  ChainIndexTxOut
@@ -41,14 +44,19 @@ loadValidatorWithError
 loadValidatorWithError txOut =
     loadValidator txOut >>= maybe (throwError "Validator not Found") pure
 
+{- | Off-chain function for getting the validator from a ChainIndexTxOut.
+     returns Maybe if it can't find it.
+-}
 loadValidator
     :: forall w s
     .  ChainIndexTxOut
     -> Contract w s Text (Maybe Validator)
-loadValidator txOut = case _ciTxOutValidator txOut of
-    Left vh -> validatorFromHash vh
-    Right v -> return $ Just v
+loadValidator txOut =
+    either validatorFromHash (return . Just) (_ciTxOutValidator txOut)
 
+{- | Off-chain function for getting the datum from a ChainIndexTxOut.
+     Calls throwError if it can't find it.
+-}
 loadDatumWithError
     :: forall w s
     .  ChainIndexTxOut
@@ -56,28 +64,31 @@ loadDatumWithError
 loadDatumWithError txOut =
     loadDatum txOut >>= maybe (throwError "Datum not Found") pure
 
+{- | Off-chain function for getting the datum from a ChainIndexTxOut.
+     returns Maybe if it can't find it.
+-}
 loadDatum
     :: forall w s
     .  ChainIndexTxOut
     -> Contract w s Text (Maybe Datum)
-loadDatum txOut = case _ciTxOutDatum txOut of
-    Left dh -> datumFromHash dh
-    Right d -> return $ Just d
+loadDatum txOut =
+    either datumFromHash (return . Just) (_ciTxOutDatum txOut)
 
+{- | Off-chain function for getting the ChainIndexTxOut for the given TxOutRef
+-}
 findUtxoFromRef
     :: forall w s
     .  TxOutRef
     -> Contract w s Text ChainIndexTxOut
-findUtxoFromRef ref = do
-    mUtxo <- unspentTxOutFromRef ref
-    case mUtxo of
-        Nothing -> throwError "Utxo not found"
-        Just utxo -> pure utxo
+findUtxoFromRef ref =
+    unspentTxOutFromRef ref >>= maybe (throwError "Utxo not found") pure
 
+{- | Off-chain function for getting the PaymentPubKeyHash for the given Address
+-}
 getPpkhFromAddress
     :: forall w s
     .  Address
     -> Contract w s Text PaymentPubKeyHash
-getPpkhFromAddress addr = case toPubKeyHash addr of
-    Nothing   -> throwError "The address should be a wallet address"
-    Just pkh -> pure (PaymentPubKeyHash { unPaymentPubKeyHash = pkh })
+getPpkhFromAddress addr =
+    maybe (throwError "The address should be a wallet address")
+     (pure . PaymentPubKeyHash) (toPubKeyHash addr)
