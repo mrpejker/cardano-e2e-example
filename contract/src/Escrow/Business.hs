@@ -17,6 +17,7 @@ module Escrow.Business where
 
 -- Non-IOG imports
 import Data.Aeson (FromJSON, ToJSON)
+import Prelude (Show)
 
 -- IOG imports
 import Ledger           (Address, AssetClass)
@@ -24,9 +25,11 @@ import PlutusTx qualified
 import PlutusTx.Prelude
 
 newtype SenderAddress   = SenderAddress { sAddr :: Address }
-  deriving newtype (FromJSON, ToJSON)
+  deriving newtype (Show, FromJSON, ToJSON)
 newtype ReceiverAddress = ReceiverAddress { rAddr :: Address }
-  deriving newtype (FromJSON, ToJSON)
+  deriving newtype (Show, FromJSON, ToJSON)
+
+PlutusTx.makeLift ''ReceiverAddress
 
 {- | EscrowInfo
 
@@ -38,7 +41,7 @@ data EscrowInfo = EscrowInfo { sender      :: SenderAddress
                              , rAmount     :: Integer
                              , rAssetClass :: AssetClass
                              }
-
+    deriving Show
 mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo
 mkEscrowInfo sAdd amount assetClass = EscrowInfo { sender = sAdd
                                                  , rAmount = amount

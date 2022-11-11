@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell       #-}
 
 {-|
 Module      : Escrow.Validator
@@ -17,10 +18,13 @@ module Escrow.Validator where
 -- IOG imports
 import Ledger ( CurrencySymbol, MintingPolicy
               , scriptAddress, scriptCurrencySymbol
+              , mkMintingPolicyScript
               )
 import Ledger.Typed.Scripts qualified as Scripts
+import PlutusTx qualified
 
 import Escrow.Business
+import Escrow.OnChain
 import Escrow.Types
 
 -- | Definition of type family describing which types are used
@@ -31,7 +35,14 @@ instance Scripts.ValidatorTypes Escrowing where
     type instance RedeemerType Escrowing = EscrowRedeemer
 
 escrowInst :: ReceiverAddress -> Scripts.TypedValidator Escrowing
-escrowInst _ = undefined
+escrowInst raddr = Scripts.mkTypedValidator @Escrowing
+                   ($$(PlutusTx.compile [|| mkEscrowValidator ||])
+                       `PlutusTx.applyCode`
+                       PlutusTx.liftCode raddr
+                   )
+                   $$(PlutusTx.compile [|| wrap ||])
+  where
+    wrap = Scripts.wrapValidator @EscrowDatum @EscrowRedeemer
 
 escrowValidator :: ReceiverAddress -> Scripts.Validator
 escrowValidator = Scripts.validatorScript . escrowInst
@@ -40,7 +51,13 @@ escrowAddress :: ReceiverAddress -> ContractAddress
 escrowAddress = scriptAddress . escrowValidator
 
 controlTokenMP :: ContractAddress -> MintingPolicy
-controlTokenMP _ = undefined
+controlTokenMP caddr =
+    mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| wrap . mkControlTokenMintingPolicy ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode caddr
+  where
+    wrap = Scripts.wrapMintingPolicy
 
 controlTokenCurrency :: ContractAddress -> CurrencySymbol
 controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
