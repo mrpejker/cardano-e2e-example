@@ -46,7 +46,8 @@ data StartParams   = StartParams
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-newtype CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef }
+data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
+                                   , cpReceiverAddress :: Address}
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -80,9 +81,9 @@ startOp addr StartParams{..} = do
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset 1
-        receiveVal      = assetClassValue receiveAssetClass receiveAmount
-        val             = minAda <> cTokenVal <> receiveVal
-        datum           = mkEscrowDatum (SenderAddress { sAddr = addr }) receiveAmount receiveAssetClass
+        senderVal       = assetClassValue sendAssetClass sendAmount
+        val             = minAda <> cTokenVal <> senderVal
+        datum           = mkEscrowDatum (SenderAddress { sAddr = addr }) receiveAmount receiveAssetClass cTokenAsset
 
         lkp = mconcat
               [ Constraints.typedValidatorLookups (escrowInst receiverAddress)
@@ -105,24 +106,26 @@ cancelOp :: Address
          -> CancelParams
          -> Contract () EscrowSchema Text ()
 cancelOp addr CancelParams{..} = do
-    utxo       <- findUtxoFromRef cpTxOutRef
-    validator  <- loadValidatorWithError utxo
-    senderPpkh <- getPpkhFromAddress addr
-    eInfo      <- getEscrowInfo utxo
-    unless ((sAddr . sender) eInfo == addr)
-           (throwError "Sender address invalid")
-    let contractAddress = _ciTxOutAddress utxo
+    let contractAddress = escrowAddress (ReceiverAddress { rAddr = cpReceiverAddress })
+        validator       = escrowValidator (ReceiverAddress { rAddr = cpReceiverAddress })
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset (-1)
 
-        lkp = mconcat
+    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo)  <- findContractUtxo cpTxOutRef utxos
+    eInfo        <- getEscrowInfo utxo
+    senderPpkh   <- getPpkhFromAddress addr
+    unless ((sAddr . sender) eInfo == addr)
+           (throwError "Sender address invalid")
+
+    let lkp = mconcat
             [ Constraints.otherScript validator
             , Constraints.unspentOutputs (Map.singleton cpTxOutRef utxo)
             , Constraints.mintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
-            [ Constraints.mustSpendScriptOutput cpTxOutRef cancelRedeemer
+            [ Constraints.mustSpendScriptOutput ref cancelRedeemer
             , Constraints.mustMintValue cTokenVal
             , Constraints.mustBeSignedBy senderPpkh
             ]
@@ -146,11 +149,11 @@ resolveOp addr ResolveParams{..} = do
 
     utxos        <- lookupScriptUtxos contractAddress cTokenAsset
     (ref, utxo)  <- findContractUtxo rpTxOutRef utxos
-    escrowInfo   <- getEscrowInfo utxo
+    eInfo        <- getEscrowInfo utxo
+    senderPpkh   <- getPpkhFromAddress (sAddr $ sender eInfo)
     receiverPpkh <- getPpkhFromAddress addr
-    senderPpkh   <- getPpkhFromAddress (sAddr $ sender escrowInfo)
 
-    let senderPayment = assetClassValue (rAssetClass escrowInfo) (rAmount escrowInfo)
+    let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo) <> minAda
 
         lkp = mconcat
             [ Constraints.otherScript validator
@@ -167,13 +170,15 @@ resolveOp addr ResolveParams{..} = do
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
     logInfo @String "Contract resolved"
 
-  where
-    findContractUtxo :: TxOutRef
-                     -> [(TxOutRef, ChainIndexTxOut)]
-                     -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
-    findContractUtxo ref utxos = case filter ((==) ref . fst) utxos of
-        [utxo] -> pure utxo
-        _      -> throwError "Specified Utxo not found"
+
+{- | Off-chain function for getting the specific UTxO from a list of UTxOs by its TxOutRef.
+-}
+findContractUtxo :: TxOutRef
+                    -> [(TxOutRef, ChainIndexTxOut)]
+                    -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+findContractUtxo ref utxos = case filter ((==) ref . fst) utxos of
+    [utxo] -> pure utxo
+    _      -> throwError "Specified Utxo not found"
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a ChainIndexTxOut.
 -}
@@ -181,6 +186,3 @@ getEscrowInfo :: ChainIndexTxOut
               -> Contract () EscrowSchema Text EscrowInfo
 getEscrowInfo txOut = loadDatumWithError txOut >>=
     maybe (throwError "Datum format invalid") (pure . eInfo) . (fromBuiltinData . getDatum)
-
-cTokenName :: TokenName
-cTokenName = "controlToken"

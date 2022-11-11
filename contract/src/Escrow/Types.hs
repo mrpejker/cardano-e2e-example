@@ -13,7 +13,7 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 module Escrow.Types where
 
 -- IOG imports
-import Ledger (Address, AssetClass, minAdaTxOut, Redeemer(..), Value)
+import Ledger (Address, AssetClass, TokenName, minAdaTxOut, Redeemer(..), Value)
 import Ledger.Ada qualified as Ada
 import PlutusTx qualified
 
@@ -23,10 +23,17 @@ type ContractAddress = Address
 
 newtype Parameter = Parameter { rAddress :: ReceiverAddress }
 
-newtype EscrowDatum = EscrowDatum { eInfo :: EscrowInfo }
+data EscrowDatum = EscrowDatum
+                   { eInfo       :: EscrowInfo
+                   , eAssetClass :: AssetClass
+                   }
+    deriving Show
 
-mkEscrowDatum :: SenderAddress -> Integer -> AssetClass -> EscrowDatum
-mkEscrowDatum sAdd amount asset = EscrowDatum { eInfo = mkEscrowInfo sAdd amount asset }
+mkEscrowDatum :: SenderAddress -> Integer -> AssetClass -> AssetClass -> EscrowDatum
+mkEscrowDatum sAdd amount asset cAsset = EscrowDatum
+                                  { eInfo = mkEscrowInfo sAdd amount asset
+                                  , eAssetClass = cAsset
+                                  }
 
 data EscrowRedeemer = CancelEscrow
                     | ResolveEscrow
@@ -41,6 +48,9 @@ resolveRedeemer = Redeemer $ PlutusTx.toBuiltinData ResolveEscrow
 {-# INLINABLE minAda #-}
 minAda :: Value
 minAda = Ada.toValue Ledger.minAdaTxOut
+
+cTokenName :: TokenName
+cTokenName = "controlToken"
 
 PlutusTx.makeIsDataIndexed ''EscrowDatum    [ ('EscrowDatum, 0) ]
 PlutusTx.makeIsDataIndexed ''EscrowRedeemer [ ('CancelEscrow, 0)
