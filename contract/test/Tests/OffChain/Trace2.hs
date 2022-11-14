@@ -62,7 +62,8 @@ test = checkPredicateOptions
         bcCheckAux :: [Block] -> Bool
         bcCheckAux [ [Valid _]
                    , [Valid start]
-                   , [Valid resolve]] =
+                   , [Valid resolve]
+                   ] =
                isJust (Map.lookup (unPaymentPubKey senderPpk)
                           (txSignatures start))
             && isJust (Map.lookup (unPaymentPubKey receiverPpk)
@@ -90,6 +91,7 @@ trace =
     void $ waitNSlots 10
     h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
     utxos <- utxosMap
-    let resolveParams = ResolveParams { rpTxOutRef = findScriptTxOutRef utxos }
+    let scriptUtxos   = findScriptTxOutRef utxos
+        resolveParams = ResolveParams { rpTxOutRef = head scriptUtxos }
     callEndpoint @"resolve" h2 resolveParams
     void $ waitNSlots 10

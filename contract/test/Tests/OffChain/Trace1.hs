@@ -60,7 +60,8 @@ test = checkPredicateOptions
         bcCheckAux :: [Block] -> Bool
         bcCheckAux [ [Valid _]
                    , [Valid start]
-                   , [Valid cancel]] =
+                   , [Valid cancel]
+                   ] =
                isJust (Map.lookup (unPaymentPubKey senderPpk)
                           (txSignatures start))
             && isJust (Map.lookup (unPaymentPubKey senderPpk)
@@ -87,7 +88,8 @@ trace =
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
     utxos <- utxosMap
-    let cancelParams = CancelParams { cpTxOutRef = findScriptTxOutRef utxos
+    let scriptUtxos  = findScriptTxOutRef utxos
+        cancelParams = CancelParams { cpTxOutRef = head scriptUtxos
                                     , cpReceiverAddress = receiverAddr
                                     }
     callEndpoint @"cancel" h1 cancelParams

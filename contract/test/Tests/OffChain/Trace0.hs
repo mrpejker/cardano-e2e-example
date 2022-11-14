@@ -61,7 +61,8 @@ test = checkPredicateOptions
 
         bcCheckAux :: [Block] -> Bool
         bcCheckAux [ [Valid _]
-                   , [Valid start]] =
+                   , [Valid start]
+                   ] =
            isJust (Map.lookup (unPaymentPubKey senderPpk) (txSignatures start))
         bcCheckAux _                = False
 
