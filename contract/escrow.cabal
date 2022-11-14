@@ -77,3 +77,67 @@ library
     , containers
     , text
     , openapi3
+
+
+test-suite escrow-tests
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs: test
+  other-modules: Tests.Utils
+                 Tests.OffChain.Trace0
+                 Tests.OffChain.Trace1
+                 Tests.OffChain.Trace2
+
+  default-language: Haskell2010
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DerivingStrategies
+    DeriveTraversable
+    ExplicitForAll
+    GeneralizedNewtypeDeriving
+    ImportQualifiedPost
+    MultiParamTypeClasses
+    OverloadedStrings
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeFamilies
+    TypeOperators
+  ghc-options:         -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+  build-depends:       base ^>=4.14.1.0
+                     , aeson
+                     , ansi-terminal
+                     , containers
+                     , data-default
+                     , escrow
+                     , freer-extras
+                     , hex-text
+                     , playground-common
+                     , plutus-pab
+                     , plutus-contract
+                     , plutus-ledger
+                     , plutus-ledger-api
+                     , plutus-tx-plugin
+                     , plutus-tx
+                     , plutus-use-cases
+                     , prettyprinter
+                     , text
+                     , freer-simple
+                     , lens <= 4.19.2
+                     , plutus-core
+                     , bytestring
+                     , tasty
+                     , tasty-hunit
+                     , QuickCheck
+                     , tasty-quickcheck
+                     , text
+                     , prettyprinter
+                     , row-types
+                     , strict-containers
+                     , serialise
