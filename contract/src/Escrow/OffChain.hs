@@ -13,16 +13,31 @@ building unbalanced transactions.
 module Escrow.OffChain where
 
 -- Non-IOG imports
-import Data.Aeson    (FromJSON, ToJSON)
-import Data.Text     (Text)
-import Control.Monad (forever)
-import GHC.Generics  (Generic)
+import Data.Aeson         ( FromJSON, ToJSON )
+import Data.Map           qualified as Map
+import Data.Text          ( Text )
+import Control.Monad      ( forever, unless )
+import GHC.Generics       ( Generic )
 
 -- IOG imports
-import Ledger
-import Plutus.Contract
+import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef )
+import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
+                          , mustPayToPubKey, mustPayToTheScript
+                          , mustSpendScriptOutput, otherScript
+                          , typedValidatorLookups, unspentOutputs
+                          )
+import Ledger.Value       ( AssetClass, assetClass, assetClassValue )
+import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
+                          , handleError, logError, logInfo, mkTxConstraints
+                          , Promise, select, throwError, type (.\/)
+                          , yieldUnbalancedTx
+                          )
+import PlutusTx           ( fromBuiltinData )
 
 import Escrow.Business
+import Escrow.Validator
+import Escrow.Types
+import Utils.OffChain
 
 -- | Contract Schema
 type EscrowSchema = Endpoint "start"   StartParams
@@ -38,16 +53,19 @@ data StartParams   = StartParams
                      }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
-newtype CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef }
+
+data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
+                                   , cpReceiverAddress :: Address
+                                   }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
+
 newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-endpoints
-    :: Address
-    -> Contract () EscrowSchema Text ()
+endpoints :: Address
+          -> Contract () EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
                   startEp `select` cancelEp `select` resolveEp
   where
@@ -67,21 +85,128 @@ endpoints raddr = forever $ handleError logError $ awaitPromise $
 startOp :: Address
         -> StartParams
         -> Contract () EscrowSchema Text ()
-startOp _addr _sParams = undefined
+startOp addr StartParams{..} = do
+    let contractAddress = escrowAddress receiverAddress
+        validator       = escrowValidator receiverAddress
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset 1
+        senderVal       = assetClassValue sendAssetClass sendAmount
+        val             = minAda <> cTokenVal <> senderVal
+        datum           = mkEscrowDatum (mkSenderAddress addr)
+                                        receiveAmount
+                                        receiveAssetClass
+                                        cTokenAsset
 
-{- | The user, using its `addr`, cancels the escrow placed on the utxo referenced
-     on `cParams`, to receive the locked tokens back. The control Token is burned.
+        lkp = mconcat
+              [ typedValidatorLookups (escrowInst receiverAddress)
+              , otherScript validator
+              , mintingPolicy (controlTokenMP contractAddress)
+              ]
+        tx  = mconcat
+              [ mustPayToTheScript datum val
+              , mustMintValue cTokenVal
+              ]
+
+    mkTxConstraints lkp tx >>= yieldUnbalancedTx
+    logInfo @String "Escrow started"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
+
+{- | The user, using its `addr`, cancels the escrow placed on the utxo
+     referenced on `cParams`, to receive the locked tokens back.
+     The control Token is burned.
 -}
 cancelOp :: Address
          -> CancelParams
          -> Contract () EscrowSchema Text ()
-cancelOp _addr _cParams = undefined
+cancelOp addr CancelParams{..} = do
+    let contractAddress = escrowAddress (mkReceiverAddress cpReceiverAddress)
+        validator       = escrowValidator (mkReceiverAddress cpReceiverAddress)
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset (-1)
 
-{- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
-     on `rParams`, to pay the corresponding tokens to the other user and to receive
-     the locked tokens.
+    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo)  <- findEscrowUtxo cpTxOutRef utxos
+    eInfo        <- getEscrowInfo utxo
+    senderPpkh   <- getPpkhFromAddress addr
+
+    unless (eInfoSenderAddr eInfo == addr)
+           (throwError "Sender address invalid")
+
+    let lkp = mconcat
+            [ otherScript validator
+            , unspentOutputs (Map.singleton cpTxOutRef utxo)
+            , mintingPolicy (controlTokenMP contractAddress)
+            ]
+        tx = mconcat
+            [ mustSpendScriptOutput ref cancelRedeemer
+            , mustMintValue cTokenVal
+            , mustBeSignedBy senderPpkh
+            ]
+
+    mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
+    logInfo @String "Escrow canceled"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
+
+{- | The user, using its `addr`, resolves the escrow placed on the utxo
+     referenced on `rParams`, to pay the corresponding tokens to the other user
+     and to receive the locked tokens.
 -}
 resolveOp :: Address
           -> ResolveParams
           -> Contract () EscrowSchema Text ()
-resolveOp _addr _rParams = undefined
+resolveOp addr ResolveParams{..} = do
+    let contractAddress = escrowAddress (mkReceiverAddress addr)
+        validator       = escrowValidator (mkReceiverAddress addr)
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
+        cTokenVal       = assetClassValue cTokenAsset (-1)
+
+    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo)  <- findEscrowUtxo rpTxOutRef utxos
+    eInfo        <- getEscrowInfo utxo
+    senderPpkh   <- getPpkhFromAddress (sAddr $ sender eInfo)
+    receiverPpkh <- getPpkhFromAddress addr
+
+    let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo)
+                            <> minAda
+
+        lkp = mconcat
+            [ otherScript validator
+            , unspentOutputs (Map.singleton ref utxo)
+            , mintingPolicy (controlTokenMP contractAddress)
+            ]
+        tx = mconcat
+            [ mustSpendScriptOutput ref resolveRedeemer
+            , mustMintValue cTokenVal
+            , mustBeSignedBy receiverPpkh
+            , mustPayToPubKey senderPpkh senderPayment
+            ]
+
+    mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
+    logInfo @String "Escrow resolved"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
+
+
+{- | Off-chain function for getting the specific UTxO from a list of UTxOs by
+     its TxOutRef.
+-}
+findEscrowUtxo :: TxOutRef
+                 -> [(TxOutRef, ChainIndexTxOut)]
+                 -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+findEscrowUtxo ref utxos = case filter ((==) ref . fst) utxos of
+    [utxo] -> pure utxo
+    _      -> throwError "Specified Utxo not found"
+
+{- | Off-chain function for getting the Typed Datum (EscrowInfo)
+     from a ChainIndexTxOut.
+-}
+getEscrowInfo :: ChainIndexTxOut
+              -> Contract () EscrowSchema Text EscrowInfo
+getEscrowInfo txOut = loadDatumWithError txOut >>=
+    maybe (throwError "Datum format invalid")
+          (pure . eInfo) . (fromBuiltinData . getDatum)
