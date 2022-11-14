@@ -13,11 +13,13 @@ We define here the on-chain code of the validator and the minting policy.
 module Escrow.OnChain where
 
 -- IOG imports
-import Plutus.V1.Ledger.Api (ScriptContext)
+import Plutus.V1.Ledger.Api
+import Plutus.V1.Ledger.Value
 import PlutusTx.Prelude
 
 import Escrow.Business
 import Escrow.Types
+import Utils.OnChain
 
 {- | Escrow Validator
 
@@ -40,8 +42,58 @@ mkEscrowValidator :: ReceiverAddress
                   -> EscrowRedeemer
                   -> ScriptContext
                   -> Bool
-mkEscrowValidator _ _ _ _ = True
+mkEscrowValidator raddr EscrowDatum{..} r ctx =
+    case r of
+        CancelEscrow  -> cancelValidator eInfo signer
+        ResolveEscrow -> resolveValidator info eInfo raddr signer
+    &&
+    traceIfFalse
+    "controlToken was not burned"
+    (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
 
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
+
+    mintedCS :: CurrencySymbol
+    mintedTN :: TokenName
+    (mintedCS, mintedTN, mintedA) = getSingleton $
+                                    flattenValue $ txInfoMint info
+
+{- | Checks:
+ - The address that is trying to cancel the escrow is the same as the Sender’s
+   address.
+-}
+{-# INLINABLE cancelValidator #-}
+cancelValidator :: EscrowInfo -> PubKeyHash -> Bool
+cancelValidator EscrowInfo{..} signer =
+    traceIfFalse
+    "cancelValidator: Wrong sender signature" $ singerIsSender signer sender
+
+{- | Checks:
+ - The address that is trying to resolve is the same as the Receiver’s address.
+ - The Sender’s address receives the tokens specified on the datum.
+-}
+{-# INLINABLE resolveValidator #-}
+resolveValidator
+    :: TxInfo
+    -> EscrowInfo
+    -> ReceiverAddress
+    -> PubKeyHash
+    -> Bool
+resolveValidator info EscrowInfo{..} raddr signer =
+    traceIfFalse "resolveValidator: Wrong receiver signature"
+                 (singerIsReceiver signer raddr)
+    &&
+    traceIfFalse "resolveValidator: Wrong sender's payment" (senderV == pay)
+  where
+    senderV :: Value
+    senderV = valuePaidTo info (sAddr sender)
+
+    pay :: Value
+    pay = assetClassValue rAssetClass rAmount
 
 {- | Control Token minting policy
 
@@ -58,4 +110,28 @@ On Burning:
 -}
 {-# INLINABLE mkControlTokenMintingPolicy #-}
 mkControlTokenMintingPolicy :: ContractAddress -> () -> ScriptContext -> Bool
-mkControlTokenMintingPolicy _ _ _ = True
+mkControlTokenMintingPolicy addr _ ctx =
+    (mintedA == -1)
+    ||
+    (mintedA == 1 && controlTokenPaid && correctSigner)
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    correctSigner :: Bool
+    correctSigner = True
+
+    controlTokenPaid :: Bool
+    controlTokenPaid =
+        assetClassValueOf (txOutValue utxo) (assetClass mintedCS mintedTN)
+        ==
+        mintedA
+
+    utxo :: TxOut
+    utxo = getSingleton $ outputsAt addr info
+
+    mintedCS :: CurrencySymbol
+    mintedTN :: TokenName
+    mintedA :: Integer
+    (mintedCS, mintedTN, mintedA) = getSingleton $
+                                    flattenValue $ txInfoMint info

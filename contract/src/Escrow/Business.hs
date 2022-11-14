@@ -20,9 +20,11 @@ import Data.Aeson       ( FromJSON, ToJSON )
 import Prelude          ( Show )
 
 -- IOG imports
-import Ledger           ( Address, AssetClass )
+import Ledger           ( Address(..), AssetClass, PubKeyHash )
 import PlutusTx         ( makeIsDataIndexed, makeLift )
-import PlutusTx.Prelude ( Integer, (.) )
+import PlutusTx.Prelude ( Integer, (.), Bool )
+
+import Utils.OnChain ( pubKeyHashInAddress )
 
 newtype SenderAddress   = SenderAddress { sAddr :: Address }
   deriving newtype (Show, FromJSON, ToJSON)
@@ -34,6 +36,14 @@ mkSenderAddress addr = SenderAddress { sAddr = addr }
 
 mkReceiverAddress :: Address -> ReceiverAddress
 mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
+
+{-# INLINABLE singerIsSender #-}
+singerIsSender :: PubKeyHash -> SenderAddress -> Bool
+singerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
+
+{-# INLINABLE singerIsReceiver #-}
+singerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
+singerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
 
 {- | EscrowInfo
 
@@ -53,9 +63,11 @@ mkEscrowInfo sAdd amount assetClass = EscrowInfo { sender = sAdd
                                                  , rAssetClass = assetClass
                                                  }
 
+{-# INLINABLE eInfoSenderAddr #-}
 eInfoSenderAddr :: EscrowInfo -> Address
 eInfoSenderAddr = sAddr . sender
 
-PlutusTx.makeLift ''ReceiverAddress
-PlutusTx.makeIsDataIndexed ''EscrowInfo    [ ('EscrowInfo, 0) ]
-PlutusTx.makeIsDataIndexed ''SenderAddress [ ('SenderAddress, 0) ]
+makeLift ''ReceiverAddress
+makeIsDataIndexed ''EscrowInfo    [ ('EscrowInfo, 0) ]
+makeIsDataIndexed ''SenderAddress [ ('SenderAddress, 0) ]
+makeIsDataIndexed ''ReceiverAddress [ ('ReceiverAddress, 0) ]

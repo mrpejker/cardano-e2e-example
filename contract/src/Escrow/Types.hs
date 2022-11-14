@@ -40,10 +40,11 @@ mkEscrowDatum
     -> AssetClass
     -> AssetClass
     -> EscrowDatum
-mkEscrowDatum sAdd amount asset cAsset = EscrowDatum
-                                  { eInfo = mkEscrowInfo sAdd amount asset
-                                  , eAssetClass = cAsset
-                                  }
+mkEscrowDatum sAdd amount asset cAsset =
+    EscrowDatum
+    { eInfo = mkEscrowInfo sAdd amount asset
+    , eAssetClass = cAsset
+    }
 
 data EscrowRedeemer = CancelEscrow
                     | ResolveEscrow

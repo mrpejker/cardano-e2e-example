@@ -24,7 +24,7 @@ import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
                             , ValidatorTypes (DatumType, RedeemerType)
                             , validatorScript, wrapMintingPolicy, wrapValidator
                             )
-import PlutusTx             (compile, applyCode, liftCode)
+import PlutusTx             ( compile, applyCode, liftCode )
 
 import Escrow.Business
 import Escrow.OnChain

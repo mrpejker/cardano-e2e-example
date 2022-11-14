@@ -18,7 +18,6 @@ import Ledger
 import Ledger.Value
 import Plutus.Contract
 
-
 {- | Off-chain function for getting a list of utxos for the given address that
      contains the given Token.
 -}
