@@ -13,23 +13,33 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 module Escrow.Types where
 
 -- IOG imports
-import Ledger (Address, AssetClass, TokenName, minAdaTxOut, Redeemer(..), Value)
-import Ledger.Ada qualified as Ada
-import PlutusTx qualified
+import Ledger     ( Address, AssetClass, TokenName, minAdaTxOut, Redeemer(..)
+                  , Value
+                  )
+import Ledger.Ada ( toValue )
+import PlutusTx   ( toBuiltinData, makeIsDataIndexed )
 
 import Escrow.Business
 
 type ContractAddress = Address
 
-newtype Parameter = Parameter { rAddress :: ReceiverAddress }
-
+{- | The EscrowDatum type contains the escrow information about the amount and
+     kind of tokens the receiver should send and to which address.
+     It also contains the assetclass of the control token for checking the
+     correct burning of the token when the escrow is finalized.
+-}
 data EscrowDatum = EscrowDatum
                    { eInfo       :: EscrowInfo
                    , eAssetClass :: AssetClass
                    }
     deriving Show
 
-mkEscrowDatum :: SenderAddress -> Integer -> AssetClass -> AssetClass -> EscrowDatum
+mkEscrowDatum
+    :: SenderAddress
+    -> Integer
+    -> AssetClass
+    -> AssetClass
+    -> EscrowDatum
 mkEscrowDatum sAdd amount asset cAsset = EscrowDatum
                                   { eInfo = mkEscrowInfo sAdd amount asset
                                   , eAssetClass = cAsset
@@ -39,20 +49,20 @@ data EscrowRedeemer = CancelEscrow
                     | ResolveEscrow
 
 cancelRedeemer :: Redeemer
-cancelRedeemer = Redeemer $ PlutusTx.toBuiltinData CancelEscrow
+cancelRedeemer = Redeemer $ toBuiltinData CancelEscrow
 
 resolveRedeemer :: Redeemer
-resolveRedeemer = Redeemer $ PlutusTx.toBuiltinData ResolveEscrow
+resolveRedeemer = Redeemer $ toBuiltinData ResolveEscrow
 
 -- | Minimum amount of ADAs that every UTxO must have
 {-# INLINABLE minAda #-}
 minAda :: Value
-minAda = Ada.toValue Ledger.minAdaTxOut
+minAda = toValue minAdaTxOut
 
 cTokenName :: TokenName
 cTokenName = "controlToken"
 
-PlutusTx.makeIsDataIndexed ''EscrowDatum    [ ('EscrowDatum, 0) ]
-PlutusTx.makeIsDataIndexed ''EscrowRedeemer [ ('CancelEscrow, 0)
-                                            , ('ResolveEscrow, 1)
-                                            ]
+makeIsDataIndexed ''EscrowDatum    [ ('EscrowDatum, 0) ]
+makeIsDataIndexed ''EscrowRedeemer [ ('CancelEscrow, 0)
+                                   , ('ResolveEscrow, 1)
+                                   ]

@@ -13,18 +13,26 @@ building unbalanced transactions.
 module Escrow.OffChain where
 
 -- Non-IOG imports
-import Data.Aeson    (FromJSON, ToJSON)
-import Data.Map      qualified as Map
-import Data.Text     (Text)
-import Control.Monad (forever, unless)
-import GHC.Generics  (Generic)
+import Data.Aeson         ( FromJSON, ToJSON )
+import Data.Map           qualified as Map
+import Data.Text          ( Text )
+import Control.Monad      ( forever, unless )
+import GHC.Generics       ( Generic )
 
 -- IOG imports
-import Ledger
-import Ledger.Constraints as Constraints
-import Ledger.Value
-import Plutus.Contract
-import PlutusTx (fromBuiltinData)
+import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef )
+import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
+                          , mustPayToPubKey, mustPayToTheScript
+                          , mustSpendScriptOutput, otherScript
+                          , typedValidatorLookups, unspentOutputs
+                          )
+import Ledger.Value       ( AssetClass, assetClass, assetClassValue )
+import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
+                          , handleError, logError, logInfo, mkTxConstraints
+                          , Promise, select, throwError, type (.\/)
+                          , yieldUnbalancedTx
+                          )
+import PlutusTx           ( fromBuiltinData )
 
 import Escrow.Business
 import Escrow.Validator
@@ -47,7 +55,8 @@ data StartParams   = StartParams
   deriving anyclass (FromJSON, ToJSON)
 
 data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
-                                   , cpReceiverAddress :: Address}
+                                   , cpReceiverAddress :: Address
+                                   }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -78,111 +87,126 @@ startOp :: Address
         -> Contract () EscrowSchema Text ()
 startOp addr StartParams{..} = do
     let contractAddress = escrowAddress receiverAddress
+        validator       = escrowValidator receiverAddress
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset 1
         senderVal       = assetClassValue sendAssetClass sendAmount
         val             = minAda <> cTokenVal <> senderVal
-        datum           = mkEscrowDatum (SenderAddress { sAddr = addr }) receiveAmount receiveAssetClass cTokenAsset
+        datum           = mkEscrowDatum (mkSenderAddress addr)
+                                        receiveAmount
+                                        receiveAssetClass
+                                        cTokenAsset
 
         lkp = mconcat
-              [ Constraints.typedValidatorLookups (escrowInst receiverAddress)
-              , Constraints.otherScript (escrowValidator receiverAddress)
-              , Constraints.mintingPolicy (controlTokenMP contractAddress)
+              [ typedValidatorLookups (escrowInst receiverAddress)
+              , otherScript validator
+              , mintingPolicy (controlTokenMP contractAddress)
               ]
         tx  = mconcat
-              [ Constraints.mustPayToTheScript datum val
-              , Constraints.mustMintValue cTokenVal
+              [ mustPayToTheScript datum val
+              , mustMintValue cTokenVal
               ]
 
     mkTxConstraints lkp tx >>= yieldUnbalancedTx
-    logInfo @String $ "Addr: " ++ show (escrowAddress receiverAddress)
-    logInfo @String "Contract started"
+    logInfo @String "Escrow started"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
 
-{- | The user, using its `addr`, cancels the escrow placed on the utxo referenced
-     on `cParams`, to receive the locked tokens back. The control Token is burned.
+{- | The user, using its `addr`, cancels the escrow placed on the utxo
+     referenced on `cParams`, to receive the locked tokens back.
+     The control Token is burned.
 -}
 cancelOp :: Address
          -> CancelParams
          -> Contract () EscrowSchema Text ()
 cancelOp addr CancelParams{..} = do
-    let contractAddress = escrowAddress (ReceiverAddress { rAddr = cpReceiverAddress })
-        validator       = escrowValidator (ReceiverAddress { rAddr = cpReceiverAddress })
+    let contractAddress = escrowAddress (mkReceiverAddress cpReceiverAddress)
+        validator       = escrowValidator (mkReceiverAddress cpReceiverAddress)
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset (-1)
 
     utxos        <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo)  <- findContractUtxo cpTxOutRef utxos
+    (ref, utxo)  <- findEscrowUtxo cpTxOutRef utxos
     eInfo        <- getEscrowInfo utxo
     senderPpkh   <- getPpkhFromAddress addr
-    unless ((sAddr . sender) eInfo == addr)
+
+    unless (eInfoSenderAddr eInfo == addr)
            (throwError "Sender address invalid")
 
     let lkp = mconcat
-            [ Constraints.otherScript validator
-            , Constraints.unspentOutputs (Map.singleton cpTxOutRef utxo)
-            , Constraints.mintingPolicy (controlTokenMP contractAddress)
+            [ otherScript validator
+            , unspentOutputs (Map.singleton cpTxOutRef utxo)
+            , mintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
-            [ Constraints.mustSpendScriptOutput ref cancelRedeemer
-            , Constraints.mustMintValue cTokenVal
-            , Constraints.mustBeSignedBy senderPpkh
+            [ mustSpendScriptOutput ref cancelRedeemer
+            , mustMintValue cTokenVal
+            , mustBeSignedBy senderPpkh
             ]
 
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
-    logInfo @String "Contract canceled"
+    logInfo @String "Escrow canceled"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
 
-{- | The user, using its `addr`, resolves the escrow placed on the utxo referenced
-     on `rParams`, to pay the corresponding tokens to the other user and to receive
-     the locked tokens.
+{- | The user, using its `addr`, resolves the escrow placed on the utxo
+     referenced on `rParams`, to pay the corresponding tokens to the other user
+     and to receive the locked tokens.
 -}
 resolveOp :: Address
           -> ResolveParams
           -> Contract () EscrowSchema Text ()
 resolveOp addr ResolveParams{..} = do
-    let contractAddress = escrowAddress (ReceiverAddress { rAddr = addr })
-        validator       = escrowValidator (ReceiverAddress { rAddr = addr })
+    let contractAddress = escrowAddress (mkReceiverAddress addr)
+        validator       = escrowValidator (mkReceiverAddress addr)
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
         cTokenVal       = assetClassValue cTokenAsset (-1)
 
     utxos        <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo)  <- findContractUtxo rpTxOutRef utxos
+    (ref, utxo)  <- findEscrowUtxo rpTxOutRef utxos
     eInfo        <- getEscrowInfo utxo
     senderPpkh   <- getPpkhFromAddress (sAddr $ sender eInfo)
     receiverPpkh <- getPpkhFromAddress addr
 
-    let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo) <> minAda
+    let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo)
+                            <> minAda
 
         lkp = mconcat
-            [ Constraints.otherScript validator
-            , Constraints.unspentOutputs (Map.singleton ref utxo)
-            , Constraints.mintingPolicy (controlTokenMP contractAddress)
+            [ otherScript validator
+            , unspentOutputs (Map.singleton ref utxo)
+            , mintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
-            [ Constraints.mustSpendScriptOutput ref resolveRedeemer
-            , Constraints.mustMintValue cTokenVal
-            , Constraints.mustBeSignedBy receiverPpkh
-            , Constraints.mustPayToPubKey senderPpkh senderPayment
+            [ mustSpendScriptOutput ref resolveRedeemer
+            , mustMintValue cTokenVal
+            , mustBeSignedBy receiverPpkh
+            , mustPayToPubKey senderPpkh senderPayment
             ]
 
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
-    logInfo @String "Contract resolved"
+    logInfo @String "Escrow resolved"
+    logInfo @String $ "Escrow Address: " ++ show contractAddress
+    logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
 
 
-{- | Off-chain function for getting the specific UTxO from a list of UTxOs by its TxOutRef.
+{- | Off-chain function for getting the specific UTxO from a list of UTxOs by
+     its TxOutRef.
 -}
-findContractUtxo :: TxOutRef
-                    -> [(TxOutRef, ChainIndexTxOut)]
-                    -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
-findContractUtxo ref utxos = case filter ((==) ref . fst) utxos of
+findEscrowUtxo :: TxOutRef
+                 -> [(TxOutRef, ChainIndexTxOut)]
+                 -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+findEscrowUtxo ref utxos = case filter ((==) ref . fst) utxos of
     [utxo] -> pure utxo
     _      -> throwError "Specified Utxo not found"
 
-{- | Off-chain function for getting the Typed Datum (EscrowInfo) from a ChainIndexTxOut.
+{- | Off-chain function for getting the Typed Datum (EscrowInfo)
+     from a ChainIndexTxOut.
 -}
 getEscrowInfo :: ChainIndexTxOut
               -> Contract () EscrowSchema Text EscrowInfo
 getEscrowInfo txOut = loadDatumWithError txOut >>=
-    maybe (throwError "Datum format invalid") (pure . eInfo) . (fromBuiltinData . getDatum)
+    maybe (throwError "Datum format invalid")
+          (pure . eInfo) . (fromBuiltinData . getDatum)

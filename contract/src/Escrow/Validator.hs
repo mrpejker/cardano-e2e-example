@@ -16,12 +16,15 @@ We define the boilerplate for compiling the validator.
 module Escrow.Validator where
 
 -- IOG imports
-import Ledger ( CurrencySymbol, MintingPolicy
-              , scriptAddress, scriptCurrencySymbol
-              , mkMintingPolicyScript
-              )
-import Ledger.Typed.Scripts qualified as Scripts
-import PlutusTx qualified
+import Ledger               ( CurrencySymbol, MintingPolicy
+                            , scriptAddress, scriptCurrencySymbol
+                            , mkMintingPolicyScript
+                            )
+import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
+                            , ValidatorTypes (DatumType, RedeemerType)
+                            , validatorScript, wrapMintingPolicy, wrapValidator
+                            )
+import PlutusTx             (compile, applyCode, liftCode)
 
 import Escrow.Business
 import Escrow.OnChain
@@ -30,22 +33,22 @@ import Escrow.Types
 -- | Definition of type family describing which types are used
 --   as datum and redeemers.
 data Escrowing
-instance Scripts.ValidatorTypes Escrowing where
+instance ValidatorTypes Escrowing where
     type instance DatumType    Escrowing = EscrowDatum
     type instance RedeemerType Escrowing = EscrowRedeemer
 
-escrowInst :: ReceiverAddress -> Scripts.TypedValidator Escrowing
-escrowInst raddr = Scripts.mkTypedValidator @Escrowing
-                   ($$(PlutusTx.compile [|| mkEscrowValidator ||])
-                       `PlutusTx.applyCode`
-                       PlutusTx.liftCode raddr
+escrowInst :: ReceiverAddress -> TypedValidator Escrowing
+escrowInst raddr = mkTypedValidator @Escrowing
+                   ($$(compile [|| mkEscrowValidator ||])
+                       `applyCode`
+                       liftCode raddr
                    )
-                   $$(PlutusTx.compile [|| wrap ||])
+                   $$(compile [|| wrap ||])
   where
-    wrap = Scripts.wrapValidator @EscrowDatum @EscrowRedeemer
+    wrap = wrapValidator @EscrowDatum @EscrowRedeemer
 
-escrowValidator :: ReceiverAddress -> Scripts.Validator
-escrowValidator = Scripts.validatorScript . escrowInst
+escrowValidator :: ReceiverAddress -> Validator
+escrowValidator = validatorScript . escrowInst
 
 escrowAddress :: ReceiverAddress -> ContractAddress
 escrowAddress = scriptAddress . escrowValidator
@@ -53,11 +56,11 @@ escrowAddress = scriptAddress . escrowValidator
 controlTokenMP :: ContractAddress -> MintingPolicy
 controlTokenMP caddr =
     mkMintingPolicyScript $
-    $$(PlutusTx.compile [|| wrap . mkControlTokenMintingPolicy ||])
-    `PlutusTx.applyCode`
-    PlutusTx.liftCode caddr
+    $$(compile [|| wrap . mkControlTokenMintingPolicy ||])
+    `applyCode`
+    liftCode caddr
   where
-    wrap = Scripts.wrapMintingPolicy
+    wrap = wrapMintingPolicy
 
 controlTokenCurrency :: ContractAddress -> CurrencySymbol
 controlTokenCurrency = scriptCurrencySymbol . controlTokenMP

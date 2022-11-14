@@ -16,20 +16,24 @@ the plutus prelude, instead of the haskell prelude.
 module Escrow.Business where
 
 -- Non-IOG imports
-import Data.Aeson (FromJSON, ToJSON)
-import Prelude (Show)
+import Data.Aeson       ( FromJSON, ToJSON )
+import Prelude          ( Show )
 
 -- IOG imports
-import Ledger           (Address, AssetClass)
-import PlutusTx qualified
-import PlutusTx.Prelude
+import Ledger           ( Address, AssetClass )
+import PlutusTx         ( makeIsDataIndexed, makeLift )
+import PlutusTx.Prelude ( Integer, (.) )
 
 newtype SenderAddress   = SenderAddress { sAddr :: Address }
   deriving newtype (Show, FromJSON, ToJSON)
 newtype ReceiverAddress = ReceiverAddress { rAddr :: Address }
   deriving newtype (Show, FromJSON, ToJSON)
 
-PlutusTx.makeLift ''ReceiverAddress
+mkSenderAddress :: Address -> SenderAddress
+mkSenderAddress addr = SenderAddress { sAddr = addr }
+
+mkReceiverAddress :: Address -> ReceiverAddress
+mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
 
 {- | EscrowInfo
 
@@ -42,11 +46,16 @@ data EscrowInfo = EscrowInfo { sender      :: SenderAddress
                              , rAssetClass :: AssetClass
                              }
     deriving Show
+
 mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo
 mkEscrowInfo sAdd amount assetClass = EscrowInfo { sender = sAdd
                                                  , rAmount = amount
                                                  , rAssetClass = assetClass
                                                  }
 
+eInfoSenderAddr :: EscrowInfo -> Address
+eInfoSenderAddr = sAddr . sender
+
+PlutusTx.makeLift ''ReceiverAddress
 PlutusTx.makeIsDataIndexed ''EscrowInfo    [ ('EscrowInfo, 0) ]
 PlutusTx.makeIsDataIndexed ''SenderAddress [ ('SenderAddress, 0) ]
