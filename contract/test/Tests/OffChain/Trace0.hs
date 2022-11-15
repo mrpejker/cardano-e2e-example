@@ -66,12 +66,6 @@ test = checkPredicateOptions
            isJust (Map.lookup (unPaymentPubKey senderPpk) (txSignatures start))
         bcCheckAux _                = False
 
--- | For running the trace from the repl
-runTrace :: IO ()
-runTrace = do
-  putStrLn $ "\n" ++ testMsg ++ ".\n"
-  runEmulatorTraceIO' def emConfig trace
-
 trace :: EmulatorTrace ()
 trace =
     let startParams = StartParams
@@ -85,3 +79,9 @@ trace =
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
+
+-- | For running the trace from the repl
+runTrace :: IO ()
+runTrace = do
+  putStrLn $ "\n" ++ testMsg ++ ".\n"
+  runEmulatorTraceIO' def emConfig trace

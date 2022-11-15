@@ -11,13 +11,13 @@ category:   Language
 
 library
   exposed-modules:
-      Escrow
-    , Escrow.Business
-    , Escrow.OnChain
-    , Escrow.OffChain
-    , Escrow.Types
-    , Escrow.Validator
-    , Utils.OffChain
+    Escrow
+    Escrow.Business
+    Escrow.OnChain
+    Escrow.OffChain
+    Escrow.Types
+    Escrow.Validator
+    Utils.OffChain
 
   hs-source-dirs:     src
   default-language:   Haskell2010
@@ -83,11 +83,12 @@ test-suite escrow-tests
   type: exitcode-stdio-1.0
   main-is: Main.hs
   hs-source-dirs: test
-  other-modules: Tests.Utils
-                 Tests.OffChain.Trace0
-                 Tests.OffChain.Trace1
-                 Tests.OffChain.Trace2
-                 Tests.OffChain.Trace3
+  other-modules:
+    Tests.Utils
+    Tests.OffChain.Trace0
+    Tests.OffChain.Trace1
+    Tests.OffChain.Trace2
+    Tests.OffChain.Trace3
 
   default-language: Haskell2010
   default-extensions:
@@ -110,7 +111,10 @@ test-suite escrow-tests
     TypeApplications
     TypeFamilies
     TypeOperators
-  ghc-options: -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
+  ghc-options:
+    -Wall -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
+    -fno-specialise
 
   --------------------
   -- IOG dependencies

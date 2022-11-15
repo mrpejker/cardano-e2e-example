@@ -70,12 +70,6 @@ test = checkPredicateOptions
                           (txSignatures resolve))
         bcCheckAux _                = False
 
--- | For running the trace from the repl
-runTrace :: IO ()
-runTrace = do
-  putStrLn $ "\n" ++ testMsg ++ ".\n"
-  runEmulatorTraceIO' def emConfig trace
-
 trace :: EmulatorTrace ()
 trace =
     let startParams = StartParams
@@ -95,3 +89,9 @@ trace =
         resolveParams = ResolveParams { rpTxOutRef = head scriptUtxos }
     callEndpoint @"resolve" h2 resolveParams
     void $ waitNSlots 10
+
+-- | For running the trace from the repl
+runTrace :: IO ()
+runTrace = do
+  putStrLn $ "\n" ++ testMsg ++ ".\n"
+  runEmulatorTraceIO' def emConfig trace

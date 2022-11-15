@@ -16,7 +16,7 @@ module Tests.Utils where
 -- Non-IOG imports
 import  Control.Lens
 import  Data.Default            ( def)
-import  Data.Maybe              ( fromJust, isJust )
+import  Data.Maybe              ( isJust )
 import  Data.Map                qualified as Map
 
 -- IOG imports
@@ -25,8 +25,8 @@ import  Plutus.Trace.Emulator   ( chainNewestFirst, chainState
                                 , EmulatorTrace
                                 )
 import  Plutus.Contract.Test    ( w1, w2, w3, w4 )
-import  Ledger                  ( Address, PaymentPubKey, TxOut
-                                , txOutDatumHash, TxOutRef
+import  Ledger                  ( Address, PaymentPubKey, TxOut, TxOutRef
+                                , txOutDatumHash
                                 , unspentOutputs
                                 )
 import  Ledger.Ada              ( lovelaceValueOf )
@@ -35,26 +35,6 @@ import  Wallet.Emulator.Types   ( Wallet (..) )
 import  Wallet.Emulator.Wallet  ( mockWalletAddress
                                 , mockWalletPaymentPubKey
                                 )
-
-tokenA :: TokenName
-tokenA = tokenName "A"
-
-tokenB :: TokenName
-tokenB = tokenName "B"
-
-tokenACurrencySymbol :: CurrencySymbol
-tokenACurrencySymbol =
-  "246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1aaaa"
-
-tokenBCurrencySymbol :: CurrencySymbol
-tokenBCurrencySymbol =
-  "0b1e203c7e13914e095bf462441205c1b377e978718fcb93fd44bbbb"
-
-paymentA :: Integer -> Value
-paymentA = singleton tokenACurrencySymbol tokenA
-
-paymentB :: Integer -> Value
-paymentB = singleton tokenBCurrencySymbol tokenB
 
 wallets :: [(Wallet,Value)]
 wallets = [ (senderWallet,   v <> paymentA 100)
@@ -66,22 +46,30 @@ wallets = [ (senderWallet,   v <> paymentA 100)
     v :: Value
     v = lovelaceValueOf 100_000_000
 
-senderWallet :: Wallet
-senderWallet = w1
+tokenA, tokenB :: TokenName
+tokenA = "A"
+tokenB = "B"
 
-receiverWallet :: Wallet
+tokenACurrencySymbol, tokenBCurrencySymbol :: CurrencySymbol
+tokenACurrencySymbol =
+    "246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1aaaa"
+tokenBCurrencySymbol =
+    "0b1e203c7e13914e095bf462441205c1b377e978718fcb93fd44bbbb"
+
+paymentA, paymentB :: Integer -> Value
+paymentA = singleton tokenACurrencySymbol tokenA
+paymentB = singleton tokenBCurrencySymbol tokenB
+
+senderWallet, receiverWallet :: Wallet
+senderWallet   = w1
 receiverWallet = w2
 
-senderAddr :: Address
-senderAddr = mockWalletAddress senderWallet
-
-receiverAddr :: Address
+senderAddr, receiverAddr :: Address
+senderAddr   = mockWalletAddress senderWallet
 receiverAddr = mockWalletAddress receiverWallet
 
-senderPpk :: PaymentPubKey
-senderPpk = mockWalletPaymentPubKey senderWallet
-
-receiverPpk :: PaymentPubKey
+senderPpk, receiverPpk :: PaymentPubKey
+senderPpk   = mockWalletPaymentPubKey senderWallet
 receiverPpk = mockWalletPaymentPubKey receiverWallet
 
 emConfig :: EmulatorConfig

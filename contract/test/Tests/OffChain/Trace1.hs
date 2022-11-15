@@ -68,12 +68,6 @@ test = checkPredicateOptions
                           (txSignatures cancel))
         bcCheckAux _                = False
 
--- | For running the trace from the repl
-runTrace :: IO ()
-runTrace = do
-  putStrLn $ "\n" ++ testMsg ++ ".\n"
-  runEmulatorTraceIO' def emConfig trace
-
 trace :: EmulatorTrace ()
 trace =
     let startParams = StartParams
@@ -94,3 +88,9 @@ trace =
                                     }
     callEndpoint @"cancel" h1 cancelParams
     void $ waitNSlots 10
+
+-- | For running the trace from the repl
+runTrace :: IO ()
+runTrace = do
+  putStrLn $ "\n" ++ testMsg ++ ".\n"
+  runEmulatorTraceIO' def emConfig trace
