@@ -10,16 +10,34 @@ Stability   : develop
 We define here the on-chain code of the validator and the minting policy.
 -}
 
-module Escrow.OnChain where
+module Escrow.OnChain
+    ( -- | Validators
+      mkEscrowValidator
+    , mkControlTokenMintingPolicy
+    )
+where
 
 -- IOG imports
-import Plutus.V1.Ledger.Api
-import Plutus.V1.Ledger.Value
-import PlutusTx.Prelude
+import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
+                              , PubKeyHash
+                              )
+import Plutus.V1.Ledger.Value ( CurrencySymbol, TokenName, Value
+                              , assetClass, assetClassValue, assetClassValueOf
+                              , flattenValue
+                              )
+import PlutusTx.Prelude       ( Integer, Bool
+                              , ($), (&&), (||), (==), (<>)
+                              , traceIfFalse
+                              )
 
-import Escrow.Business
-import Escrow.Types
-import Utils.OnChain
+-- Escrow imports
+import Escrow.Business ( ReceiverAddress, EscrowInfo(..)
+                       , singerIsSender, singerIsReceiver, eInfoSenderAddr
+                       )
+import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ContractAddress )
+import Utils.OnChain   ( minAda, fromJust, getSingleton
+                       , valuePaidTo, outputsAt, getTxOutDatum
+                       )
 
 {- | Escrow Validator
 
@@ -47,9 +65,8 @@ mkEscrowValidator raddr EscrowDatum{..} r ctx =
         CancelEscrow  -> cancelValidator eInfo signer
         ResolveEscrow -> resolveValidator info eInfo raddr signer
     &&
-    traceIfFalse
-    "controlToken was not burned"
-    (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
+    traceIfFalse "controlToken was not burned"
+                 (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -83,19 +100,20 @@ resolveValidator
     -> ReceiverAddress
     -> PubKeyHash
     -> Bool
-resolveValidator info EscrowInfo{..} raddr signer =
+resolveValidator info ei@EscrowInfo{..} raddr signer =
     traceIfFalse "resolveValidator: Wrong receiver signature"
                  (singerIsReceiver signer raddr)
     &&
-    traceIfFalse "resolveValidator: Wrong sender's payment" (senderV == pay)
+    traceIfFalse "resolveValidator: Wrong sender's payment"
+                 (senderV == pay <> minAda)
   where
     senderV :: Value
-    senderV = valuePaidTo info (sAddr sender)
+    senderV = valuePaidTo (eInfoSenderAddr ei) info
 
     pay :: Value
     pay = assetClassValue rAssetClass rAmount
 
-{- | Control Token minting policy
+{- | Escrow Control Token minting policy
 
 The token minting policy is parametrized by the contract address and has the
 following checks:
@@ -111,24 +129,36 @@ On Burning:
 {-# INLINABLE mkControlTokenMintingPolicy #-}
 mkControlTokenMintingPolicy :: ContractAddress -> () -> ScriptContext -> Bool
 mkControlTokenMintingPolicy addr _ ctx =
-    (mintedA == -1)
+    traceIfFalse "Burning less or more than one control token" (mintedA == -1)
     ||
-    (mintedA == 1 && controlTokenPaid && correctSigner)
+    (   traceIfFalse "Minting more than one control token"
+                     (mintedA == 1)
+     && traceIfFalse "The control token was not paid to the contract address"
+                     controlTokenPaid
+     && traceIfFalse "The signer is not the sender on the escrow"
+                     correctSigner
+    )
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
+
     correctSigner :: Bool
-    correctSigner = True
+    correctSigner = singerIsSender signer (sender $ eInfo escrowDatum)
 
     controlTokenPaid :: Bool
     controlTokenPaid =
-        assetClassValueOf (txOutValue utxo) (assetClass mintedCS mintedTN)
+        assetClassValueOf (txOutValue escrowUtxo) (assetClass mintedCS mintedTN)
         ==
         mintedA
 
-    utxo :: TxOut
-    utxo = getSingleton $ outputsAt addr info
+    escrowUtxo :: TxOut
+    escrowUtxo = getSingleton $ outputsAt addr info
+
+    escrowDatum :: EscrowDatum
+    escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
 
     mintedCS :: CurrencySymbol
     mintedTN :: TokenName

@@ -38,7 +38,7 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
 
 import Escrow.Business
 import Escrow.OffChain
-import Escrow.Types
+import Utils.OnChain
 import Tests.Utils
 
 testMsg :: String

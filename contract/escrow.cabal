@@ -55,9 +55,7 @@ library
   -- IOG dependencies
   --------------------
   build-depends:
-      cardano-api
-    , plutus-chain-index-core
-    , plutus-contract
+      plutus-contract
     , plutus-core
     , plutus-ledger
     , plutus-ledger-constraints
@@ -71,14 +69,9 @@ library
   build-depends:
       aeson
     , base          ^>= 4.14.1.0
-    , bytestring
     , lens
-    , freer-simple
-    , freer-extras
     , containers
     , text
-    , openapi3
-
 
 test-suite escrow-tests
   type: exitcode-stdio-1.0
@@ -113,46 +106,27 @@ test-suite escrow-tests
     TypeFamilies
     TypeOperators
   ghc-options:
-    -Wall -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr
-    -fno-specialise
+    -Wall -Wnoncanonical-monad-instances -Wunused-packages
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wredundant-constraints -Widentities -fno-strictness
+    -fno-spec-constr -fno-specialise
 
   --------------------
   -- IOG dependencies
   --------------------
   build-depends:
-      plutus-pab
     , plutus-contract
-    , plutus-core
     , plutus-ledger
     , plutus-ledger-api
-    , plutus-tx-plugin
     , plutus-tx
-    , plutus-use-cases
 
   ------------------------
   -- Non-IOG dependencies
   ------------------------
-
   build-depends:
       base ^>=4.14.1.0
-    , aeson
-    , ansi-terminal
     , containers
     , data-default
     , escrow
-    , freer-extras
-    , playground-common
-    , prettyprinter
-    , text
-    , freer-simple
-    , lens <= 4.19.2
-    , bytestring
+    , lens
     , tasty
-    , tasty-hunit
-    , QuickCheck
-    , tasty-quickcheck
-    , text
-    , prettyprinter
-    , strict-containers
-    , serialise

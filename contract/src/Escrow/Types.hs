@@ -10,16 +10,25 @@ We define the main types used in the contract.
 It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 -}
 
-module Escrow.Types where
+module Escrow.Types
+    ( -- | Types
+      ContractAddress
+    , EscrowDatum (..)
+    , EscrowRedeemer (..)
+    -- | Smart Constructors
+    , mkEscrowDatum
+    , cancelRedeemer
+    , resolveRedeemer
+    , cTokenName
+    )
+where
 
 -- IOG imports
-import Ledger     ( Address, AssetClass, TokenName, minAdaTxOut, Redeemer(..)
-                  , Value
-                  )
-import Ledger.Ada ( toValue )
-import PlutusTx   ( toBuiltinData, makeIsDataIndexed )
+import Ledger   ( Address, AssetClass, TokenName, Redeemer(..) )
+import PlutusTx ( toBuiltinData, makeIsDataIndexed )
 
-import Escrow.Business
+-- Escrow imports
+import Escrow.Business ( EscrowInfo, SenderAddress, mkEscrowInfo )
 
 type ContractAddress = Address
 
@@ -54,11 +63,6 @@ cancelRedeemer = Redeemer $ toBuiltinData CancelEscrow
 
 resolveRedeemer :: Redeemer
 resolveRedeemer = Redeemer $ toBuiltinData ResolveEscrow
-
--- | Minimum amount of ADAs that every UTxO must have
-{-# INLINABLE minAda #-}
-minAda :: Value
-minAda = toValue minAdaTxOut
 
 cTokenName :: TokenName
 cTokenName = "controlToken"
