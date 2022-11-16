@@ -72,22 +72,19 @@ test = checkPredicateOptions
 
 trace :: EmulatorTrace ()
 trace =
-    let startParams = StartParams
-            { receiverAddress   = mkReceiverAddress receiverAddr
-            , sendAmount        = 100
-            , sendAssetClass    = assetClass tokenACurrencySymbol tokenA
-            , receiveAmount     = 100
-            , receiveAssetClass = assetClass tokenBCurrencySymbol tokenB
-            }
+    let startParams = mkStartParams
+                        (mkReceiverAddress receiverAddr)
+                        100
+                        (assetClass tokenACurrencySymbol tokenA)
+                        100
+                        (assetClass tokenBCurrencySymbol tokenB)
     in do
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
     utxos <- utxosMap
     let scriptUtxos  = findScriptTxOutRef utxos
-        cancelParams = CancelParams { cpTxOutRef = head scriptUtxos
-                                    , cpReceiverAddress = receiverAddr
-                                    }
+        cancelParams = mkCancelParams (head scriptUtxos) receiverAddr
     callEndpoint @"cancel" h1 cancelParams
     void $ waitNSlots 10
 

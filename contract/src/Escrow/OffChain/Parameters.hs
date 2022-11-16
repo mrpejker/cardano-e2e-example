@@ -10,9 +10,12 @@ We define here the parameters that will be used to call the offchain actions.
 
 module Escrow.OffChain.Parameters
     ( -- | Endpoints parameters
-      StartParams (..)
-    , CancelParams (..)
-    , ResolveParams (..)
+      StartParams(..)
+    , CancelParams(..)
+    , ResolveParams(..)
+    , mkStartParams
+    , mkCancelParams
+    , mkResolveParams
     )
 where
 
@@ -27,7 +30,6 @@ import Ledger.Value  ( AssetClass )
 -- Escrow imports
 import Escrow.Business ( ReceiverAddress )
 
-
 {-| The start parameter includes the Address of the receiver, that
     will be used to get the contract address and validator.
     It also contains the amount and asset class the sender wants
@@ -35,13 +37,13 @@ import Escrow.Business ( ReceiverAddress )
     Finally the amount and asset class the sender wants to receive.
     This last two parameters will be stored in the datum.
 -}
-data StartParams   = StartParams
-                     { receiverAddress   :: ReceiverAddress
-                     , sendAmount        :: Integer
-                     , sendAssetClass    :: AssetClass
-                     , receiveAmount     :: Integer
-                     , receiveAssetClass :: AssetClass
-                     }
+data StartParams = StartParams
+                    { receiverAddress   :: ReceiverAddress
+                    , sendAmount        :: Integer
+                    , sendAssetClass    :: AssetClass
+                    , receiveAmount     :: Integer
+                    , receiveAssetClass :: AssetClass
+                    }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -49,9 +51,10 @@ data StartParams   = StartParams
     to find the complete Utxo with it's datum. It also contains the
     receiver Address to get the contract address and validator.
 -}
-data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
-                                   , cpReceiverAddress :: Address
-                                   }
+data CancelParams = CancelParams
+                      { cpTxOutRef :: TxOutRef
+                      , cpReceiverAddress :: Address
+                      }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -62,3 +65,27 @@ data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
 newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+mkStartParams
+    :: ReceiverAddress
+    -> Integer
+    -> AssetClass
+    -> Integer
+    -> AssetClass
+    -> StartParams
+mkStartParams rAdd sAmount sAC rAmount rAC =
+    StartParams { receiverAddress   = rAdd
+                , sendAmount        = sAmount
+                , sendAssetClass    = sAC
+                , receiveAmount     = rAmount
+                , receiveAssetClass = rAC
+                }
+
+mkCancelParams :: TxOutRef -> Address -> CancelParams
+mkCancelParams ref rAddr =
+    CancelParams { cpTxOutRef = ref
+                 , cpReceiverAddress = rAddr
+                 }
+
+mkResolveParams :: TxOutRef -> ResolveParams
+mkResolveParams ref = ResolveParams { rpTxOutRef = ref }
