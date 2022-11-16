@@ -36,10 +36,12 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
                              , walletFundsChange
                              )
 
+-- Escrow imports
 import Escrow.Business
-import Escrow.OffChain
-import Utils.OnChain
+import Escrow.OffChain.Actions
+import Escrow.OffChain.Parameters
 import Tests.Utils
+import Utils.OnChain
 
 testMsg :: String
 testMsg = "Only starting the escrow"

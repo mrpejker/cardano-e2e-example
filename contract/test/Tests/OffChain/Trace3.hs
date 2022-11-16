@@ -45,8 +45,10 @@ import Wallet.Emulator.Wallet ( mockWalletAddress
                               , mockWalletPaymentPubKey
                               )
 
+-- Escrow imports
 import Escrow.Business
-import Escrow.OffChain
+import Escrow.OffChain.Actions
+import Escrow.OffChain.Parameters
 import Tests.Utils
 
 testMsg :: String
