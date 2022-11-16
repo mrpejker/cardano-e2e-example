@@ -45,8 +45,10 @@ import Wallet.Emulator.Wallet ( mockWalletAddress
                               , mockWalletPaymentPubKey
                               )
 
+-- Escrow imports
 import Escrow.Business
-import Escrow.OffChain
+import Escrow.OffChain.Actions
+import Escrow.OffChain.Parameters
 import Tests.Utils
 
 testMsg :: String
@@ -95,13 +97,12 @@ test = checkPredicateOptions
 
 trace :: EmulatorTrace ()
 trace =
-    let startParams = StartParams
-            { receiverAddress   = mkReceiverAddress receiverAddr
-            , sendAmount        = 100
-            , sendAssetClass    = assetClass tokenACurrencySymbol tokenA
-            , receiveAmount     = 10
-            , receiveAssetClass = assetClass tokenBCurrencySymbol tokenB
-            }
+    let startParams = mkStartParams
+                        (mkReceiverAddress receiverAddr)
+                        100
+                        (assetClass tokenACurrencySymbol tokenA)
+                        10
+                        (assetClass tokenBCurrencySymbol tokenB)
     in do
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     h2 <- activateContractWallet w3 $ endpoints $ mockWalletAddress w3
@@ -115,9 +116,9 @@ trace =
     h4 <- activateContractWallet receiverWallet $ endpoints receiverAddr
     utxos <- utxosMap
     let scriptUtxos    = findScriptTxOutRef utxos
-        resolveParams1 = ResolveParams { rpTxOutRef = head scriptUtxos }
-        resolveParams2 = ResolveParams { rpTxOutRef = scriptUtxos !! 1 }
-        resolveParams3 = ResolveParams { rpTxOutRef = scriptUtxos !! 2 }
+        resolveParams1 = mkResolveParams $ head scriptUtxos
+        resolveParams2 = mkResolveParams $ scriptUtxos !! 1
+        resolveParams3 = mkResolveParams $ scriptUtxos !! 2
 
     callEndpoint @"resolve" h4 resolveParams1
     void $ waitNSlots 10

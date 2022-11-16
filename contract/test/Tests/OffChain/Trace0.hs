@@ -36,10 +36,12 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
                              , walletFundsChange
                              )
 
+-- Escrow imports
 import Escrow.Business
-import Escrow.OffChain
-import Utils.OnChain
+import Escrow.OffChain.Actions
+import Escrow.OffChain.Parameters
 import Tests.Utils
+import Utils.OnChain
 
 testMsg :: String
 testMsg = "Only starting the escrow"
@@ -68,13 +70,12 @@ test = checkPredicateOptions
 
 trace :: EmulatorTrace ()
 trace =
-    let startParams = StartParams
-            { receiverAddress   = mkReceiverAddress receiverAddr
-            , sendAmount        = 100
-            , sendAssetClass    = assetClass tokenACurrencySymbol tokenA
-            , receiveAmount     = 100
-            , receiveAssetClass = assetClass tokenBCurrencySymbol tokenB
-            }
+    let startParams = mkStartParams
+                        (mkReceiverAddress receiverAddr)
+                        100
+                        (assetClass tokenACurrencySymbol tokenA)
+                        100
+                        (assetClass tokenBCurrencySymbol tokenB)
     in do
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     callEndpoint @"start" h1 startParams

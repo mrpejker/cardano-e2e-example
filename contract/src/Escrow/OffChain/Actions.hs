@@ -1,6 +1,6 @@
 {-|
-Module      : Escrow.OffChain
-Description : OffChain code for Escrow Contract.
+Module      : Escrow.OffChain.Actions
+Description : OffChain actions for Escrow Contract.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
 Maintainer  : opensource@joinplank.com
 Stability   : develop
@@ -10,24 +10,18 @@ an Schema. The main offchain functions implement all the logic for
 building unbalanced transactions.
 -}
 
-module Escrow.OffChain
+module Escrow.OffChain.Actions
     (-- | Escrow schema
       EscrowSchema
     -- | Endpoints
     , endpoints
-    -- | Endpoints parameters
-    , StartParams (..)
-    , CancelParams (..)
-    , ResolveParams (..)
     )
 where
 
 -- Non-IOG imports
-import Data.Aeson    ( FromJSON, ToJSON )
 import Data.Map      ( singleton )
 import Data.Text     ( Text )
 import Control.Monad ( forever, unless )
-import GHC.Generics  ( Generic )
 
 -- IOG imports
 import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef )
@@ -36,7 +30,7 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustSpendScriptOutput, otherScript
                           , typedValidatorLookups, unspentOutputs
                           )
-import Ledger.Value       ( AssetClass, assetClass, assetClassValue )
+import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , Promise, select, throwError, type (.\/)
@@ -45,45 +39,28 @@ import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
 import PlutusTx           ( fromBuiltinData )
 
 -- Escrow imports
-import Escrow.Business  ( ReceiverAddress, EscrowInfo(..)
-                        , mkSenderAddress, mkReceiverAddress, eInfoSenderAddr
-                        )
-import Escrow.Validator ( Escrowing
-                        , escrowAddress, escrowValidator, escrowInst
-                        , controlTokenCurrency, controlTokenMP
-                        )
-import Escrow.Types     ( eInfo, cTokenName, mkEscrowDatum
-                        , cancelRedeemer, resolveRedeemer
-                        )
-import Utils.OffChain   ( getPpkhFromAddress
-                        , lookupScriptUtxos, getDatumWithError
-                        )
-import Utils.OnChain    ( minAda )
+import Escrow.Business            ( EscrowInfo(..), mkSenderAddress
+                                  , mkReceiverAddress, eInfoSenderAddr
+                                  )
+import Escrow.Validator           ( Escrowing
+                                  , escrowAddress, escrowValidator, escrowInst
+                                  , controlTokenCurrency, controlTokenMP
+                                  )
+import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
+                                  , ResolveParams(..)
+                                  )
+import Escrow.Types               ( eInfo, cTokenName, mkEscrowDatum
+                                  , cancelRedeemer, resolveRedeemer
+                                  )
+import Utils.OffChain             ( getPpkhFromAddress
+                                  , lookupScriptUtxos, getDatumWithError
+                                  )
+import Utils.OnChain              ( minAda )
 
 -- | Escrow Schema
 type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "cancel"  CancelParams
                 .\/ Endpoint "resolve" ResolveParams
-
-data StartParams   = StartParams
-                     { receiverAddress   :: ReceiverAddress
-                     , sendAmount        :: Integer
-                     , sendAssetClass    :: AssetClass
-                     , receiveAmount     :: Integer
-                     , receiveAssetClass :: AssetClass
-                     }
-  deriving (Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data CancelParams  = CancelParams  { cpTxOutRef :: TxOutRef
-                                   , cpReceiverAddress :: Address
-                                   }
-  deriving (Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
-  deriving (Generic)
-  deriving anyclass (FromJSON, ToJSON)
 
 endpoints
     :: Address

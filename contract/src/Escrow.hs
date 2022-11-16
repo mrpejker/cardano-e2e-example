@@ -8,7 +8,8 @@ Stability   : develop
 
 module Escrow
     ( module Escrow.Business
-    , module Escrow.OffChain
+    , module Escrow.OffChain.Parameters
+    , module Escrow.OffChain.Actions
     , module Escrow.OnChain
     , module Escrow.Types
     , module Escrow.Validator
@@ -17,7 +18,8 @@ where
 
 -- Escrow imports
 import Escrow.Business
-import Escrow.OffChain
+import Escrow.OffChain.Parameters
+import Escrow.OffChain.Actions
 import Escrow.OnChain
 import Escrow.Types
 import Escrow.Validator

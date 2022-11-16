@@ -20,8 +20,8 @@ import Ledger ( Address, TxOutRef, ChainIndexTxOut(..)
               , toPubKeyHash
               )
 import Ledger.Value    ( AssetClass, Value, assetClassValueOf )
-import Plutus.Contract ( Contract
-                       , unspentTxOutFromRef, utxosAt, throwError, datumFromHash
+import Plutus.Contract ( Contract, unspentTxOutFromRef
+                        , utxosAt, throwError, datumFromHash
                        )
 
 -- | Gets a list of utxos for the given address that contains the given Token.
@@ -37,7 +37,7 @@ lookupScriptUtxos addr token =
     txOutHasToken :: Value -> Bool
     txOutHasToken v = assetClassValueOf v token == 1
 
--- | Gets the Datum from a ChainIndexTxOut. Calls throwError if it can't find it.
+-- | Gets the Datum from a ChainIndexTxOut. Throws an error if it can't find it.
 getDatumWithError
     :: forall w s
     .  ChainIndexTxOut
