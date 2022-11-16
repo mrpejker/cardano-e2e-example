@@ -9,10 +9,11 @@ We define here the parameters that will be used to call the offchain actions.
 -}
 
 module Escrow.OffChain.Parameters
-    ( -- | Endpoints parameters
+    (-- | Endpoints parameters
       StartParams(..)
     , CancelParams(..)
     , ResolveParams(..)
+    -- | Smart constructors
     , mkStartParams
     , mkCancelParams
     , mkResolveParams
