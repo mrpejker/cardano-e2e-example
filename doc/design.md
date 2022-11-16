@@ -4,7 +4,7 @@
 
 The Simple Escrow dApp will be implemented in the Cardano blockchain using Plutus Scripts.
 
-Each time a user starts an escrow, a new script UTxO is created, containing in the datum the information of this particular instance: payment details together with the sender addresses. A special *control Token* is minted each time a new escrow instance is started, ensuring that the produced UTxO is well-formed and the information is right.
+Each time a user starts an escrow, a new script UTxO is created, containing in the datum the information of this particular instance: payment details together with the sender addresses. A special *control Token* is minted each time a new escrow instance is started, ensuring that the produced UTxO is well-formed and the information is right. The Asset Class of this Token is also stored in the datum to check it is burned when the escrow is cancelled or resolved.
 
 The script is parameterized by the receiver address.  This allows each user to find all escrows they need to resolve more quickly.
 
@@ -22,6 +22,7 @@ The script is parameterized by the receiver address. So that each user can find 
 
 - Sender’s address
 - The amount and asset class of the receiver’s payment
+- Asset Class of the Control Token
 
 ### **Value**
 
