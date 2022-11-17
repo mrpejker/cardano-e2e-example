@@ -10,14 +10,19 @@ module Main ( main ) where
 
 -- Non-IOG imports
 import Test.Tasty
+import Test.QuickCheck
 
 import Tests.OffChain.Trace0 qualified
 import Tests.OffChain.Trace1 qualified
 import Tests.OffChain.Trace2 qualified
 import Tests.OffChain.Trace3 qualified
 
+import Tests.Prop.Escrow
+
 main :: IO ()
-main = defaultMain tests
+main = do
+    quickCheck propEscrow
+    defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Project tests"
@@ -28,4 +33,5 @@ offChainTests = testGroup "OffChain Tests"
                 [ Tests.OffChain.Trace0.test
                 , Tests.OffChain.Trace1.test
                 , Tests.OffChain.Trace2.test
-                , Tests.OffChain.Trace3.test]
+                , Tests.OffChain.Trace3.test
+                ]
