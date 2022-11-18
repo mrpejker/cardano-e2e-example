@@ -22,6 +22,7 @@ import Control.Monad         ( void )
 import Data.Default          ( Default (..) )
 import Data.Map              qualified as Map
 import Data.Maybe            ( isJust )
+import Data.Tuple.Select     ( sel1 )
 import Test.Tasty            ( TestTree )
 
 -- IOG imports
@@ -85,9 +86,9 @@ trace =
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
     h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
-    utxos <- utxosMap
-    let scriptUtxos   = findScriptTxOutRef utxos
-        resolveParams = mkResolveParams $ head scriptUtxos
+    callEndpoint @"reload" h2 ()
+    utxos <- getObservableState h2
+    let resolveParams = mkResolveParams $ sel1 $ head $ unObservableState utxos
     callEndpoint @"resolve" h2 resolveParams
     void $ waitNSlots 10
 

@@ -14,27 +14,31 @@ traces and other testing modules.
 module Tests.Utils where
 
 -- Non-IOG imports
-import  Control.Lens
-import  Data.Default            ( def)
-import  Data.Maybe              ( isJust )
-import  Data.Map                qualified as Map
+import Control.Monad   ( void )
+import Data.Default    ( def )
+import Data.Map as Map ( fromList, fromList)
+import Data.Monoid     ( Last(..) )
+import Data.Text       ( Text )
 
 -- IOG imports
-import  Plutus.Trace.Emulator   ( chainNewestFirst, chainState
-                                , EmulatorConfig (EmulatorConfig)
-                                , EmulatorTrace
-                                )
-import  Plutus.Contract.Test    ( w1, w2, w3, w4 )
-import  Ledger                  ( Address, PaymentPubKey, TxOut, TxOutRef
-                                , txOutDatumHash
-                                , unspentOutputs
-                                )
-import  Ledger.Ada              ( lovelaceValueOf )
-import  Ledger.Value            as Value
-import  Wallet.Emulator.Types   ( Wallet (..) )
-import  Wallet.Emulator.Wallet  ( mockWalletAddress
-                                , mockWalletPaymentPubKey
-                                )
+import Control.Monad.Freer.Extras ( logInfo )
+import Plutus.Trace.Emulator      ( ContractHandle
+                                  , EmulatorConfig (EmulatorConfig)
+                                  , EmulatorTrace, observableState, waitNSlots
+                                  )
+import Plutus.Contract.Test       ( w1, w2, w3, w4 )
+import Ledger                     ( Address, PaymentPubKey, TxOutRef )
+import Ledger.Ada                 ( lovelaceValueOf )
+import Ledger.Value               as Value
+import Wallet.Emulator.Types      ( Wallet (..) )
+import Wallet.Emulator.Wallet     ( mockWalletAddress
+                                  , mockWalletPaymentPubKey
+                                  )
+
+-- Escrow imports
+import Escrow.OffChain.Actions    ( EscrowSchema )
+import Escrow.OffChain.Parameters ( ObservableState(..) )
+import Escrow.Business            ( EscrowInfo )
 
 wallets :: [(Wallet,Value)]
 wallets = [ (senderWallet,   v <> paymentA 100)
@@ -73,13 +77,17 @@ senderPpk   = mockWalletPaymentPubKey senderWallet
 receiverPpk = mockWalletPaymentPubKey receiverWallet
 
 emConfig :: EmulatorConfig
-emConfig = EmulatorConfig (Left $ Map.fromList wallets) def
+emConfig = EmulatorConfig (Left $ fromList wallets) def
 
-{- | Temporary solution to get TxOutRef to build the cancel and
-     resolve parameters.
--}
-utxosMap :: EmulatorTrace (Map.Map TxOutRef TxOut)
-utxosMap =  chainState <&> unspentOutputs . (^. chainNewestFirst)
-
-findScriptTxOutRef :: Map.Map TxOutRef TxOut -> [TxOutRef]
-findScriptTxOutRef = Map.keys . Map.filter (isJust . txOutDatumHash)
+-- | Polls the Emulator until it finds an ObservableState
+getObservableState
+    :: ContractHandle (Last ObservableState) EscrowSchema Text
+    -> EmulatorTrace ObservableState
+getObservableState h = do
+    void $ waitNSlots 1
+    l <- observableState h
+    case l of
+        Last (Just observable) ->
+            logInfo (show observable) >> return observable
+        Last _ ->
+            waitNSlots 1 >> getObservableState h

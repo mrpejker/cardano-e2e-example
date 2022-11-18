@@ -33,6 +33,7 @@ where
 -- Non-IOG imports
 import Data.Aeson       ( FromJSON, ToJSON )
 import Prelude          ( Show )
+import GHC.Generics     ( Generic )
 
 -- IOG imports
 import Ledger           ( Address(..), AssetClass, PubKeyHash )
@@ -82,7 +83,8 @@ data EscrowInfo = EscrowInfo
                   , rAmount     :: Integer
                   , rAssetClass :: AssetClass
                   }
-    deriving Show
+    deriving (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
 
 -- | Smart constructor of a EscrowInfo.
 mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo

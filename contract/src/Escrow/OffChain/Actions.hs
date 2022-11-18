@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-|
 Module      : Escrow.OffChain.Actions
 Description : OffChain actions for Escrow Contract.
@@ -19,12 +20,16 @@ module Escrow.OffChain.Actions
 where
 
 -- Non-IOG imports
-import Data.Map      ( singleton )
+import Control.Lens  ( (^.) )
+import Data.Map      ( singleton, toList )
 import Data.Text     ( Text )
+import Data.Monoid   ( Last(..) )
 import Control.Monad ( forever, unless )
 
 -- IOG imports
-import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef )
+import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef
+                          , ciTxOutValue
+                          )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustPayToPubKey, mustPayToTheScript
                           , mustSpendScriptOutput, otherScript
@@ -33,8 +38,8 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , Promise, select, throwError, type (.\/)
-                          , yieldUnbalancedTx
+                          , Promise, select, tell, throwError, type (.\/)
+                          , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
 
@@ -47,7 +52,7 @@ import Escrow.Validator           ( Escrowing
                                   , controlTokenCurrency, controlTokenMP
                                   )
 import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
-                                  , ResolveParams(..)
+                                  , ResolveParams(..), ObservableState(..)
                                   )
 import Escrow.Types               ( eInfo, cTokenName, mkEscrowDatum
                                   , cancelRedeemer, resolveRedeemer
@@ -61,21 +66,38 @@ import Utils.OnChain              ( minAda )
 type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "cancel"  CancelParams
                 .\/ Endpoint "resolve" ResolveParams
+                .\/ Endpoint "reload" ()
 
 endpoints
     :: Address
-    -> Contract () EscrowSchema Text ()
+    -> Contract (Last ObservableState) EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
-                  startEp `select` cancelEp `select` resolveEp
+                  startEp `select` cancelEp `select` resolveEp `select` reloadEp
   where
-    startEp :: Promise () EscrowSchema Text ()
+    startEp :: Promise (Last ObservableState) EscrowSchema Text ()
     startEp = endpoint @"start" $ startOp raddr
 
-    cancelEp :: Promise () EscrowSchema Text ()
+    cancelEp :: Promise (Last ObservableState) EscrowSchema Text ()
     cancelEp = endpoint @"cancel" $ cancelOp raddr
 
-    resolveEp :: Promise () EscrowSchema Text ()
+    resolveEp :: Promise (Last ObservableState) EscrowSchema Text ()
     resolveEp = endpoint @"resolve" $ resolveOp raddr
+
+    reloadEp :: Promise (Last ObservableState) EscrowSchema Text ()
+    reloadEp = endpoint @"reload" $ const $ reloadOp raddr
+
+reloadOp
+    :: Address
+    -> Contract (Last ObservableState) EscrowSchema Text ()
+reloadOp addr = do
+    let contractAddress = escrowAddress $ mkReceiverAddress addr
+
+    utxos <- utxosAt contractAddress
+    utxosWithEInfo <- mapM (\(ref, citxout) -> (ref, ,citxout ^. ciTxOutValue)
+                                                <$> getEscrowInfo citxout)
+                           (toList utxos)
+    tell $ Last $ Just $ ObservableState utxosWithEInfo
+
 
 {- | A user, using its `addr`, locks the tokens they want to exchange and
      specifies the tokens they want to receive and from whom, all these
@@ -84,7 +106,7 @@ endpoints raddr = forever $ handleError logError $ awaitPromise $
 startOp
     :: Address
     -> StartParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract (Last ObservableState) EscrowSchema Text ()
 startOp addr StartParams{..} = do
     senderPpkh <- getPpkhFromAddress addr
 
@@ -125,7 +147,7 @@ startOp addr StartParams{..} = do
 cancelOp
     :: Address
     -> CancelParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract (Last ObservableState) EscrowSchema Text ()
 cancelOp addr CancelParams{..} = do
     senderPpkh   <- getPpkhFromAddress addr
 
@@ -166,7 +188,7 @@ cancelOp addr CancelParams{..} = do
 resolveOp
     :: Address
     -> ResolveParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract (Last ObservableState) EscrowSchema Text ()
 resolveOp addr ResolveParams{..} = do
     receiverPpkh <- getPpkhFromAddress addr
 
@@ -208,7 +230,7 @@ resolveOp addr ResolveParams{..} = do
 findEscrowUtxo
     :: TxOutRef
     -> [(TxOutRef, ChainIndexTxOut)]
-    -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+    -> Contract (Last ObservableState) EscrowSchema Text (TxOutRef, ChainIndexTxOut)
 findEscrowUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
         [utxo] -> pure utxo
@@ -219,7 +241,7 @@ findEscrowUtxo ref utxos =
 -}
 getEscrowInfo
     :: ChainIndexTxOut
-    -> Contract () EscrowSchema Text EscrowInfo
+    -> Contract (Last ObservableState) EscrowSchema Text EscrowInfo
 getEscrowInfo txOut = getDatumWithError txOut >>=
                       maybe (throwError "Datum format invalid")
                             (pure . eInfo) . (fromBuiltinData . getDatum)

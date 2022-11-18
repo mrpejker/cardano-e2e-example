@@ -17,6 +17,8 @@ module Escrow.OffChain.Parameters
     , mkStartParams
     , mkCancelParams
     , mkResolveParams
+    -- | Observable State
+    , ObservableState(..)
     )
 where
 
@@ -24,12 +26,13 @@ where
 import Data.Aeson    ( FromJSON, ToJSON )
 import GHC.Generics  ( Generic )
 
+
 -- IOG imports
 import Ledger        ( Address, TxOutRef )
-import Ledger.Value  ( AssetClass )
+import Ledger.Value  ( AssetClass, Value )
 
 -- Escrow imports
-import Escrow.Business ( ReceiverAddress )
+import Escrow.Business ( ReceiverAddress, EscrowInfo(..) )
 
 {-| The start parameter includes the Address of the receiver, that
     will be used to get the contract address and validator.
@@ -53,7 +56,7 @@ data StartParams = StartParams
     receiver Address to get the contract address and validator.
 -}
 data CancelParams = CancelParams
-                      { cpTxOutRef :: TxOutRef
+                      { cpTxOutRef        :: TxOutRef
                       , cpReceiverAddress :: Address
                       }
   deriving (Generic)
@@ -84,9 +87,14 @@ mkStartParams rAdd sAmount sAC rAmount rAC =
 
 mkCancelParams :: TxOutRef -> Address -> CancelParams
 mkCancelParams ref rAddr =
-    CancelParams { cpTxOutRef = ref
+    CancelParams { cpTxOutRef        = ref
                  , cpReceiverAddress = rAddr
                  }
 
 mkResolveParams :: TxOutRef -> ResolveParams
 mkResolveParams ref = ResolveParams { rpTxOutRef = ref }
+
+newtype ObservableState =
+    ObservableState { unObservableState :: [(TxOutRef, EscrowInfo, Value)] }
+  deriving (Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
