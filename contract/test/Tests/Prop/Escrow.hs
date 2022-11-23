@@ -26,42 +26,52 @@ run fits with some specification of the contract.
 
 module Tests.Prop.Escrow where
 
-import Ledger.Value qualified as Value
-import Plutus.Contract
-import Plutus.Contract.Test ( CheckOptions, defaultCheckOptions, emulatorConfig
-                            , mockWalletPaymentPubKeyHash, w1, w2, w3, w4
-                            , Wallet, TracePredicate, assertBlockchain
-                            )
-import Plutus.Contract.Test.ContractModel qualified as CM
-import Plutus.Trace.Emulator qualified as Trace
-import Plutus.V1.Ledger.Ada qualified as Ada
-import Plutus.V1.Ledger.Value (assetClassValue, singleton, assetClass, geq, valueOf)
-import Ledger hiding (singleton)
-import Control.Monad
-import Control.Lens hiding (elements)
-import Data.Data
-import Data.List (sort, delete)
-import Data.Maybe (fromJust, isJust)
-import PlutusTx.List qualified as PTx
-import PlutusTx.AssocMap qualified as PTx
-import Data.Map qualified as Map
-import Data.Monoid (Last (..))
-import Data.Text hiding (null, last, filter, singleton, head, length)
+-- Non-IOG imports
+import Control.Lens    ( (^.), (%=), (.~), (&), makeLenses )
+import Data.Data       ( Data )
+import Data.List       ( delete, find )
+import Data.Maybe      ( fromJust, isJust )
+import Data.Monoid     ( Last (..) )
+import Data.Text       ( Text )
+import Data.Map as Map ( Map, empty, lookup, (!), member, insertWith, adjust )
 
-import Test.QuickCheck (Gen, Property, shrink, oneof, elements, chooseInteger, tabulate)
+import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger )
 
-import Escrow
-import Utils.OffChain
-import Utils.OnChain (minAda)
-import Tests.Utils hiding (wallets)
+-- IOG imports
+import Plutus.Contract.Test               ( CheckOptions, Wallet
+                                          , defaultCheckOptions, emulatorConfig
+                                          , mockWalletPaymentPubKeyHash, w1, w2
+                                          , w3, w4
+                                          )
+import Plutus.Contract.Test.ContractModel ( ContractInstanceKey
+                                          , StartContract(..), ContractModel(..)
+                                          , Action, Actions, contractState
+                                          , defaultCoverageOptions, delay
+                                          , deposit, propRunActionsWithOptions
+                                          , wait, withdraw
+                                          )
+import Plutus.Trace.Emulator              ( callEndpoint, observableState )
+import Plutus.V1.Ledger.Value             ( assetClassValue, assetClassValueOf
+                                          , singleton, assetClass
+                                          )
+import Ledger                             ( Address, AssetClass
+                                          , PaymentPubKeyHash, pubKeyHashAddress
+                                          )
 
-import qualified PlutusTx.AssocMap as AM
-import Escrow.Business()
-import Escrow.Types()
-import PlutusTx hiding (Data)
-import Ledger.Scripts
+-- Escrow imports
+import Escrow.Business                 ( mkReceiverAddress, mkEscrowInfo
+                                       , mkSenderAddress
+                                       )
+import Escrow.OffChain.Actions         ( EscrowSchema, endpoints )
+import Escrow.OffChain.Parameters      ( mkResolveParams, mkStartParams )
+import Escrow.OffChain.ObservableState ( UTxOEscrowInfo(..) )
+import Utils.OnChain                   ( minAda )
+import Tests.Utils                     ( emConfig, tokenA, tokenACurrencySymbol
+                                       , tokenB, tokenBCurrencySymbol
+                                       )
 
--- | Config the checkOptions to use the same emulator config as the Offchain traces.
+
+-- | Config the checkOptions to use the emulator config from the Offchain traces
 options :: CheckOptions
 options = defaultCheckOptions & emulatorConfig .~ emConfig
 
@@ -88,15 +98,15 @@ data TransferInfo = TransferInfo
     deriving (Show, Eq, Data)
 
 newtype EscrowModel = EscrowModel
-                      { _toResolve :: Map.Map Wallet [TransferInfo] }
+                      { _toResolve :: Map Wallet [TransferInfo] }
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
 
-deriving instance Eq   (CM.ContractInstanceKey EscrowModel w s e params)
-deriving instance Show (CM.ContractInstanceKey EscrowModel w s e params)
+deriving instance Eq   (ContractInstanceKey EscrowModel w s e params)
+deriving instance Show (ContractInstanceKey EscrowModel w s e params)
 
-instance CM.ContractModel EscrowModel where
+instance ContractModel EscrowModel where
 
     data Action EscrowModel =
           Start Wallet Wallet (AssetClass, Integer) (AssetClass, Integer)
@@ -105,15 +115,15 @@ instance CM.ContractModel EscrowModel where
 
     data ContractInstanceKey EscrowModel w s e params where
         UserH :: Wallet
-              -> CM.ContractInstanceKey EscrowModel (Last [UTxOEscrowInfo])
+              -> ContractInstanceKey EscrowModel (Last [UTxOEscrowInfo])
                                         EscrowSchema Text ()
 
     initialInstances = []
 
-    initialState = EscrowModel { _toResolve = Map.empty }
+    initialState = EscrowModel { _toResolve = empty }
 
-    startInstances _ (Start sw _ _ _) = [CM.StartContract (UserH sw) ()]
-    startInstances _ (Resolve rw _)   = [CM.StartContract (UserH rw) ()]
+    startInstances _ (Start sw _ _ _) = [StartContract (UserH sw) ()]
+    startInstances _ (Resolve rw _)   = [StartContract (UserH rw) ()]
 
     instanceWallet (UserH w) = w
 
@@ -121,11 +131,11 @@ instance CM.ContractModel EscrowModel where
 
     arbitraryAction s = do
         connWallet <- genWallet
-        let toRes = Map.lookup connWallet (s ^. CM.contractState . toResolve)
+        let toRes = Map.lookup connWallet (s ^. contractState . toResolve)
         oneof $
             genStart connWallet :
             [ genResolve connWallet (fromJust toRes)
-            | not (null $ fromJust toRes) && isJust toRes
+            | isJust toRes && not (null $ fromJust toRes)
             ]
       where
         genWallet :: Gen Wallet
@@ -133,7 +143,7 @@ instance CM.ContractModel EscrowModel where
         genPayment :: Gen Integer
         genPayment = chooseInteger (1, 50)
 
-        genStart :: Wallet -> Gen (CM.Action EscrowModel)
+        genStart :: Wallet -> Gen (Action EscrowModel)
         genStart connWallet = do
             resW <- elements (delete connWallet wallets)
             p1 <- genPayment
@@ -142,7 +152,7 @@ instance CM.ContractModel EscrowModel where
                            (assetClass tokenACurrencySymbol tokenA, p1)
                            (assetClass tokenBCurrencySymbol tokenB, p2)
 
-        genResolve :: Wallet -> [TransferInfo] -> Gen (CM.Action EscrowModel)
+        genResolve :: Wallet -> [TransferInfo] -> Gen (Action EscrowModel)
         genResolve connWallet toRes = Resolve connWallet <$> elements toRes
 
     precondition _ Start{} =
@@ -150,29 +160,48 @@ instance CM.ContractModel EscrowModel where
         True
     precondition s (Resolve rw ti) =
         -- Must check the wallet has enough funds.
-        ti `elem` (s ^. CM.contractState . toResolve) Map.! rw
+        member rw (s ^. contractState . toResolve) &&
+            ti `elem` (s ^. contractState . toResolve) ! rw
 
     nextState (Start sendW resW (acA,aA) (acB,aB)) = do
-        CM.withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
-        toResolve %= Map.insertWith (++) resW [TransferInfo sendW aA acA aB acB]
-        CM.wait 2
-    nextState _ = return ()
+        withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
+        toResolve %= insertWith (++) resW [TransferInfo sendW aA acA aB acB]
+        wait 2
+    nextState (Resolve resW ti) = do
+        let rVal = assetClassValue (tiReceiveAssetClass ti) (tiReceiveAmount ti)
+            sVal = assetClassValue (tiSendAssetClass ti) (tiSendAmount ti)
+        deposit resW sVal
+        deposit (tiSenderWallet ti) (minAda <> rVal)
+        withdraw resW rVal
+        toResolve %= adjust (delete ti) resW
+        wait 8
 
     perform h _ _ (Start sendW resW (acA,aA) (acB,aB)) = do
-        Trace.callEndpoint @"start" (h $ UserH sendW) $ StartParams
-            { receiverAddress   = mkReceiverAddress $ mockAddress resW
-            , sendAmount        = aA
-            , sendAssetClass    = acA
-            , receiveAmount     = aB
-            , receiveAssetClass = acB
-            }
-        CM.delay 2
-    perform _ _ _ _ = return ()
+        callEndpoint @"start" (h $ UserH sendW) $
+            mkStartParams (mkReceiverAddress $ mockAddress resW) aA acA aB acB
+        delay 2
+    perform h _ _ (Resolve resW TransferInfo{..}) = do
+        callEndpoint @"reload" (h $ UserH resW) ()
+        delay 5
+        Last obsState <- observableState $ h $ UserH resW
+        let utxoEscrowInfo = fromJust $ find checkEscrowUtxo (fromJust obsState)
+        callEndpoint @"resolve" (h $ UserH resW) $
+            mkResolveParams (escrowUTxO utxoEscrowInfo)
+        delay 2
+      where
+        checkEscrowUtxo :: UTxOEscrowInfo -> Bool
+        checkEscrowUtxo UTxOEscrowInfo{..} =
+            let eInfo = mkEscrowInfo
+                    (mkSenderAddress $ mockAddress tiSenderWallet)
+                    tiReceiveAmount
+                    tiReceiveAssetClass in
+            (escrowInfo == eInfo &&
+                assetClassValueOf escrowValue tiSendAssetClass == tiSendAmount)
 
     shrinkAction _ _ = []
 
     monitoring _ _ = id
 
-propEscrow :: CM.Actions EscrowModel -> Property
-propEscrow = CM.propRunActionsWithOptions options CM.defaultCoverageOptions
+propEscrow :: Actions EscrowModel -> Property
+propEscrow = propRunActionsWithOptions options defaultCoverageOptions
              (\ _ -> pure True)

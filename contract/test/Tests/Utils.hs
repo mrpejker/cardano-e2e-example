@@ -39,10 +39,8 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
 import Escrow ( EscrowSchema, UTxOEscrowInfo )
 
 wallets :: [(Wallet,Value)]
-wallets = [ (senderWallet,   v <> paymentA 100)
-          , (receiverWallet, v <> paymentB 100)
-          , (w3,             v <> paymentA 100)
-          , (w4,             v <> paymentA 100)
+wallets = [(w, v <> paymentA 1000 <> paymentB 1000)
+          | w <- [senderWallet,receiverWallet,w3,w4]
           ]
   where
     v :: Value
