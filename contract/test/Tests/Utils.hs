@@ -27,7 +27,7 @@ import Plutus.Trace.Emulator      ( ContractHandle
                                   , EmulatorTrace, observableState, waitNSlots
                                   )
 import Plutus.Contract.Test       ( w1, w2, w3, w4 )
-import Ledger                     ( Address, PaymentPubKey, TxOutRef )
+import Ledger                     ( Address, PaymentPubKey )
 import Ledger.Ada                 ( lovelaceValueOf )
 import Ledger.Value               as Value
 import Wallet.Emulator.Types      ( Wallet (..) )
@@ -36,9 +36,7 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
                                   )
 
 -- Escrow imports
-import Escrow.OffChain.Actions    ( EscrowSchema )
-import Escrow.OffChain.Parameters ( ObservableState(..) )
-import Escrow.Business            ( EscrowInfo )
+import Escrow ( EscrowSchema, UTxOEscrowInfo )
 
 wallets :: [(Wallet,Value)]
 wallets = [ (senderWallet,   v <> paymentA 100)
@@ -81,8 +79,8 @@ emConfig = EmulatorConfig (Left $ fromList wallets) def
 
 -- | Polls the Emulator until it finds an ObservableState
 getObservableState
-    :: ContractHandle (Last ObservableState) EscrowSchema Text
-    -> EmulatorTrace ObservableState
+    :: ContractHandle (Last [UTxOEscrowInfo]) EscrowSchema Text
+    -> EmulatorTrace [UTxOEscrowInfo]
 getObservableState h = do
     void $ waitNSlots 1
     l <- observableState h

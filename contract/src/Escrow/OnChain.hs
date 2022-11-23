@@ -11,7 +11,7 @@ We define here the on-chain code of the validator and the minting policy.
 -}
 
 module Escrow.OnChain
-    ( -- | Validators
+    ( -- * Validators
       mkEscrowValidator
     , mkControlTokenMintingPolicy
     )

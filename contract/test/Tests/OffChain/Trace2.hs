@@ -22,7 +22,6 @@ import Control.Monad         ( void )
 import Data.Default          ( Default (..) )
 import Data.Map              qualified as Map
 import Data.Maybe            ( isJust )
-import Data.Tuple.Select     ( sel1 )
 import Test.Tasty            ( TestTree )
 
 -- IOG imports
@@ -39,9 +38,7 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
                              )
 
 -- Escrow imports
-import Escrow.Business
-import Escrow.OffChain.Actions
-import Escrow.OffChain.Parameters
+import Escrow
 import Tests.Utils
 
 testMsg :: String
@@ -88,7 +85,7 @@ trace =
     h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
     callEndpoint @"reload" h2 ()
     utxos <- getObservableState h2
-    let resolveParams = mkResolveParams $ sel1 $ head $ unObservableState utxos
+    let resolveParams = mkResolveParams $ escrowUTxO $ head utxos
     callEndpoint @"resolve" h2 resolveParams
     void $ waitNSlots 10
 

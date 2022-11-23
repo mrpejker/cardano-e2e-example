@@ -9,30 +9,27 @@ We define here the parameters that will be used to call the offchain actions.
 -}
 
 module Escrow.OffChain.Parameters
-    (-- | Endpoints parameters
+    ( -- * Endpoints parameters
       StartParams(..)
     , CancelParams(..)
     , ResolveParams(..)
-    -- | Smart constructors
+    -- * Smart constructors
     , mkStartParams
     , mkCancelParams
     , mkResolveParams
-    -- | Observable State
-    , ObservableState(..)
     )
 where
 
 -- Non-IOG imports
-import Data.Aeson    ( FromJSON, ToJSON )
-import GHC.Generics  ( Generic )
-
+import Data.Aeson   ( FromJSON, ToJSON )
+import GHC.Generics ( Generic )
 
 -- IOG imports
-import Ledger        ( Address, TxOutRef )
-import Ledger.Value  ( AssetClass, Value )
+import Ledger       ( Address, TxOutRef )
+import Ledger.Value ( AssetClass )
 
 -- Escrow imports
-import Escrow.Business ( ReceiverAddress, EscrowInfo(..) )
+import Escrow.Business ( ReceiverAddress )
 
 {-| The start parameter includes the Address of the receiver, that
     will be used to get the contract address and validator.
@@ -42,12 +39,12 @@ import Escrow.Business ( ReceiverAddress, EscrowInfo(..) )
     This last two parameters will be stored in the datum.
 -}
 data StartParams = StartParams
-                    { receiverAddress   :: ReceiverAddress
-                    , sendAmount        :: Integer
-                    , sendAssetClass    :: AssetClass
-                    , receiveAmount     :: Integer
-                    , receiveAssetClass :: AssetClass
-                    }
+                   { receiverAddress   :: ReceiverAddress
+                   , sendAmount        :: Integer
+                   , sendAssetClass    :: AssetClass
+                   , receiveAmount     :: Integer
+                   , receiveAssetClass :: AssetClass
+                   }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -56,9 +53,9 @@ data StartParams = StartParams
     receiver Address to get the contract address and validator.
 -}
 data CancelParams = CancelParams
-                      { cpTxOutRef        :: TxOutRef
-                      , cpReceiverAddress :: Address
-                      }
+                    { cpTxOutRef        :: TxOutRef
+                    , cpReceiverAddress :: Address
+                    }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
@@ -70,6 +67,7 @@ newtype ResolveParams = ResolveParams { rpTxOutRef :: TxOutRef }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+-- | Smart constructor for the start param.
 mkStartParams
     :: ReceiverAddress
     -> Integer
@@ -85,16 +83,13 @@ mkStartParams rAdd sAmount sAC rAmount rAC =
                 , receiveAssetClass = rAC
                 }
 
+-- | Smart constructor for the cancel param.
 mkCancelParams :: TxOutRef -> Address -> CancelParams
-mkCancelParams ref rAddr =
-    CancelParams { cpTxOutRef        = ref
-                 , cpReceiverAddress = rAddr
-                 }
+mkCancelParams ref rAddr = CancelParams
+                           { cpTxOutRef        = ref
+                           , cpReceiverAddress = rAddr
+                           }
 
+-- | Smart constructor for the resolve param.
 mkResolveParams :: TxOutRef -> ResolveParams
 mkResolveParams ref = ResolveParams { rpTxOutRef = ref }
-
-newtype ObservableState =
-    ObservableState { unObservableState :: [(TxOutRef, EscrowInfo, Value)] }
-  deriving (Generic, Show)
-  deriving anyclass (FromJSON, ToJSON)

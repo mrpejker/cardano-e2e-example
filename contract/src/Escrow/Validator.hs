@@ -12,26 +12,26 @@ We define the boilerplate for compiling the validator.
 
 module Escrow.Validator
     ( Escrowing
-    -- | Escrow Validator
+    -- * Escrow Validator
     , escrowInst
     , escrowValidator
     , escrowAddress
-    -- | Escrow Minting Policy
+    -- * Escrow Minting Policy
     , controlTokenMP
     , controlTokenCurrency
     )
 where
 
 -- IOG imports
-import Ledger               ( CurrencySymbol, MintingPolicy
-                            , scriptAddress, scriptCurrencySymbol
-                            , mkMintingPolicyScript
-                            )
+import Ledger ( CurrencySymbol, MintingPolicy
+              , scriptAddress, scriptCurrencySymbol
+              , mkMintingPolicyScript
+              )
 import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
                             , ValidatorTypes (DatumType, RedeemerType)
                             , validatorScript, wrapMintingPolicy, wrapValidator
                             )
-import PlutusTx             ( compile, applyCode, liftCode )
+import PlutusTx ( compile, applyCode, liftCode )
 
 -- Escrow imports
 import Escrow.Business ( ReceiverAddress )

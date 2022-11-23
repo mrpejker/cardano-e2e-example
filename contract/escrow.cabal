@@ -16,6 +16,7 @@ library
     Escrow.OnChain
     Escrow.OffChain.Actions
     Escrow.OffChain.Parameters
+    Escrow.OffChain.ObservableState
     Escrow.Types
     Escrow.Validator
     Utils.OffChain
@@ -133,4 +134,3 @@ test-suite escrow-tests
     , lens
     , tasty
     , text
-    , tuple
