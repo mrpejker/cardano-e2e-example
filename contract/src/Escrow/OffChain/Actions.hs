@@ -11,20 +11,24 @@ building unbalanced transactions.
 -}
 
 module Escrow.OffChain.Actions
-    (-- | Escrow schema
+    (-- * Escrow schema
       EscrowSchema
-    -- | Endpoints
+    -- * Endpoints
     , endpoints
     )
 where
 
 -- Non-IOG imports
-import Data.Map      ( singleton )
-import Data.Text     ( Text )
+import Control.Lens  ( (^.) )
 import Control.Monad ( forever, unless )
+import Data.Map      ( singleton, toList )
+import Data.Text     ( Text )
+import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( Address, ChainIndexTxOut, getDatum, TxOutRef )
+import Ledger             ( Address, ChainIndexTxOut, TxOutRef
+                          , ciTxOutValue, getDatum
+                          )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustPayToPubKey, mustPayToTheScript
                           , mustSpendScriptOutput, otherScript
@@ -33,74 +37,81 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , Promise, select, throwError, type (.\/)
-                          , yieldUnbalancedTx
+                          , Promise, select, tell, throwError, type (.\/)
+                          , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
 
 -- Escrow imports
-import Escrow.Business            ( EscrowInfo(..), mkSenderAddress
-                                  , mkReceiverAddress, eInfoSenderAddr
-                                  )
-import Escrow.Validator           ( Escrowing
-                                  , escrowAddress, escrowValidator, escrowInst
-                                  , controlTokenCurrency, controlTokenMP
-                                  )
 import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
                                   , ResolveParams(..)
                                   )
-import Escrow.Types               ( eInfo, cTokenName, mkEscrowDatum
-                                  , cancelRedeemer, resolveRedeemer
-                                  )
-import Utils.OffChain             ( getPpkhFromAddress
-                                  , lookupScriptUtxos, getDatumWithError
-                                  )
-import Utils.OnChain              ( minAda )
+import Escrow.OffChain.ObservableState ( UTxOEscrowInfo, mkUTxOEscrowInfo )
+import Escrow.Business  ( EscrowInfo(..)
+                        , mkSenderAddress, mkReceiverAddress
+                        , eInfoSenderAddr
+                        )
+import Escrow.Validator ( Escrowing
+                        , escrowAddress, escrowValidator, escrowInst
+                        , controlTokenCurrency, controlTokenMP
+                        )
+import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
+                      , cancelRedeemer, resolveRedeemer
+                      )
+import Utils.OffChain ( getPpkhFromAddress
+                      , lookupScriptUtxos, getDatumWithError
+                      )
+import Utils.OnChain  ( minAda )
 
 -- | Escrow Schema
 type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "cancel"  CancelParams
                 .\/ Endpoint "resolve" ResolveParams
+                .\/ Endpoint "reload"  ()
 
 endpoints
     :: Address
-    -> Contract () EscrowSchema Text ()
+    -> Contract (Last [UTxOEscrowInfo]) EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
-                  startEp `select` cancelEp `select` resolveEp
+                  startEp `select` cancelEp `select` resolveEp `select` reloadEp
   where
-    startEp :: Promise () EscrowSchema Text ()
+    startEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
     startEp = endpoint @"start" $ startOp raddr
 
-    cancelEp :: Promise () EscrowSchema Text ()
+    cancelEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
     cancelEp = endpoint @"cancel" $ cancelOp raddr
 
-    resolveEp :: Promise () EscrowSchema Text ()
+    resolveEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
     resolveEp = endpoint @"resolve" $ resolveOp raddr
+
+    reloadEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    reloadEp = endpoint @"reload" $ const $ reloadOp raddr
 
 {- | A user, using its `addr`, locks the tokens they want to exchange and
      specifies the tokens they want to receive and from whom, all these
      information is contained on `sParams`. The control Token is minted.
 -}
 startOp
-    :: Address
+    :: forall w s
+    .  Address
     -> StartParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract w s Text ()
 startOp addr StartParams{..} = do
     senderPpkh <- getPpkhFromAddress addr
 
     let contractAddress = escrowAddress receiverAddress
         validator       = escrowValidator receiverAddress
 
-        cTokenCurrency  = controlTokenCurrency contractAddress
-        cTokenAsset     = assetClass cTokenCurrency cTokenName
-        cTokenVal       = assetClassValue cTokenAsset 1
+        cTokenCurrency = controlTokenCurrency contractAddress
+        cTokenAsset    = assetClass cTokenCurrency cTokenName
+        cTokenVal      = assetClassValue cTokenAsset 1
 
-        senderVal       = assetClassValue sendAssetClass sendAmount
-        val             = minAda <> cTokenVal <> senderVal
-        datum           = mkEscrowDatum (mkSenderAddress addr)
-                                        receiveAmount
-                                        receiveAssetClass
-                                        cTokenAsset
+        senderVal = assetClassValue sendAssetClass sendAmount
+        val       = minAda <> cTokenVal <> senderVal
+        datum     = mkEscrowDatum (mkSenderAddress addr)
+                                  receiveAmount
+                                  receiveAssetClass
+                                  cTokenAsset
 
         lkp = mconcat
               [ typedValidatorLookups (escrowInst receiverAddress)
@@ -123,22 +134,23 @@ startOp addr StartParams{..} = do
      The control Token is burned.
 -}
 cancelOp
-    :: Address
+    :: forall w s
+    .  Address
     -> CancelParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract w s Text ()
 cancelOp addr CancelParams{..} = do
-    senderPpkh   <- getPpkhFromAddress addr
+    senderPpkh <- getPpkhFromAddress addr
 
     let contractAddress = escrowAddress (mkReceiverAddress cpReceiverAddress)
         validator       = escrowValidator (mkReceiverAddress cpReceiverAddress)
 
-        cTokenCurrency  = controlTokenCurrency contractAddress
-        cTokenAsset     = assetClass cTokenCurrency cTokenName
-        cTokenVal       = assetClassValue cTokenAsset (-1)
+        cTokenCurrency = controlTokenCurrency contractAddress
+        cTokenAsset    = assetClass cTokenCurrency cTokenName
+        cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo)  <- findEscrowUtxo cpTxOutRef utxos
-    eInfo        <- getEscrowInfo utxo
+    utxos       <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo) <- findEscrowUtxo cpTxOutRef utxos
+    eInfo       <- getEscrowInfo utxo
 
     unless (eInfoSenderAddr eInfo == addr)
            (throwError "Sender address invalid")
@@ -164,23 +176,24 @@ cancelOp addr CancelParams{..} = do
      and to receive the locked tokens.
 -}
 resolveOp
-    :: Address
+    :: forall w s
+    .  Address
     -> ResolveParams
-    -> Contract () EscrowSchema Text ()
+    -> Contract w s Text ()
 resolveOp addr ResolveParams{..} = do
     receiverPpkh <- getPpkhFromAddress addr
 
     let contractAddress = escrowAddress (mkReceiverAddress addr)
         validator       = escrowValidator (mkReceiverAddress addr)
 
-        cTokenCurrency  = controlTokenCurrency contractAddress
-        cTokenAsset     = assetClass cTokenCurrency cTokenName
-        cTokenVal       = assetClassValue cTokenAsset (-1)
+        cTokenCurrency = controlTokenCurrency contractAddress
+        cTokenAsset    = assetClass cTokenCurrency cTokenName
+        cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos        <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo)  <- findEscrowUtxo rpTxOutRef utxos
-    eInfo        <- getEscrowInfo utxo
-    senderPpkh   <- getPpkhFromAddress (eInfoSenderAddr eInfo)
+    utxos       <- lookupScriptUtxos contractAddress cTokenAsset
+    (ref, utxo) <- findEscrowUtxo rpTxOutRef utxos
+    eInfo       <- getEscrowInfo utxo
+    senderPpkh  <- getPpkhFromAddress (eInfoSenderAddr eInfo)
 
     let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo)
                         <> minAda
@@ -202,13 +215,37 @@ resolveOp addr ResolveParams{..} = do
     logInfo @String $ "Escrow Address: " ++ show contractAddress
     logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
 
+{- | The user, using its `addr`, obtains all the escrows that can resolve. That
+     is the complete escrow info, together with the UTxO reference.
+-}
+reloadOp
+    :: forall s
+    .  Address
+    -> Contract (Last [UTxOEscrowInfo]) s Text ()
+reloadOp addr = do
+    let contractAddress = escrowAddress $ mkReceiverAddress addr
+
+    utxos      <- utxosAt contractAddress
+    utxosEInfo <- mapM mkEscrowInfo $ toList utxos
+
+    tell $ Last $ Just utxosEInfo
+  where
+     mkEscrowInfo
+         :: forall w
+         .  (TxOutRef, ChainIndexTxOut)
+         -> Contract w s Text UTxOEscrowInfo
+     mkEscrowInfo (utxoRef, citxout) =
+         mkUTxOEscrowInfo utxoRef (citxout ^. ciTxOutValue)
+         <$> getEscrowInfo citxout
+
 {- | Off-chain function for getting the specific UTxO from a list of UTxOs by
      its TxOutRef.
 -}
 findEscrowUtxo
-    :: TxOutRef
+    :: forall w s
+    .  TxOutRef
     -> [(TxOutRef, ChainIndexTxOut)]
-    -> Contract () EscrowSchema Text (TxOutRef, ChainIndexTxOut)
+    -> Contract w s Text (TxOutRef, ChainIndexTxOut)
 findEscrowUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
         [utxo] -> pure utxo
@@ -218,8 +255,9 @@ findEscrowUtxo ref utxos =
      ChainIndexTxOut.
 -}
 getEscrowInfo
-    :: ChainIndexTxOut
-    -> Contract () EscrowSchema Text EscrowInfo
+    :: forall w s
+    .  ChainIndexTxOut
+    -> Contract w s Text EscrowInfo
 getEscrowInfo txOut = getDatumWithError txOut >>=
                       maybe (throwError "Datum format invalid")
                             (pure . eInfo) . (fromBuiltinData . getDatum)

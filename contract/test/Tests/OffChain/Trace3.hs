@@ -1,3 +1,4 @@
+{- HLINT ignore "Use head" -}
 {-|
 Module      : Tests.OffChain.Trace3
 Description : Trace3 for unit testing the Escrow contract.
@@ -46,9 +47,7 @@ import Wallet.Emulator.Wallet ( mockWalletAddress
                               )
 
 -- Escrow imports
-import Escrow.Business
-import Escrow.OffChain.Actions
-import Escrow.OffChain.Parameters
+import Escrow
 import Tests.Utils
 
 testMsg :: String
@@ -114,11 +113,11 @@ trace =
     callEndpoint @"start" h3 startParams
     void $ waitNSlots 10
     h4 <- activateContractWallet receiverWallet $ endpoints receiverAddr
-    utxos <- utxosMap
-    let scriptUtxos    = findScriptTxOutRef utxos
-        resolveParams1 = mkResolveParams $ head scriptUtxos
-        resolveParams2 = mkResolveParams $ scriptUtxos !! 1
-        resolveParams3 = mkResolveParams $ scriptUtxos !! 2
+    callEndpoint @"reload" h4 ()
+    utxos <- getObservableState h4
+    let resolveParams1 = mkResolveParams $ escrowUTxO $ utxos !! 0
+        resolveParams2 = mkResolveParams $ escrowUTxO $ utxos !! 1
+        resolveParams3 = mkResolveParams $ escrowUTxO $ utxos !! 2
 
     callEndpoint @"resolve" h4 resolveParams1
     void $ waitNSlots 10

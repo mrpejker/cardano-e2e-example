@@ -16,6 +16,7 @@ library
     Escrow.OnChain
     Escrow.OffChain.Actions
     Escrow.OffChain.Parameters
+    Escrow.OffChain.ObservableState
     Escrow.Types
     Escrow.Validator
     Utils.OffChain
@@ -120,6 +121,7 @@ test-suite escrow-tests
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
+    , freer-extras
 
   ------------------------
   -- Non-IOG dependencies
@@ -131,3 +133,4 @@ test-suite escrow-tests
     , escrow
     , lens
     , tasty
+    , text

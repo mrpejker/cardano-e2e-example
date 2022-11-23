@@ -36,9 +36,7 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
                              )
 
 -- Escrow imports
-import Escrow.Business
-import Escrow.OffChain.Actions
-import Escrow.OffChain.Parameters
+import Escrow
 import Tests.Utils
 
 testMsg :: String
@@ -82,9 +80,12 @@ trace =
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
-    utxos <- utxosMap
-    let scriptUtxos  = findScriptTxOutRef utxos
-        cancelParams = mkCancelParams (head scriptUtxos) receiverAddr
+
+    h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
+    callEndpoint @"reload" h2 ()
+    utxos <- getObservableState h2
+
+    let cancelParams = mkCancelParams (escrowUTxO $ head utxos) receiverAddr
     callEndpoint @"cancel" h1 cancelParams
     void $ waitNSlots 10
 
