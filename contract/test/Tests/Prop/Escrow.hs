@@ -105,7 +105,8 @@ instance CM.ContractModel EscrowModel where
 
     data ContractInstanceKey EscrowModel w s e params where
         UserH :: Wallet
-              -> CM.ContractInstanceKey EscrowModel () EscrowSchema Text ()
+              -> CM.ContractInstanceKey EscrowModel (Last [UTxOEscrowInfo])
+                                        EscrowSchema Text ()
 
     initialInstances = []
 
@@ -155,12 +156,7 @@ instance CM.ContractModel EscrowModel where
         CM.withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
         toResolve %= Map.insertWith (++) resW [TransferInfo sendW aA acA aB acB]
         CM.wait 2
-    nextState (Resolve connW TransferInfo{..}) = do
-        CM.withdraw connW (assetClassValue tiSendAssetClass tiSendAmount)
-        CM.deposit connW (assetClassValue tiReceiveAssetClass tiReceiveAmount)
-        CM.deposit tiSenderWallet (assetClassValue tiSendAssetClass tiSendAmount)
-        CM.withdraw tiSenderWallet (assetClassValue tiReceiveAssetClass tiReceiveAmount)
-        CM.wait 2
+    nextState _ = return ()
 
     perform h _ _ (Start sendW resW (acA,aA) (acB,aB)) = do
         Trace.callEndpoint @"start" (h $ UserH sendW) $ StartParams
@@ -171,12 +167,7 @@ instance CM.ContractModel EscrowModel where
             , receiveAssetClass = acB
             }
         CM.delay 2
-    perform h _ _ (Resolve connW TransferInfo{..}) = do
-        utxos <- Trace.chainState <&> unspentOutputs . (^. Trace.chainNewestFirst)
-        let scriptUtxos   = findScriptTxOutRef utxos
-            resolveParams = ResolveParams { rpTxOutRef = head scriptUtxos }
-        Trace.callEndpoint @"resolve" (h $ UserH connW) resolveParams
-        CM.delay 2
+    perform _ _ _ _ = return ()
 
     shrinkAction _ _ = []
 
