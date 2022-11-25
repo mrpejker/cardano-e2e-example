@@ -26,8 +26,12 @@ import Plutus.Trace.Emulator      ( ContractHandle
                                   , EmulatorConfig (EmulatorConfig)
                                   , EmulatorTrace, observableState, waitNSlots
                                   )
-import Plutus.Contract.Test       ( w1, w2, w3, w4 )
-import Ledger                     ( Address, PaymentPubKey )
+import Plutus.Contract.Test       ( w1, w2, w3, w4
+                                  , mockWalletPaymentPubKeyHash
+                                  )
+import Ledger                     ( Address, PaymentPubKey, PaymentPubKeyHash
+                                  , pubKeyHashAddress
+                                  )
 import Ledger.Ada                 ( lovelaceValueOf )
 import Ledger.Value               as Value
 import Wallet.Emulator.Types      ( Wallet (..) )
@@ -36,15 +40,25 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
                                   )
 
 -- Escrow imports
-import Escrow ( EscrowSchema, UTxOEscrowInfo )
+import Escrow ( EscrowSchema, UtxoEscrowInfo )
 
-wallets :: [(Wallet,Value)]
-wallets = [(w, v <> paymentA 1000 <> paymentB 1000)
-          | w <- [senderWallet,receiverWallet,w3,w4]
-          ]
+walletsWithValue :: [(Wallet,Value)]
+walletsWithValue = [(w, v <> paymentA 1000 <> paymentB 1000)
+                   | w <- [senderWallet,receiverWallet,w3,w4]
+                   ]
   where
     v :: Value
     v = lovelaceValueOf 100_000_000
+
+-- | Wallets that will be used to test the endpoints
+wallets :: [Wallet]
+wallets = [w1, w2, w3, w4]
+
+mockPKH :: Wallet -> PaymentPubKeyHash
+mockPKH = mockWalletPaymentPubKeyHash
+
+mockAddress :: Wallet -> Address
+mockAddress = flip pubKeyHashAddress Nothing . mockPKH
 
 tokenA, tokenB :: TokenName
 tokenA = "A"
@@ -73,12 +87,12 @@ senderPpk   = mockWalletPaymentPubKey senderWallet
 receiverPpk = mockWalletPaymentPubKey receiverWallet
 
 emConfig :: EmulatorConfig
-emConfig = EmulatorConfig (Left $ fromList wallets) def
+emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
 
 -- | Polls the Emulator until it finds an ObservableState
 getObservableState
-    :: ContractHandle (Last [UTxOEscrowInfo]) EscrowSchema Text
-    -> EmulatorTrace [UTxOEscrowInfo]
+    :: ContractHandle (Last [UtxoEscrowInfo]) EscrowSchema Text
+    -> EmulatorTrace [UtxoEscrowInfo]
 getObservableState h = do
     void $ waitNSlots 1
     l <- observableState h

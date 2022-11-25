@@ -31,8 +31,6 @@ import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger )
 -- IOG imports
 import Plutus.Contract.Test               ( CheckOptions, Wallet
                                           , defaultCheckOptions, emulatorConfig
-                                          , mockWalletPaymentPubKeyHash, w1, w2
-                                          , w3, w4
                                           )
 import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , StartContract(..), ContractModel(..)
@@ -45,9 +43,7 @@ import Plutus.Trace.Emulator              ( callEndpoint, observableState )
 import Plutus.V1.Ledger.Value             ( assetClassValue, assetClassValueOf
                                           , singleton, assetClass
                                           )
-import Ledger                             ( Address, AssetClass
-                                          , PaymentPubKeyHash, pubKeyHashAddress
-                                          )
+import Ledger                             ( AssetClass )
 
 -- Escrow imports
 import Escrow.Business                 ( EscrowInfo, mkReceiverAddress
@@ -57,30 +53,20 @@ import Escrow.OffChain.Actions         ( EscrowSchema, endpoints )
 import Escrow.OffChain.Parameters      ( mkResolveParams, mkStartParams
                                        , mkCancelParams
                                        )
-import Escrow.OffChain.ObservableState ( UTxOEscrowInfo(..) )
+import Escrow.OffChain.ObservableState ( UtxoEscrowInfo(..) )
 import Utils.OnChain                   ( minAda )
 import Tests.Utils                     ( emConfig, tokenA, tokenACurrencySymbol
-                                       , tokenB, tokenBCurrencySymbol
+                                       , tokenB, tokenBCurrencySymbol, wallets
+                                       , mockAddress
                                        )
-
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
 options :: CheckOptions
 options = defaultCheckOptions & emulatorConfig .~ emConfig
 
--- | Wallets that will be used to test the endpoints
-wallets :: [Wallet]
-wallets = [w1, w2, w3, w4]
-
-shrinkWallet :: Wallet -> [Wallet]
-shrinkWallet w = [w' | w' <- wallets, w' < w]
-
-mockPKH :: Wallet -> PaymentPubKeyHash
-mockPKH = mockWalletPaymentPubKeyHash
-
-mockAddress :: Wallet -> Address
-mockAddress = flip pubKeyHashAddress Nothing . mockPKH
-
+{- | The representation of the EscrowInfo plus the Value contained in script
+     Utxo.
+-}
 data TransferInfo = TransferInfo
                     { tiSenderWallet      :: Wallet
                     , tiSendAmount        :: Integer
@@ -90,6 +76,7 @@ data TransferInfo = TransferInfo
                     }
     deriving (Show, Eq, Data)
 
+-- | This type represent all the Escrows a Wallet can resolve
 newtype EscrowModel = EscrowModel
                       { _toResolve :: Map Wallet [TransferInfo] }
     deriving (Show, Eq, Data)
@@ -101,6 +88,24 @@ deriving instance Show (ContractInstanceKey EscrowModel w s e params)
 
 instance ContractModel EscrowModel where
 
+{- | Actions that can be done using the contract.
+   Start: Starts a new Escrow with the given parameters.
+     - Parameters:
+        Wallet: The sender wallet
+        Wallet: The receiver wallet
+        (AssetClass, Integer): The AssetClass and amount of the send Asset
+        (AssetClass, Integer): The AssetClass and amount of the receive Asset
+
+   Resolve: Resolve the specific Escrow given the TransferInfo
+     - Parameters:
+        Wallet: The receiver wallet
+        TransferInfo: The Information about the Utxo
+
+   Cancel: Cancels an existing Escrow
+     - Parameters:
+        Wallet: The receiver wallet
+        TransferInfo: The information about the Utxo
+-}
     data Action EscrowModel =
           Start Wallet Wallet (AssetClass, Integer) (AssetClass, Integer)
         | Resolve Wallet TransferInfo
@@ -109,7 +114,7 @@ instance ContractModel EscrowModel where
 
     data ContractInstanceKey EscrowModel w s e params where
         UserH :: Wallet
-              -> ContractInstanceKey EscrowModel (Last [UTxOEscrowInfo])
+              -> ContractInstanceKey EscrowModel (Last [UtxoEscrowInfo])
                                         EscrowSchema Text ()
 
     initialInstances = []
@@ -176,17 +181,17 @@ instance ContractModel EscrowModel where
         withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
         toResolve $~ insertWith (++) resW [TransferInfo sendW aA acA aB acB]
         wait 2
-    nextState (Resolve resW ti) = do
-        let rVal = assetClassValue (tiReceiveAssetClass ti) (tiReceiveAmount ti)
-            sVal = assetClassValue (tiSendAssetClass ti) (tiSendAmount ti)
+    nextState (Resolve resW ti@TransferInfo{..}) = do
+        let rVal = assetClassValue tiReceiveAssetClass tiReceiveAmount
+            sVal = assetClassValue tiSendAssetClass tiSendAmount
         deposit resW sVal
-        deposit (tiSenderWallet ti) (minAda <> rVal)
+        deposit tiSenderWallet (minAda <> rVal)
         withdraw resW rVal
         toResolve $~ adjust (delete ti) resW
         wait 8
-    nextState (Cancel resW ti) = do
-        let sVal = assetClassValue (tiSendAssetClass ti) (tiSendAmount ti)
-        deposit (tiSenderWallet ti) (minAda <> sVal)
+    nextState (Cancel resW ti@TransferInfo{..}) = do
+        let sVal = assetClassValue tiSendAssetClass tiSendAmount
+        deposit tiSenderWallet (minAda <> sVal)
         toResolve $~ adjust (delete ti) resW
         wait 7
 
@@ -200,7 +205,7 @@ instance ContractModel EscrowModel where
         Last obsState <- observableState $ h $ UserH resW
         let utxoEscrowInfo = fromJust $ findEscrowUtxo ti (fromJust obsState)
         callEndpoint @"resolve" (h $ UserH resW) $
-            mkResolveParams (escrowUTxO utxoEscrowInfo)
+            mkResolveParams (escrowUtxo utxoEscrowInfo)
         delay 2
     perform h _ _ (Cancel resW ti) = do
         callEndpoint @"reload" (h $ UserH resW) ()
@@ -208,7 +213,7 @@ instance ContractModel EscrowModel where
         Last obsState <- observableState $ h $ UserH resW
         let utxoEscrowInfo = fromJust $ findEscrowUtxo ti (fromJust obsState)
         callEndpoint @"cancel" (h $ UserH (tiSenderWallet ti)) $
-            mkCancelParams (escrowUTxO utxoEscrowInfo) (mockAddress resW)
+            mkCancelParams (escrowUtxo utxoEscrowInfo) (mockAddress resW)
         delay 2
 
     shrinkAction _ _ = []
@@ -216,7 +221,7 @@ instance ContractModel EscrowModel where
     monitoring _ _ = id
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
-findEscrowUtxo :: TransferInfo -> [UTxOEscrowInfo] -> Maybe UTxOEscrowInfo
+findEscrowUtxo :: TransferInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo
 findEscrowUtxo TransferInfo{..} =
     find (\utxoInfo -> escrowInfo utxoInfo == eInfo
                     && sendA utxoInfo == tiSendAmount)
@@ -226,7 +231,7 @@ findEscrowUtxo TransferInfo{..} =
                          tiReceiveAmount
                          tiReceiveAssetClass
 
-    sendA :: UTxOEscrowInfo -> Integer
+    sendA :: UtxoEscrowInfo -> Integer
     sendA uInfo = assetClassValueOf (escrowValue uInfo) tiSendAssetClass
 
 propEscrow :: Actions EscrowModel -> Property

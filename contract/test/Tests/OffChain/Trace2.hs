@@ -85,7 +85,7 @@ trace =
     h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
     callEndpoint @"reload" h2 ()
     utxos <- getObservableState h2
-    let resolveParams = mkResolveParams $ escrowUTxO $ head utxos
+    let resolveParams = mkResolveParams $ escrowUtxo $ head utxos
     callEndpoint @"resolve" h2 resolveParams
     void $ waitNSlots 10
 

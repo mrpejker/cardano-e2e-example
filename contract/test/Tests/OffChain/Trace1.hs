@@ -85,7 +85,7 @@ trace =
     callEndpoint @"reload" h2 ()
     utxos <- getObservableState h2
 
-    let cancelParams = mkCancelParams (escrowUTxO $ head utxos) receiverAddr
+    let cancelParams = mkCancelParams (escrowUtxo $ head utxos) receiverAddr
     callEndpoint @"cancel" h1 cancelParams
     void $ waitNSlots 10
 

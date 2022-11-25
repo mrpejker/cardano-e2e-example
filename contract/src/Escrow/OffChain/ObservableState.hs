@@ -9,9 +9,9 @@ Stability   : develop
 
 module Escrow.OffChain.ObservableState
     (-- * Observable state information
-      UTxOEscrowInfo(..)
+      UtxoEscrowInfo(..)
     -- * Smart Constructors
-    , mkUTxOEscrowInfo
+    , mkUtxoEscrowInfo
     )
 where
 
@@ -30,18 +30,18 @@ import Escrow.Business ( EscrowInfo(..) )
      - The escrow info: Sender's address and receiver's payment info.
      - The total value locked: The Sender's payment.
 -}
-data UTxOEscrowInfo = UTxOEscrowInfo
-                      { escrowUTxO  :: TxOutRef
+data UtxoEscrowInfo = UtxoEscrowInfo
+                      { escrowUtxo  :: TxOutRef
                       , escrowInfo  :: EscrowInfo
                       , escrowValue :: Value
                       }
     deriving (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
--- | Smart constructor of a UTxOEscrowInfo.
-mkUTxOEscrowInfo :: TxOutRef -> Value -> EscrowInfo -> UTxOEscrowInfo
-mkUTxOEscrowInfo utxoRef v ei = UTxOEscrowInfo
-                                { escrowUTxO  = utxoRef
+-- | Smart constructor of a UtxoscrowInfo.
+mkUtxoEscrowInfo :: TxOutRef -> Value -> EscrowInfo -> UtxoEscrowInfo
+mkUtxoEscrowInfo utxoRef v ei = UtxoEscrowInfo
+                                { escrowUtxo  = utxoRef
                                 , escrowInfo  = ei
                                 , escrowValue = v
                                 }
