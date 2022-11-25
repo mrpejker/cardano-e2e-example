@@ -46,7 +46,7 @@ import PlutusTx           ( fromBuiltinData )
 import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
                                   , ResolveParams(..)
                                   )
-import Escrow.OffChain.ObservableState ( UTxOEscrowInfo, mkUTxOEscrowInfo )
+import Escrow.OffChain.ObservableState ( UtxoEscrowInfo, mkUtxoEscrowInfo )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
                         , eInfoSenderAddr
@@ -71,20 +71,20 @@ type EscrowSchema = Endpoint "start"   StartParams
 
 endpoints
     :: Address
-    -> Contract (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    -> Contract (Last [UtxoEscrowInfo]) EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
                   startEp `select` cancelEp `select` resolveEp `select` reloadEp
   where
-    startEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    startEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
     startEp = endpoint @"start" $ startOp raddr
 
-    cancelEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    cancelEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
     cancelEp = endpoint @"cancel" $ cancelOp raddr
 
-    resolveEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    resolveEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
     resolveEp = endpoint @"resolve" $ resolveOp raddr
 
-    reloadEp :: Promise (Last [UTxOEscrowInfo]) EscrowSchema Text ()
+    reloadEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
     reloadEp = endpoint @"reload" $ const $ reloadOp raddr
 
 {- | A user, using its `addr`, locks the tokens they want to exchange and
@@ -221,7 +221,7 @@ resolveOp addr ResolveParams{..} = do
 reloadOp
     :: forall s
     .  Address
-    -> Contract (Last [UTxOEscrowInfo]) s Text ()
+    -> Contract (Last [UtxoEscrowInfo]) s Text ()
 reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
 
@@ -233,9 +233,9 @@ reloadOp addr = do
      mkEscrowInfo
          :: forall w
          .  (TxOutRef, ChainIndexTxOut)
-         -> Contract w s Text UTxOEscrowInfo
+         -> Contract w s Text UtxoEscrowInfo
      mkEscrowInfo (utxoRef, citxout) =
-         mkUTxOEscrowInfo utxoRef (citxout ^. ciTxOutValue)
+         mkUtxoEscrowInfo utxoRef (citxout ^. ciTxOutValue)
          <$> getEscrowInfo citxout
 
 {- | Off-chain function for getting the specific UTxO from a list of UTxOs by

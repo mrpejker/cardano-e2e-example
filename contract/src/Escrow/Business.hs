@@ -32,7 +32,7 @@ where
 
 -- Non-IOG imports
 import Data.Aeson       ( FromJSON, ToJSON )
-import Prelude          ( Show )
+import Prelude          ( Eq, Show )
 import GHC.Generics     ( Generic )
 
 -- IOG imports
@@ -47,7 +47,7 @@ import Utils.OnChain ( pubKeyHashInAddress )
      concerns.
 -}
 newtype SenderAddress   = SenderAddress { sAddr :: Address }
-  deriving newtype (Show, FromJSON, ToJSON)
+  deriving newtype (Eq, Show, FromJSON, ToJSON)
 {- | A ReceiverAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
@@ -83,7 +83,7 @@ data EscrowInfo = EscrowInfo
                   , rAmount     :: Integer
                   , rAssetClass :: AssetClass
                   }
-    deriving (Show, Generic)
+    deriving (Eq, Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | Smart constructor of a EscrowInfo.
