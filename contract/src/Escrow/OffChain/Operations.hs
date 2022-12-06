@@ -50,7 +50,7 @@ import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
 import Escrow.OffChain.ObservableState ( UtxoEscrowInfo, mkUtxoEscrowInfo )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
-                        , eInfoSenderAddr, payToSender, signerIsSender
+                        , eInfoSenderAddr, valueToSender, signerIsSender
                         )
 import Escrow.Validator ( Escrowing
                         , escrowAddress, escrowValidator, escrowInst
@@ -196,7 +196,7 @@ resolveOp addr ResolveParams{..} = do
     eInfo       <- getEscrowInfo utxo
     senderPpkh  <- getPpkhFromAddress (eInfoSenderAddr eInfo)
 
-    let senderPayment = payToSender eInfo <> minAda
+    let senderPayment = valueToSender eInfo <> minAda
 
         lkp = mconcat
             [ otherScript validator

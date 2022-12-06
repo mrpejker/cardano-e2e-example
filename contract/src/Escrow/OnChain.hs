@@ -33,7 +33,7 @@ import PlutusTx.Prelude       ( Integer, Bool
 -- Escrow imports
 import Escrow.Business ( ReceiverAddress, EscrowInfo(..)
                        , signerIsSender, signerIsReceiver, eInfoSenderAddr
-                       , payToSender
+                       , valueToSender
                        )
 import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ContractAddress )
 import Utils.OnChain   ( fromJust, getSingleton
@@ -106,7 +106,7 @@ resolveValidator info ei raddr signer =
                  (signerIsReceiver signer raddr)
     &&
     traceIfFalse "resolveValidator: Wrong sender's payment"
-                 (payToSender ei `leq` senderV)
+                 (valueToSender ei `leq` senderV)
   where
     senderV :: Value
     senderV = valuePaidTo (eInfoSenderAddr ei) info

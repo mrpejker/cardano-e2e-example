@@ -27,7 +27,7 @@ module Escrow.Business
     , signerIsReceiver
     -- * Getters
     , eInfoSenderAddr
-    , payToSender
+    , valueToSender
     )
 where
 
@@ -75,10 +75,10 @@ signerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
 signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
 signerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
 
--- | Given a escrow information builds the value to be paid to the sender.
-{-# INLINABLE payToSender #-}
-payToSender :: EscrowInfo -> Value
-payToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
+    -- | Given a escrow information builds the value to be paid to the sender.
+{-# INLINABLE valueToSender #-}
+valueToSender :: EscrowInfo -> Value
+valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
 
 {- | EscrowInfo
 
