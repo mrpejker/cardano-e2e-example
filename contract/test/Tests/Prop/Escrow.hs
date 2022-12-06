@@ -49,11 +49,11 @@ import Ledger                             ( AssetClass )
 import Escrow.Business                 ( EscrowInfo, mkReceiverAddress
                                        , mkEscrowInfo, mkSenderAddress
                                        )
-import Escrow.OffChain.Actions         ( EscrowSchema, endpoints )
 import Escrow.OffChain.Parameters      ( mkResolveParams, mkStartParams
                                        , mkCancelParams
                                        )
 import Escrow.OffChain.ObservableState ( UtxoEscrowInfo(..) )
+import Escrow.OffChain.Operations      ( EscrowSchema, endpoints )
 import Utils.OnChain                   ( minAda )
 import Tests.Utils                     ( emConfig, tokenA, tokenACurrencySymbol
                                        , tokenB, tokenBCurrencySymbol, wallets

@@ -22,20 +22,21 @@ import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
                               , PubKeyHash
                               )
 import Plutus.V1.Ledger.Value ( CurrencySymbol, TokenName, Value
-                              , assetClass, assetClassValue, assetClassValueOf
-                              , flattenValue
+                              , assetClass, assetClassValueOf, flattenValue
+                              , leq
                               )
 import PlutusTx.Prelude       ( Integer, Bool
-                              , ($), (&&), (||), (==), (<>)
+                              , ($), (&&), (||), (==)
                               , traceIfFalse
                               )
 
 -- Escrow imports
 import Escrow.Business ( ReceiverAddress, EscrowInfo(..)
-                       , singerIsSender, singerIsReceiver, eInfoSenderAddr
+                       , signerIsSender, signerIsReceiver, eInfoSenderAddr
+                       , valueToSender
                        )
 import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ContractAddress )
-import Utils.OnChain   ( minAda, fromJust, getSingleton
+import Utils.OnChain   ( fromJust, getSingleton
                        , valuePaidTo, outputsAt, getTxOutDatum
                        )
 
@@ -87,7 +88,7 @@ mkEscrowValidator raddr EscrowDatum{..} r ctx =
 cancelValidator :: EscrowInfo -> PubKeyHash -> Bool
 cancelValidator EscrowInfo{..} signer =
     traceIfFalse
-    "cancelValidator: Wrong sender signature" $ singerIsSender signer sender
+    "cancelValidator: Wrong sender signature" $ signerIsSender signer sender
 
 {- | Checks:
  - The address that is trying to resolve is the same as the Receiver’s address.
@@ -100,18 +101,15 @@ resolveValidator
     -> ReceiverAddress
     -> PubKeyHash
     -> Bool
-resolveValidator info ei@EscrowInfo{..} raddr signer =
+resolveValidator info ei raddr signer =
     traceIfFalse "resolveValidator: Wrong receiver signature"
-                 (singerIsReceiver signer raddr)
+                 (signerIsReceiver signer raddr)
     &&
     traceIfFalse "resolveValidator: Wrong sender's payment"
-                 (senderV == pay <> minAda)
+                 (valueToSender ei `leq` senderV)
   where
     senderV :: Value
     senderV = valuePaidTo (eInfoSenderAddr ei) info
-
-    pay :: Value
-    pay = assetClassValue rAssetClass rAmount
 
 {- | Escrow Control Token minting policy
 
@@ -146,7 +144,7 @@ mkControlTokenMintingPolicy addr _ ctx =
     signer = getSingleton $ txInfoSignatories info
 
     correctSigner :: Bool
-    correctSigner = singerIsSender signer (sender $ eInfo escrowDatum)
+    correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
 
     controlTokenPaid :: Bool
     controlTokenPaid =

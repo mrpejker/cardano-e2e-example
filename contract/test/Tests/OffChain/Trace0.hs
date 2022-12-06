@@ -37,9 +37,7 @@ import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
                              )
 
 -- Escrow imports
-import Escrow.Business
-import Escrow.OffChain.Actions
-import Escrow.OffChain.Parameters
+import Escrow
 import Tests.Utils
 import Utils.OnChain
 

@@ -10,7 +10,7 @@ an Schema. The main offchain functions implement all the logic for
 building unbalanced transactions.
 -}
 
-module Escrow.OffChain.Actions
+module Escrow.OffChain.Operations
     (-- * Escrow schema
       EscrowSchema
     -- * Endpoints
@@ -28,6 +28,7 @@ import Data.Monoid   ( Last(..) )
 -- IOG imports
 import Ledger             ( Address, ChainIndexTxOut, TxOutRef
                           , ciTxOutValue, getDatum
+                          , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustPayToPubKey, mustPayToTheScript
@@ -49,7 +50,7 @@ import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
 import Escrow.OffChain.ObservableState ( UtxoEscrowInfo, mkUtxoEscrowInfo )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
-                        , eInfoSenderAddr
+                        , eInfoSenderAddr, valueToSender, signerIsSender
                         )
 import Escrow.Validator ( Escrowing
                         , escrowAddress, escrowValidator, escrowInst
@@ -152,7 +153,7 @@ cancelOp addr CancelParams{..} = do
     (ref, utxo) <- findEscrowUtxo cpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
-    unless (eInfoSenderAddr eInfo == addr)
+    unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
            (throwError "Sender address invalid")
 
     let lkp = mconcat
@@ -195,8 +196,7 @@ resolveOp addr ResolveParams{..} = do
     eInfo       <- getEscrowInfo utxo
     senderPpkh  <- getPpkhFromAddress (eInfoSenderAddr eInfo)
 
-    let senderPayment = assetClassValue (rAssetClass eInfo) (rAmount eInfo)
-                        <> minAda
+    let senderPayment = valueToSender eInfo <> minAda
 
         lkp = mconcat
             [ otherScript validator

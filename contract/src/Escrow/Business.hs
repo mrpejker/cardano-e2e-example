@@ -23,10 +23,11 @@ module Escrow.Business
     , mkReceiverAddress
     , mkEscrowInfo
     -- * Checks
-    , singerIsSender
-    , singerIsReceiver
+    , signerIsSender
+    , signerIsReceiver
     -- * Getters
     , eInfoSenderAddr
+    , valueToSender
     )
 where
 
@@ -39,6 +40,7 @@ import GHC.Generics     ( Generic )
 import Ledger           ( Address(..), AssetClass, PubKeyHash )
 import PlutusTx         ( makeIsDataIndexed, makeLift )
 import PlutusTx.Prelude ( Integer, (.), Bool )
+import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 
 -- Escrow imports
 import Utils.OnChain ( pubKeyHashInAddress )
@@ -46,13 +48,14 @@ import Utils.OnChain ( pubKeyHashInAddress )
 {- | A SenderAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
-newtype SenderAddress   = SenderAddress { sAddr :: Address }
-  deriving newtype (Eq, Show, FromJSON, ToJSON)
+newtype SenderAddress = SenderAddress { sAddr :: Address }
+    deriving newtype (Eq, Show, FromJSON, ToJSON)
+
 {- | A ReceiverAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
 newtype ReceiverAddress = ReceiverAddress { rAddr :: Address }
-  deriving newtype (Show, FromJSON, ToJSON)
+    deriving newtype (Eq, Show, FromJSON, ToJSON)
 
 -- | Smart constructor of a SenderAddress.
 mkSenderAddress :: Address -> SenderAddress
@@ -63,14 +66,19 @@ mkReceiverAddress :: Address -> ReceiverAddress
 mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
 
 -- | Checks is the given pubkeyhash is part of the SenderAddress.
-{-# INLINABLE singerIsSender #-}
-singerIsSender :: PubKeyHash -> SenderAddress -> Bool
-singerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
+{-# INLINABLE signerIsSender #-}
+signerIsSender :: PubKeyHash -> SenderAddress -> Bool
+signerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
 
 -- | Checks is the given pubkeyhash is part of the ReceiverAddress.
-{-# INLINABLE singerIsReceiver #-}
-singerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
-singerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
+{-# INLINABLE signerIsReceiver #-}
+signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
+signerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
+
+    -- | Given a escrow information builds the value to be paid to the sender.
+{-# INLINABLE valueToSender #-}
+valueToSender :: EscrowInfo -> Value
+valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
 
 {- | EscrowInfo
 
