@@ -22,11 +22,11 @@ import GHC.Generics ( Generic )
 
 -- IOG imports
 import Ledger.Credential ( Credential(..), StakingCredential(..) )
-import Ledger ( Address(..), PubKeyHash )
+import Ledger            ( Address(..), PubKeyHash )
 
-{- | A WalletAddress is the representation of public key addresses in the Cardano
-  networks. It consists on a public key hash, along with an optional staking
-  key hash.
+{- | WalletAddress is the representation of public key addresses in the Cardano
+     networks. It consists on a public key hash, along with an optional staking
+     key hash.
 -}
 data WalletAddress = WalletAddress { waPayment :: PubKeyHash
                                    , waStaking :: Maybe PubKeyHash
