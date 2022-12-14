@@ -71,14 +71,14 @@ test = checkPredicateOptions
         blocks = Prelude.reverse . Prelude.filter (/= []) $ b
 
         bcCheckAux :: [Block] -> Bool
-        bcCheckAux [ [Valid _]
-                   , [Valid start1]
-                   , [Valid start2]
-                   , [Valid start3]
-                   , [Valid resolve1]
-                   , [Valid resolve2]
-                   , [Valid resolve3]
-                   ] =
+        bcCheckAux [[ Valid resolve3
+                    , Valid resolve2
+                    , Valid resolve1
+                    , Valid start3
+                    , Valid start2
+                    , Valid start1
+                    , Valid _
+                    ]] =
                isJust (Map.lookup (unPaymentPubKey senderPpk)
                         (txSignatures start1))
             && isJust (Map.lookup (unPaymentPubKey $ mockWalletPaymentPubKey w3)
