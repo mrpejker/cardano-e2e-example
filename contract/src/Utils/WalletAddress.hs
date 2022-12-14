@@ -18,11 +18,12 @@ module Utils.WalletAddress
 -- Non-IOG imports
 import Data.OpenApi ( ToSchema )
 import Data.Aeson   ( FromJSON, ToJSON )
+import Data.Functor ( (<&>) )
 import GHC.Generics ( Generic )
 
 -- IOG imports
 import Ledger.Credential ( Credential(..), StakingCredential(..) )
-import Ledger            ( Address(..), PubKeyHash )
+import Ledger            ( Address(..), PubKeyHash, stakingCredential, toPubKeyHash )
 
 {- | WalletAddress is the representation of public key addresses in the Cardano
      networks. It consists on a public key hash, along with an optional staking
@@ -39,32 +40,30 @@ instance Eq WalletAddress where
     w1 == w2 =  waPayment w1 == waPayment w2
              && waStaking w1 == waStaking w2
 
+{-# INLINABLE mkWalletAddress #-}
 mkWalletAddress :: PubKeyHash -> Maybe PubKeyHash -> WalletAddress
 mkWalletAddress pkh stk = WalletAddress { waPayment = pkh
                                         , waStaking = stk
                                         }
 
+{-# INLINABLE fromWalletAddress #-}
 fromWalletAddress :: WalletAddress -> Address
 fromWalletAddress walletAddress = Address
-  { addressCredential = toCredential $ waPayment walletAddress
+  { addressCredential = PubKeyCredential $ waPayment walletAddress
   , addressStakingCredential = toStakingCredential <$> waStaking walletAddress
   }
 
-toCredential :: PubKeyHash -> Credential
-toCredential = PubKeyCredential
-
+{-# INLINABLE toStakingCredential #-}
 toStakingCredential :: PubKeyHash -> StakingCredential
-toStakingCredential pubKeyHash = StakingHash $ toCredential pubKeyHash
+toStakingCredential = StakingHash . PubKeyCredential
 
+{-# INLINABLE toWalletAddress #-}
 toWalletAddress :: Address -> Maybe WalletAddress
-toWalletAddress address = case addressCredential address of
-  PubKeyCredential pubKeyHash -> Just $ mkWalletAddress
-    pubKeyHash
-    (addressStakingCredential address >>= toPubKeyHash)
-  ScriptCredential _ -> Nothing
+toWalletAddress address = toPubKeyHash address <&> (\pkh ->
+    mkWalletAddress pkh (stkToPubKeyHash $ stakingCredential address))
 
-toPubKeyHash :: StakingCredential -> Maybe PubKeyHash
-toPubKeyHash stakingCredential = case stakingCredential of
-  StakingHash (PubKeyCredential pubKeyHash) -> Just pubKeyHash
-  StakingHash (ScriptCredential _) -> Nothing
-  StakingPtr {} -> Nothing
+{-# INLINABLE stkToPubKeyHash #-}
+stkToPubKeyHash :: Maybe StakingCredential -> Maybe PubKeyHash
+stkToPubKeyHash (Just (StakingHash (PubKeyCredential pubKeyHash))) =
+    Just pubKeyHash
+stkToPubKeyHash _ = Nothing
