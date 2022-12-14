@@ -36,9 +36,9 @@ import Plutus.PAB.Effects.Contract.Builtin ( HasDefinitions ( getDefinitions
 -- Escrow imports
 import Escrow ( endpoints )
 
-{- | The `Escrow` type represents a connection to an instance of the PAB.
-     It is constructed by providing the Address of the user connecting to
-     the contract.
+{- | The `Escrow` type represents the kind of activation of a wallet to the PAB.
+    We can only `Connect` providing the Address of the user connecting to the
+    contract.
 -}
 newtype Escrow = Connect Address
     deriving (Eq, Ord, Show, Generic)
@@ -52,8 +52,9 @@ instance HasDefinitions Escrow where
     getSchema = const []
     getContract = getEscrowContract
 
-{- | The `getEscrowContract` function defines how to activate the endpoints.
-     for a specific user using their address
+{- | The `getEscrowContract` function defines which is the definition of each
+     kind of activation. `Connect` to the PAB is simply calling the `endpoints`
+     function, that waits for an operation call.
 -}
 getEscrowContract :: Escrow -> SomeBuiltin
 getEscrowContract (Connect a) = SomeBuiltin $ endpoints a
