@@ -77,6 +77,46 @@ library
     , containers
     , text
 
+executable escrow-pab
+  main-is:            Main.hs
+  hs-source-dirs:     app, test
+  other-modules:      EscrowHandlers
+  default-language:   Haskell2010
+  default-extensions: ImportQualifiedPost
+  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+                 -Wincomplete-uni-patterns -Wincomplete-record-updates
+                 -Wno-missing-import-lists -Wredundant-constraints -O0
+  --------------------
+  -- IOG dependencies
+  --------------------
+  build-depends:
+      plutus-contract
+    , plutus-core
+    , plutus-ledger
+    , plutus-ledger-api
+    , plutus-ledger-constraints
+    , plutus-pab
+    , plutus-tx
+    , plutus-tx-plugin
+    , cardano-ledger-core
+    , cardano-api
+
+  ------------------------
+  -- Non-IOG dependencies
+  ------------------------
+  build-depends:
+      aeson
+    , base          ^>= 4.14.1.0
+    , containers
+    , data-default
+    , escrow
+    , freer-simple
+    , lens
+    , openapi3
+    , playground-common
+    , prettyprinter
+    , text
+
 test-suite escrow-tests
   type: exitcode-stdio-1.0
   main-is: Main.hs

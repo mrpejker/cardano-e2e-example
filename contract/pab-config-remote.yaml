@@ -1,0 +1,54 @@
+dbConfig:
+    dbConfigUser: "postgres"
+    dbConfigPass: "1234"
+    dbConfigHost: "localhost"
+    dbConfigPort: 5432
+    dbConfigDatabase: "pab"
+    dbConfigPoolSize: 20
+
+pabWebserverConfig:
+  baseUrl: http://localhost:9080
+  staticDir: plutus-pab-client/dist
+  # set this to False for production builds.
+  permissiveCorsPolicy: True
+  # Optional timeout (in seconds) for calls to endpoints that are not currently
+  # available. If this is not set, calls to unavailable endpoints fail
+  # immediately.
+  endpointTimeout: 5
+  enableMarconi: False
+
+walletServerConfig:
+  tag: RemoteWalletConfig
+
+nodeServerConfig:
+  pscSocketPath: ./node.sock
+  pscBaseUrl: "localhost"
+  pscKeptBlocks: 2160
+  pscNetworkId: "1" # Testnet network ID (main net = empty string)
+  pscSlotConfig:
+    # zero time taken from blockfrost API and cardanoscan is 1654041600 in secs
+    # https://docs.blockfrost.io/#tag/Cardano-Ledger/paths/~1genesis/get
+    # which gaves us 1654041600000 in miliseconds as the official start time.
+    # 1654041600000 = GMT: Wednesday, June 1, 2022 12:00:00 AM
+    # This number doesn't work: it shifts our validation interval too much into the future.
+    # Empirically using Ogmios and BuiltinShow for printing on-chain comparison
+    # we got 1655683200000 = GMT: Monday, June 20, 2022 12:00:00 AM
+    # 19 days after the "official" time.
+    scSlotZeroTime: 1655683200000
+    scSlotLength: 1000 # In milliseconds
+  pscFeeConfig:
+    fcConstantFee:
+      getLovelace: 10 # Constant fee per transaction in lovelace
+    fcScriptsFeeFactor: 1.0 # Factor by which to multiply size-dependent scripts fee in lovelace
+  pscInitialTxWallets: []
+  pscNodeMode: MockNode
+
+blockfrostConfig:
+  bfTokenPath: ./preprod-token
+
+requestProcessingConfig:
+  requestProcessingInterval: 1
+
+developmentOptions:
+  pabRollbackHistory: null
+  pabResumeFrom: { "tag" : "PointAtGenesis" }
