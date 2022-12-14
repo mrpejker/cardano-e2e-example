@@ -19,8 +19,6 @@ pabWebserverConfig:
 
 walletServerConfig:
   tag: RemoteWalletConfig
-  walletSettings:
-    baseUrl: http://34.66.239.85:8094
 
 nodeServerConfig:
   pscSocketPath: ./node.sock
@@ -51,24 +49,6 @@ blockfrostConfig:
 requestProcessingConfig:
   requestProcessingInterval: 1
 
-signingProcessConfig:
-  spBaseUrl: http://localhost:9085
-  spWallet:
-    getWallet: 1
-
-metadataServerConfig:
-  mdBaseUrl: http://localhost:9086
-
 developmentOptions:
   pabRollbackHistory: null
-  pabResumeFrom:
-    { "tag" : "PointAtGenesis" }
-    # { "tag" : "Point"
-    # , "pointBlockId" : "613d23b8df670e3692f4e4ab59b179778519de15999ee1a51077fcc02a48abaa"
-    # , "pointSlot" : { "getSlot" : 45656608 }
-    # }
-
-# Optional EKG Server Config
-# ----
-# monitoringConfig:
-#   monitoringPort: 9090
+  pabResumeFrom: { "tag" : "PointAtGenesis" }

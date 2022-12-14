@@ -1,7 +1,16 @@
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE DerivingStrategies  #-}
-{-# LANGUAGE LambdaCase          #-}
+
+{-|
+Module      : EscrowHandlers
+Description : Handlers for PAB connection.
+Copyright   : (c) 2022 IDYIA LLC dba Plank
+Maintainer  : opensource@joinplank.com
+Stability   : develop
+
+We define in this module the handlers for the PAB connection.
+-}
 
 module EscrowHandlers
     ( -- * Handlers
@@ -27,6 +36,10 @@ import Plutus.PAB.Effects.Contract.Builtin ( HasDefinitions ( getDefinitions
 -- Escrow imports
 import Escrow ( endpoints )
 
+{- | The `Escrow` type represents a connection to an instance of the PAB.
+     It is constructed by providing the Address of the user connecting to
+     the contract.
+-}
 newtype Escrow = Connect Address
     deriving (Eq, Ord, Show, Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema)
@@ -39,6 +52,8 @@ instance HasDefinitions Escrow where
     getSchema = const []
     getContract = getEscrowContract
 
+{- | The `getEscrowContract` function defines how to activate the endpoints.
+     for a specific user using their address
+-}
 getEscrowContract :: Escrow -> SomeBuiltin
-getEscrowContract = \case
-    Connect a -> SomeBuiltin $ endpoints a
+getEscrowContract (Connect a) = SomeBuiltin $ endpoints a
