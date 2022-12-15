@@ -29,13 +29,15 @@ and sending back the corresponding payment to the sender (Bob).
 
 We'll consider three operations:
 
-- Start: the sender starts the escrow locking the funds and setting
-         the information about the payment to be received.
-	 
-- Resolve: the receiver gets the funds locked and pays the corresponding tokens
-           to the sender, finishing the escrow.
+- **Start**: the sender starts the escrow locking the funds and setting
+  the information about the payment to be received.
 
-- Cancel: the sender cancels the escrow getting back the locked tokens.
+  
+- **Resolve**: the receiver gets the funds locked and pays the corresponding tokens
+  to the sender, finishing the escrow.
+
+  
+- **Cancel**: the sender cancels the escrow getting back the locked tokens.
 
 
 eUTxO-model-based solution
