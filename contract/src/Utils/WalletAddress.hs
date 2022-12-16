@@ -1,6 +1,8 @@
+{-# LANGUAGE NoImplicitPrelude #-}
+
 {-|
 Module      : Utils.WalletAddress
-Description : Util data type for connecting the wallet address to PAB.
+Description : Utility data type for connecting the wallet address to PAB.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
 Maintainer  : opensource@joinplank.com
 Stability   : develop
@@ -9,8 +11,9 @@ Stability   : develop
 module Utils.WalletAddress
     ( -- * WalletAddress Type
       WalletAddress
+    -- * Smart Constructors
     , mkWalletAddress
-      -- * Translation functions
+    -- * Translation functions
     , toWalletAddress
     , fromWalletAddress
 ) where
@@ -18,12 +21,16 @@ module Utils.WalletAddress
 -- Non-IOG imports
 import Data.OpenApi ( ToSchema )
 import Data.Aeson   ( FromJSON, ToJSON )
-import Data.Functor ( (<&>) )
 import GHC.Generics ( Generic )
 
 -- IOG imports
+import PlutusTx.Prelude  ( Maybe(..), Eq(..), Ord(..)
+                         , (&&), ($), (<$>), (.)
+                         )
 import Ledger.Credential ( Credential(..), StakingCredential(..) )
-import Ledger            ( Address(..), PubKeyHash, stakingCredential, toPubKeyHash )
+import Ledger            ( Address(..), PubKeyHash
+                         , stakingCredential, toPubKeyHash
+                         )
 
 {- | WalletAddress is the representation of public key addresses in the Cardano
      networks. It consists on a public key hash, along with an optional staking
@@ -32,7 +39,7 @@ import Ledger            ( Address(..), PubKeyHash, stakingCredential, toPubKeyH
 data WalletAddress = WalletAddress { waPayment :: PubKeyHash
                                    , waStaking :: Maybe PubKeyHash
                                    }
-    deriving (Show, Ord, Generic)
+    deriving (Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 instance Eq WalletAddress where
@@ -40,30 +47,39 @@ instance Eq WalletAddress where
     w1 == w2 =  waPayment w1 == waPayment w2
              && waStaking w1 == waStaking w2
 
+instance Ord WalletAddress where
+    {-# INLINABLE (<=) #-}
+    w1 <= w2 =  waPayment w1 <= waPayment w2
+             && waStaking w1 <= waStaking w2
+
+-- | Smart constructor of a wallet address.
 {-# INLINABLE mkWalletAddress #-}
 mkWalletAddress :: PubKeyHash -> Maybe PubKeyHash -> WalletAddress
 mkWalletAddress pkh stk = WalletAddress { waPayment = pkh
                                         , waStaking = stk
                                         }
 
+-- | Translate a wallet address to the corresponding ledge address.
 {-# INLINABLE fromWalletAddress #-}
 fromWalletAddress :: WalletAddress -> Address
-fromWalletAddress walletAddress = Address
-  { addressCredential = PubKeyCredential $ waPayment walletAddress
-  , addressStakingCredential = toStakingCredential <$> waStaking walletAddress
-  }
+fromWalletAddress walletAddress =
+    Address
+    { addressCredential = PubKeyCredential $ waPayment walletAddress
+    , addressStakingCredential = toStakingCredential <$> waStaking walletAddress
+    }
 
+-- | Translate, if possible, a ledger address to the corresponding wallet address.
+{-# INLINABLE toWalletAddress #-}
+toWalletAddress :: Address -> Maybe WalletAddress
+toWalletAddress address =
+    (`mkWalletAddress` stkPubKeyHash) <$> toPubKeyHash address
+  where
+    stkPubKeyHash :: Maybe PubKeyHash
+    stkPubKeyHash = case stakingCredential address of
+                        Just (StakingHash (PubKeyCredential pkh)) -> Just pkh
+                        _ -> Nothing
+
+-- | Construct a staking credential from a pubkeyhash
 {-# INLINABLE toStakingCredential #-}
 toStakingCredential :: PubKeyHash -> StakingCredential
 toStakingCredential = StakingHash . PubKeyCredential
-
-{-# INLINABLE toWalletAddress #-}
-toWalletAddress :: Address -> Maybe WalletAddress
-toWalletAddress address = toPubKeyHash address <&> (\pkh ->
-    mkWalletAddress pkh (stkToPubKeyHash $ stakingCredential address))
-
-{-# INLINABLE stkToPubKeyHash #-}
-stkToPubKeyHash :: Maybe StakingCredential -> Maybe PubKeyHash
-stkToPubKeyHash (Just (StakingHash (PubKeyCredential pubKeyHash))) =
-    Just pubKeyHash
-stkToPubKeyHash _ = Nothing

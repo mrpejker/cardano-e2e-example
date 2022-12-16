@@ -33,13 +33,13 @@ where
 
 -- Non-IOG imports
 import Data.Aeson       ( FromJSON, ToJSON )
-import Prelude          ( Eq, Show )
+import Prelude          ( Show )
 import GHC.Generics     ( Generic )
 
 -- IOG imports
 import Ledger           ( Address(..), AssetClass, PubKeyHash )
 import PlutusTx         ( makeIsDataIndexed, makeLift )
-import PlutusTx.Prelude ( Integer, (.), Bool )
+import PlutusTx.Prelude ( Integer, (.), Eq, Bool )
 import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 
 -- Escrow imports
@@ -75,7 +75,7 @@ signerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
 signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
 signerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
 
-    -- | Given a escrow information builds the value to be paid to the sender.
+-- | Given a escrow information builds the value to be paid to the sender.
 {-# INLINABLE valueToSender #-}
 valueToSender :: EscrowInfo -> Value
 valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
@@ -91,7 +91,7 @@ data EscrowInfo = EscrowInfo
                   , rAmount     :: Integer
                   , rAssetClass :: AssetClass
                   }
-    deriving (Eq, Show, Generic)
+    deriving (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | Smart constructor of a EscrowInfo.
