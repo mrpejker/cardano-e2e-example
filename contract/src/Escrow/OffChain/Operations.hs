@@ -26,7 +26,7 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( Address, ChainIndexTxOut, TxOutRef
+import Ledger             ( ChainIndexTxOut, TxOutRef
                           , ciTxOutValue, getDatum
                           , unPaymentPubKeyHash
                           )
@@ -63,7 +63,9 @@ import Utils.OffChain ( getPpkhFromAddress
                       , lookupScriptUtxos, getDatumWithError
                       )
 import Utils.OnChain  ( minAda )
-
+import Utils.WalletAddress ( WalletAddress
+                           , waPaymentPubKeyHash
+                           )
 -- | Escrow Schema
 type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "cancel"  CancelParams
@@ -71,7 +73,7 @@ type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "reload"  ()
 
 endpoints
-    :: Address
+    :: WalletAddress
     -> Contract (Last [UtxoEscrowInfo]) EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
                   startEp `select` cancelEp `select` resolveEp `select` reloadEp
@@ -94,13 +96,13 @@ endpoints raddr = forever $ handleError logError $ awaitPromise $
 -}
 startOp
     :: forall w s
-    .  Address
+    .  WalletAddress
     -> StartParams
     -> Contract w s Text ()
 startOp addr StartParams{..} = do
-    senderPpkh <- getPpkhFromAddress addr
 
-    let contractAddress = escrowAddress receiverAddress
+    let senderPpkh      = waPaymentPubKeyHash addr
+        contractAddress = escrowAddress receiverAddress
         validator       = escrowValidator receiverAddress
 
         cTokenCurrency = controlTokenCurrency contractAddress
@@ -136,14 +138,14 @@ startOp addr StartParams{..} = do
 -}
 cancelOp
     :: forall w s
-    .  Address
+    .  WalletAddress
     -> CancelParams
     -> Contract w s Text ()
 cancelOp addr CancelParams{..} = do
-    senderPpkh <- getPpkhFromAddress addr
 
-    let contractAddress = escrowAddress (mkReceiverAddress cpReceiverAddress)
-        validator       = escrowValidator (mkReceiverAddress cpReceiverAddress)
+    let senderPpkh      = waPaymentPubKeyHash addr
+        contractAddress = escrowAddress cpReceiverAddress
+        validator       = escrowValidator cpReceiverAddress
 
         cTokenCurrency = controlTokenCurrency contractAddress
         cTokenAsset    = assetClass cTokenCurrency cTokenName
@@ -178,13 +180,13 @@ cancelOp addr CancelParams{..} = do
 -}
 resolveOp
     :: forall w s
-    .  Address
+    .  WalletAddress
     -> ResolveParams
     -> Contract w s Text ()
 resolveOp addr ResolveParams{..} = do
-    receiverPpkh <- getPpkhFromAddress addr
 
-    let contractAddress = escrowAddress (mkReceiverAddress addr)
+    let receiverPpkh    = waPaymentPubKeyHash addr
+        contractAddress = escrowAddress (mkReceiverAddress addr)
         validator       = escrowValidator (mkReceiverAddress addr)
 
         cTokenCurrency = controlTokenCurrency contractAddress
@@ -220,7 +222,7 @@ resolveOp addr ResolveParams{..} = do
 -}
 reloadOp
     :: forall s
-    .  Address
+    .  WalletAddress
     -> Contract (Last [UtxoEscrowInfo]) s Text ()
 reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr

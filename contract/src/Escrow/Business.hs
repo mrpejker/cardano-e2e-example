@@ -32,50 +32,53 @@ module Escrow.Business
 where
 
 -- Non-IOG imports
-import Data.Aeson       ( FromJSON, ToJSON )
-import Prelude          ( Eq, Show )
-import GHC.Generics     ( Generic )
+import Data.Aeson              ( FromJSON, ToJSON )
+import Prelude qualified as HP ( Eq, Show )
+import GHC.Generics            ( Generic )
 
 -- IOG imports
 import Ledger           ( Address(..), AssetClass, PubKeyHash )
 import PlutusTx         ( makeIsDataIndexed, makeLift )
-import PlutusTx.Prelude ( Integer, (.), Bool )
+import PlutusTx.Prelude ( Integer, (.), Eq, Bool )
 import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 
 -- Escrow imports
 import Utils.OnChain ( pubKeyHashInAddress )
+import Utils.WalletAddress ( WalletAddress, fromWalletAddress )
 
 {- | A SenderAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
-newtype SenderAddress = SenderAddress { sAddr :: Address }
-    deriving newtype (Eq, Show, FromJSON, ToJSON)
+newtype SenderAddress = SenderAddress { sAddr :: WalletAddress }
+    deriving newtype (HP.Eq, HP.Show, Eq, FromJSON, ToJSON)
 
 {- | A ReceiverAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
-newtype ReceiverAddress = ReceiverAddress { rAddr :: Address }
-    deriving newtype (Eq, Show, FromJSON, ToJSON)
+newtype ReceiverAddress = ReceiverAddress { rAddr :: WalletAddress }
+    deriving newtype (HP.Show, Eq, FromJSON, ToJSON)
 
 -- | Smart constructor of a SenderAddress.
-mkSenderAddress :: Address -> SenderAddress
+mkSenderAddress :: WalletAddress -> SenderAddress
 mkSenderAddress addr = SenderAddress { sAddr = addr }
 
 -- | Smart constructor of a ReceiverAddress.
-mkReceiverAddress :: Address -> ReceiverAddress
+mkReceiverAddress :: WalletAddress -> ReceiverAddress
 mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
 
 -- | Checks is the given pubkeyhash is part of the SenderAddress.
 {-# INLINABLE signerIsSender #-}
 signerIsSender :: PubKeyHash -> SenderAddress -> Bool
-signerIsSender pkh SenderAddress{..} = pubKeyHashInAddress pkh sAddr
+signerIsSender pkh SenderAddress{..} =
+    pubKeyHashInAddress pkh (fromWalletAddress sAddr)
 
 -- | Checks is the given pubkeyhash is part of the ReceiverAddress.
 {-# INLINABLE signerIsReceiver #-}
 signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
-signerIsReceiver pkh ReceiverAddress{..} = pubKeyHashInAddress pkh rAddr
+signerIsReceiver pkh ReceiverAddress{..} =
+    pubKeyHashInAddress pkh (fromWalletAddress rAddr)
 
-    -- | Given a escrow information builds the value to be paid to the sender.
+-- | Given a escrow information builds the value to be paid to the sender.
 {-# INLINABLE valueToSender #-}
 valueToSender :: EscrowInfo -> Value
 valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
@@ -91,7 +94,7 @@ data EscrowInfo = EscrowInfo
                   , rAmount     :: Integer
                   , rAssetClass :: AssetClass
                   }
-    deriving (Eq, Show, Generic)
+    deriving (HP.Eq, HP.Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | Smart constructor of a EscrowInfo.
@@ -105,9 +108,9 @@ mkEscrowInfo sAdd amount assetClass =
 -- | Gets the sender address from the EscrowInfo.
 {-# INLINABLE eInfoSenderAddr #-}
 eInfoSenderAddr :: EscrowInfo -> Address
-eInfoSenderAddr = sAddr . sender
+eInfoSenderAddr = fromWalletAddress . sAddr . sender
 
--- Boilerplate for deriving the FromData and ToData instances.
+-- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''ReceiverAddress
 makeIsDataIndexed ''EscrowInfo    [ ('EscrowInfo, 0) ]
 makeIsDataIndexed ''SenderAddress [ ('SenderAddress, 0) ]
