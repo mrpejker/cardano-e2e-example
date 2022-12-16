@@ -25,7 +25,7 @@ import Data.Aeson   ( FromJSON, ToJSON )
 import GHC.Generics ( Generic )
 
 -- IOG imports
-import Ledger       ( Address, TxOutRef )
+import Ledger       ( TxOutRef )
 import Ledger.Value ( AssetClass )
 
 -- Escrow imports
@@ -54,7 +54,7 @@ data StartParams = StartParams
 -}
 data CancelParams = CancelParams
                     { cpTxOutRef        :: TxOutRef
-                    , cpReceiverAddress :: Address
+                    , cpReceiverAddress :: ReceiverAddress
                     }
   deriving (Generic)
   deriving anyclass (FromJSON, ToJSON)
@@ -84,7 +84,7 @@ mkStartParams rAdd sAmount sAC rAmount rAC =
                 }
 
 -- | Smart constructor for the cancel param.
-mkCancelParams :: TxOutRef -> Address -> CancelParams
+mkCancelParams :: TxOutRef -> ReceiverAddress -> CancelParams
 mkCancelParams ref rAddr = CancelParams
                            { cpTxOutRef        = ref
                            , cpReceiverAddress = rAddr

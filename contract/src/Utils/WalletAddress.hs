@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 {-|
 Module      : Utils.WalletAddress
@@ -16,19 +17,23 @@ module Utils.WalletAddress
     -- * Translation functions
     , toWalletAddress
     , fromWalletAddress
+    -- * Getters
+    , waPaymentPubKeyHash
 ) where
 
 -- Non-IOG imports
+import Prelude qualified as HP ( Eq, Show, Ord )
 import Data.OpenApi ( ToSchema )
 import Data.Aeson   ( FromJSON, ToJSON )
 import GHC.Generics ( Generic )
 
 -- IOG imports
+import PlutusTx          ( makeIsDataIndexed, makeLift )
 import PlutusTx.Prelude  ( Maybe(..), Eq(..), Ord(..)
                          , (&&), ($), (<$>), (.)
                          )
 import Ledger.Credential ( Credential(..), StakingCredential(..) )
-import Ledger            ( Address(..), PubKeyHash
+import Ledger            ( Address(..), PubKeyHash, PaymentPubKeyHash(..)
                          , stakingCredential, toPubKeyHash
                          )
 
@@ -39,7 +44,7 @@ import Ledger            ( Address(..), PubKeyHash
 data WalletAddress = WalletAddress { waPayment :: PubKeyHash
                                    , waStaking :: Maybe PubKeyHash
                                    }
-    deriving (Generic)
+    deriving (HP.Eq, HP.Show, HP.Ord, Generic)
     deriving anyclass (FromJSON, ToJSON, ToSchema)
 
 instance Eq WalletAddress where
@@ -83,3 +88,10 @@ toWalletAddress address =
 {-# INLINABLE toStakingCredential #-}
 toStakingCredential :: PubKeyHash -> StakingCredential
 toStakingCredential = StakingHash . PubKeyCredential
+
+waPaymentPubKeyHash :: WalletAddress -> PaymentPubKeyHash
+waPaymentPubKeyHash = PaymentPubKeyHash . waPayment
+
+-- | Boilerplate for deriving the FromData and ToData instances.
+makeLift ''WalletAddress
+makeIsDataIndexed ''WalletAddress [ ('WalletAddress, 0) ]

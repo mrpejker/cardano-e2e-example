@@ -57,7 +57,7 @@ import Escrow.OffChain.Operations      ( EscrowSchema, endpoints )
 import Utils.OnChain                   ( minAda )
 import Tests.Utils                     ( emConfig, tokenA, tokenACurrencySymbol
                                        , tokenB, tokenBCurrencySymbol, wallets
-                                       , mockAddress
+                                       , mockWAddress
                                        )
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
@@ -131,7 +131,7 @@ instance ContractModel EscrowModel where
 
     instanceWallet (UserH w) = w
 
-    instanceContract _ (UserH w) _ = endpoints $ mockAddress w
+    instanceContract _ (UserH w) _ = endpoints $ mockWAddress w
 
     arbitraryAction s = do
         connWallet <- genWallet
@@ -197,7 +197,7 @@ instance ContractModel EscrowModel where
 
     perform h _ _ (Start sendW resW (acA,aA) (acB,aB)) = do
         callEndpoint @"start" (h $ UserH sendW) $
-            mkStartParams (mkReceiverAddress $ mockAddress resW) aA acA aB acB
+            mkStartParams (mkReceiverAddress $ mockWAddress resW) aA acA aB acB
         delay 2
     perform h _ _ (Resolve resW ti) = do
         callEndpoint @"reload" (h $ UserH resW) ()
@@ -213,7 +213,8 @@ instance ContractModel EscrowModel where
         Last obsState <- observableState $ h $ UserH resW
         let utxoEscrowInfo = fromJust $ findEscrowUtxo ti (fromJust obsState)
         callEndpoint @"cancel" (h $ UserH (tiSenderWallet ti)) $
-            mkCancelParams (escrowUtxo utxoEscrowInfo) (mockAddress resW)
+            mkCancelParams (escrowUtxo utxoEscrowInfo)
+                           (mkReceiverAddress $ mockWAddress resW)
         delay 2
 
     shrinkAction _ _ = []
@@ -227,7 +228,7 @@ findEscrowUtxo TransferInfo{..} =
                     && sendA utxoInfo == tiSendAmount)
   where
     eInfo :: EscrowInfo
-    eInfo = mkEscrowInfo (mkSenderAddress $ mockAddress tiSenderWallet)
+    eInfo = mkEscrowInfo (mkSenderAddress $ mockWAddress tiSenderWallet)
                          tiReceiveAmount
                          tiReceiveAssetClass
 

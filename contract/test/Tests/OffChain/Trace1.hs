@@ -70,8 +70,9 @@ test = checkPredicateOptions
 
 trace :: EmulatorTrace ()
 trace =
-    let startParams = mkStartParams
-                        (mkReceiverAddress receiverAddr)
+    let recAddr = mkReceiverAddress receiverAddr
+        startParams = mkStartParams
+                        recAddr
                         100
                         (assetClass tokenACurrencySymbol tokenA)
                         100
@@ -85,7 +86,7 @@ trace =
     callEndpoint @"reload" h2 ()
     utxos <- getObservableState h2
 
-    let cancelParams = mkCancelParams (escrowUtxo $ head utxos) receiverAddr
+    let cancelParams = mkCancelParams (escrowUtxo $ head utxos) recAddr
     callEndpoint @"cancel" h1 cancelParams
     void $ waitNSlots 10
 

@@ -17,6 +17,7 @@ module Tests.Utils where
 import Control.Monad   ( void )
 import Data.Default    ( def )
 import Data.Map as Map ( fromList, fromList)
+import Data.Maybe      ( fromJust )
 import Data.Monoid     ( Last(..) )
 import Data.Text       ( Text )
 
@@ -41,6 +42,7 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
 
 -- Escrow imports
 import Escrow ( EscrowSchema, UtxoEscrowInfo )
+import Utils.WalletAddress ( WalletAddress, toWalletAddress )
 
 walletsWithValue :: [(Wallet,Value)]
 walletsWithValue = [(w, v <> paymentA 1000 <> paymentB 1000)
@@ -60,6 +62,9 @@ mockPKH = mockWalletPaymentPubKeyHash
 mockAddress :: Wallet -> Address
 mockAddress = flip pubKeyHashAddress Nothing . mockPKH
 
+mockWAddress :: Wallet -> WalletAddress
+mockWAddress =  fromJust . toWalletAddress . mockAddress
+
 tokenA, tokenB :: TokenName
 tokenA = "A"
 tokenB = "B"
@@ -78,9 +83,9 @@ senderWallet, receiverWallet :: Wallet
 senderWallet   = w1
 receiverWallet = w2
 
-senderAddr, receiverAddr :: Address
-senderAddr   = mockWalletAddress senderWallet
-receiverAddr = mockWalletAddress receiverWallet
+senderAddr, receiverAddr :: WalletAddress
+senderAddr   = fromJust $ toWalletAddress $ mockWalletAddress senderWallet
+receiverAddr = fromJust $ toWalletAddress $ mockWalletAddress receiverWallet
 
 senderPpk, receiverPpk :: PaymentPubKey
 senderPpk   = mockWalletPaymentPubKey senderWallet

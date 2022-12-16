@@ -42,9 +42,7 @@ import Plutus.Contract.Test   ( (.&&.), assertBlockchain
                               , checkPredicateOptions, defaultCheckOptions
                               , emulatorConfig, walletFundsChange, w3, w4
                               )
-import Wallet.Emulator.Wallet ( mockWalletAddress
-                              , mockWalletPaymentPubKey
-                              )
+import Wallet.Emulator.Wallet ( mockWalletPaymentPubKey )
 
 -- Escrow imports
 import Escrow
@@ -104,8 +102,8 @@ trace =
                         (assetClass tokenBCurrencySymbol tokenB)
     in do
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
-    h2 <- activateContractWallet w3 $ endpoints $ mockWalletAddress w3
-    h3 <- activateContractWallet w4 $ endpoints $ mockWalletAddress w4
+    h2 <- activateContractWallet w3 $ endpoints $ mockWAddress w3
+    h3 <- activateContractWallet w4 $ endpoints $ mockWAddress w4
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
     callEndpoint @"start" h2 startParams
