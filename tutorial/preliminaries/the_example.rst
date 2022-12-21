@@ -2,7 +2,7 @@ The Example - A Simple Escrow
 =============================
 
 The example we present in this tutorial is a well known problem where smart contracts
-are a great solution. It's about exchanging tokens between two users. 
+are a great solution. It's about exchanging tokens between two users.
 
 The Problem
 -----------
@@ -32,11 +32,11 @@ We'll consider three operations:
 - **Start**: the sender starts the escrow locking the funds and setting
   the information about the payment to be received.
 
-  
+
 - **Resolve**: the receiver gets the funds locked and pays the corresponding tokens
   to the sender, finishing the escrow.
 
-  
+
 - **Cancel**: the sender cancels the escrow getting back the locked tokens.
 
 
@@ -55,7 +55,7 @@ Thus, the validator can express that if a receiver wants to spend the script utx
 the transaction must be signed by a wallet with address ``RA``, and it must include
 a payment of ``k2`` tokens ``B`` to the address ``SA``.
 
-  
+
 There are several design options for storing the information in a script. We choose
 to set the receiver's address as a *parameter* of the script, and the rest of the
 escrow information in the *datum*.
@@ -68,7 +68,7 @@ that escrows with same receiver address will share the same script address.
 In addition to the escrow script, we implement a *minting policy* for checking that
 all the information stored in the datum is well-formed at the start of a new escrow.
 Every "valid" escrow script-utxo must contain in the value the result of this
-minting policy, that we call *control token*. It is burned when escrow is resolved or cancelled. 
+minting policy, that we call *control token*. It is burned when escrow is resolved or cancelled.
 
 
 Operations
@@ -78,12 +78,11 @@ Operations
 and specifies in the datum the address where they want to receive the payment, together
 with payment information (amount and asset class).
 In addition to that, the value includes the min amount of ADA and the control token.
-The datum includes too the control token asset class. 
-
+The datum includes too the control token asset class.
 
 
 The Receiver's address is fixed in the script address (given that it's the validator
-parameter). 
+parameter).
 
 
 .. figure:: /img/startEscrow.png
