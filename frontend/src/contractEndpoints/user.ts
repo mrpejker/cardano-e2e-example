@@ -1,5 +1,5 @@
 import { ContractEndpoints, CIP30WalletWrapper } from "cardano-pab-client";
-import { StartParams } from "./parameters";
+import { StartParams, mkWalletAddress2 } from "./parameters";
 /**
  * The representation of the contract Utxo state
  */
@@ -19,12 +19,12 @@ export class UserEndpoints {
     wallet: CIP30WalletWrapper = undefined
 
     constructor(
-        contractState : ObsState
+        contractState : ObsState,
     ) {
       this.contractState = contractState
     }
 
-    public async connect() {
+    public async connect(): Promise<CIP30WalletWrapper> {
         const {
             getWalletInitialAPI,
             CIP30WalletWrapper,
@@ -32,7 +32,7 @@ export class UserEndpoints {
             ContractEndpoints
           } = await import("cardano-pab-client");
 
-        const walletInitialAPI = getWalletInitialAPI(window, "nami");
+        const walletInitialAPI = getWalletInitialAPI(window, "eternl");
         // or
         // const walletInitialAPI = getWalletInitialAPI(window, "nami");
 
@@ -41,6 +41,13 @@ export class UserEndpoints {
 
         // then we can initialize the CIP30WalletWrapper class of the library
         this.wallet = await CIP30WalletWrapper.init(walletInjectedFromBrowser);
+        const addrs = await this.wallet.getUsedAddresses()
+        const utxos = await this.wallet.getUtxos()
+        // console.log("UTXOS: ")
+        // console.log(utxos)
+        // console.log("ADDR: ")
+        // console.log(addrs)
+        const walletAddr = mkWalletAddress2(addrs[1])
         console.log(this.wallet)
 
         // Try to get unbalanced transaction from PAB
@@ -49,12 +56,14 @@ export class UserEndpoints {
 
         this.endpoints = await ContractEndpoints.connect(
             walletId,
-            { endpointTag: "Connect", params: {"waStaking":null,"waPayment":{"getPubKeyHash":"80a4f45b56b88d1139da23bc4c3c75ec6d32943c087f250b86193ca7"}}},
+            { endpointTag: "Connect", params: walletAddr},
             pabApi,
         );
+
+        return this.wallet
     }
 
-    public async start(sp: StartParams) {
+    public async start(sp: StartParams, wallet: CIP30WalletWrapper) {
         const {
             TxBudgetAPI,
             PABApi,
@@ -63,8 +72,8 @@ export class UserEndpoints {
             getProtocolParamsFromBlockfrost,
             succeeded
         } = await import("cardano-pab-client");
-        console.log(this.wallet)
-        await sp
+        console.log(sp)
+        console.log(wallet)
         // Initialize Balancer
         const protocolParams = await getProtocolParamsFromBlockfrost(
             "https://cardano-preprod.blockfrost.io/api/v0",
@@ -73,7 +82,7 @@ export class UserEndpoints {
         const balancer = await Balancer.init(protocolParams);
 
         // Try to get unbalanced transaction from PAB
-        const walletId = await this.wallet.getWalletId();
+        const walletId = await wallet.getWalletId();
         const pabApi = new PABApi("http://localhost:9080/api");
 
         const pabResponse = await this.endpoints.doOperation(
@@ -87,10 +96,12 @@ export class UserEndpoints {
         } else {
             // the pab yielded the unbalanced transaction. balance, sign and submit it.
             const etx = pabResponse.value;
-
-            const walletInfo = await this.wallet.getWalletInfo();
+            console.log(etx)
+            const walletInfo = await wallet.getWalletInfo();
+            console.log("WALLET INFO")
+            console.log(walletInfo)
             const txBudgetApi = new TxBudgetAPI({
-            baseUrl: "http//:localhost:3001",
+            baseUrl: "http://localhost:3001",
             timeout: 10000,
             });
 
@@ -108,13 +119,17 @@ export class UserEndpoints {
                   if (succeeded(txBudgetResponse)) {
                       const units = txBudgetResponse.value;
                       return units;
-                  } else { return [] }
+                  } else {
+                      console.log("BALANCER FAILED")
+                      console.log(txBudgetResponse.error)
+                    return []
+                  }
                 }
             );
             // print to the console the fully balanced tx cbor for debugging purposes
             console.log(`Balanced tx: ${fullyBalancedTx}`);
             // now that the transaction is balanced, sign and submit it with the wallet
-            const response = await this.wallet.signAndSubmit(fullyBalancedTx);
+            const response = await wallet.signAndSubmit(fullyBalancedTx);
             if (succeeded(response)) {
                 const txHash = response.value;
                 alert(`Start suceeded. Tx hash: ${txHash}`);

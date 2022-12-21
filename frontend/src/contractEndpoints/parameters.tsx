@@ -35,7 +35,14 @@ export function mkWalletAddress(ppkh: string, spkh?: string): WalletAddress {
     };
   }
 
-async function bech32AddressToWalletAddress(addr: string): Promise<WalletAddress> {
+export function mkWalletAddress2(wa: string): WalletAddress {
+    return {
+      waPayment: { getPubKeyHash: wa.substring(0,56) },
+      waStaking: { getPubKeyHash: wa.substring(56) }
+    };
+  }
+
+export async function bech32AddressToWalletAddress(addr: string): Promise<WalletAddress> {
     const { SerLibLoader } = await import("cardano-pab-client");
     await SerLibLoader.load();
     const S = SerLibLoader.lib;
@@ -56,7 +63,7 @@ export function mkReceiverAddress(wAdd: WalletAddress): ReceiverAddress {
 }
 
 export type StartParams = {
-    receiverAddress   : ReceiverAddress
+    receiverAddress   : WalletAddress
     sendAssetClass    : AssetClass
     sendAmount        : Number
     receiveAssetClass : AssetClass
@@ -67,7 +74,7 @@ export async function mkStartParams(rAdd: string, sAsset: string, sAm: Number,
     rAsset: string, rAm: Number): Promise<StartParams> {
         const wAdd = await bech32AddressToWalletAddress(rAdd)
         return {
-            receiverAddress   : mkReceiverAddress(wAdd),
+            receiverAddress   : wAdd,
             sendAssetClass    : mkAssetClassFromAc(sAsset),
             sendAmount        : sAm,
             receiveAssetClass : mkAssetClassFromAc(rAsset),

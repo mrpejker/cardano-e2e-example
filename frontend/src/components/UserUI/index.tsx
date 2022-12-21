@@ -4,11 +4,13 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoInfo } from "src/contractEndpoints/user";
 import { mkStartParams } from "src/contractEndpoints/parameters";
+import { CIP30WalletWrapper } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
 function UserUI() {
   const [currentContractState, setCurrentContractState] = useState<ObsState>([])
   const [contractEndpoints, setContractEndpoints] = useState<UserEndpoints>(new UserEndpoints([]));
+  const [walletWrapper, setWalletWrapper] = useState<CIP30WalletWrapper>(undefined)
   const [isConnected, setIsConnected] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
 
@@ -21,6 +23,7 @@ function UserUI() {
           setCurrentContractState={setCurrentContractState}
           contractEndpoints={contractEndpoints}
           setIsConnected={setIsConnected}
+          setWalletWrapper={setWalletWrapper}
         />
       </Navbar>
       <br></br>
@@ -38,6 +41,7 @@ function UserUI() {
         handleShow={handleShow}
         setShowStartModal={setShowStartModal}
         contractEndpoints={contractEndpoints}
+        walletWrapper={walletWrapper}
         />
 
       <Button
@@ -64,7 +68,7 @@ function UserUI() {
 }
 
 // Connect component that handles the wallet and endpoint connection.
-const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected }) => {
+const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setWalletWrapper }) => {
   return (
     <Navbar.Collapse className="justify-content-end">
       <Nav.Link className="d-flex">
@@ -86,9 +90,11 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected })
             size="sm"
             onClick={async e => {
                 console.log("Connecting")
-                await contractEndpoints.connect()
-                setIsConnected(true)
-                console.log("Connected")
+                contractEndpoints.connect()
+                  .then(setIsConnected(true))
+                  .then(console.log("Connected"))
+                  .then(setWalletWrapper)
+
                 // setCurrentContractState(contractEndpoints.reload())
               }
             }
@@ -109,7 +115,7 @@ const Reload = () => {
 }
 
 // Component that displays the form for starting a new Escrow.
-const Start = ({show, handleShow, setShowStartModal, contractEndpoints}) => {
+const Start = ({show, handleShow, setShowStartModal, contractEndpoints, walletWrapper}) => {
 
   const handleClose = e => {
     setShowStartModal(false)
@@ -121,9 +127,8 @@ const Start = ({show, handleShow, setShowStartModal, contractEndpoints}) => {
           recAsset = formData.get("recAsset") as string,
           recAmount = parseInt(formData.get("recAmount") as string)
 
-    const sp = mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
-    console.log(sp)
-    contractEndpoints.start()
+    mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
+      .then(sp => contractEndpoints.start(sp,walletWrapper))
 
   }
     return (
