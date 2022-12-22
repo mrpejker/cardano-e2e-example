@@ -18,7 +18,8 @@ an Indexer service (currently **Blockfrost**), and a **Budget** service.
 The PAB is in charge of running the dApp off-chain code for building an
 unbalanced transaction. The Indexer service is used by PAB for querying the
 blockchain. Finally, the Budget service provides the evaluation of Plutus scripts,
-obtaining memory and cpu units needed for processing a transaction on the blockchain.
+obtaining memory and cpu units that a validator consumes, which is
+needed for fully balancing transactions.
 
 The following diagram shows the complete flow for performing a dApp operation:
 
@@ -43,9 +44,9 @@ The remaining one is the PAB, that exposes endpoints for getting the application
 for building unbalanced transactions for each operation.
 
 The plutus-apps library provides an easy way to implement a web server for exposing endpoints
-connected to each dApp operation. This web server is commonly called Plutus Application Backend.
+connected to each dApp operation. This web server is known as Plutus Application Backend.
 In its original version, the PAB and all the related componentes, were conceived for being
-in charge of the entire flow of building, balancing, signing, submitting and check
+in charge of the entire flow of building, balancing, signing, submitting and checking
 status of transactions. In our approach, we propose to use the plutus-apps tools
 **only for building unbalanced transactions**.
 It avoids a lot of problems related to blockchain syncing, transaction submissions,
@@ -56,6 +57,26 @@ Concretely, we use *Contract Monad* just for connecting with the Indexer service
 using Blockfrost, but it can be replaced by any other) and the *Constraints Library*,
 which provides a declarative interface for building transactions.
 
-The following diagram shows the design of the PAB service of a dApp:
+The following diagram shows a simplified version the PAB service's design of a dApp:
 
 .. figure:: /img/pab-architecture.png
+
+In general, the computation needed for updating the state of a dApp must be done in both
+sides off-chain and on-chain. We call **Business logic** to the piece of code in charge of
+that. It's implemented on Haskell using **Plutus Prelude**, which provides the ability
+to compile to Plutus core.
+The **OnChain** module contains validator code, written in Haskell and compiled
+to Plutus. The **OffChain** module contains the core code for building transactions.
+It depends on plutus-apps libraries **Contract Monad** (for querying the blockchain)
+and **Constraints Library** (for building the transaction), the OnChain module for
+including the validators in the transactions, and Business logic for the core
+computations.
+Finally, the web service is implemented on the **Main** module, using the plutus-apps
+tool **PAB**. It basically interprets the OffChain code, exposing the dApps endpoints
+and running the Contract monad for each operation.
+
+
+Client Side
+-----------
+
+blabla
