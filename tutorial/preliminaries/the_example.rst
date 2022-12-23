@@ -24,8 +24,8 @@ The smart contract ensures that Bob will receive his tokens only if he pays
 the corresponding to Alice.
 
 From now on, we'll call the *sender* to the user that starts an escrow (Alice), and
-the *receiver*, the user that ends an escrow by receiving the locked tokens
-and sending back the corresponding payment to the sender (Bob).
+the other user (Bob), who ends an escrow by receiving the locked tokens and
+sending back the corresponding payment will be called the *receiver*.
 
 We'll consider three operations:
 
@@ -106,7 +106,7 @@ is burned.
 More details
 ------------
 
-The reader can found a more detailed explanation of requirements and design of this
+The reader will find a more detailed explanation of requirements and design of this
 Escrow Decentralized Application on:
 
 - `Requirements <https://github.com/joinplank/cardano-e2e-example/blob/main/doc/requirements.md>`_
