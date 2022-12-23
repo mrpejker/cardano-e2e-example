@@ -18,8 +18,8 @@ Preliminaries
 Server side
 ===========
 
-The complete implementation is organized as a cabal project composed of a library,
-where the interesting dApp implementation is placed, a tests-suite and finally
+The complete implementation is organized as a cabal project composed of a library
+(where the interesting dApp implementation is placed) a tests-suite and finally
 some mostly boilerplate implementation for building the executable that will run
 the service. This service, which we call the *PAB*, will be in charge of querying
 the blockchain and building unbalanced transactions.
