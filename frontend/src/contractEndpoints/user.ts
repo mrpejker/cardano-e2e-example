@@ -1,5 +1,5 @@
 import { ContractEndpoints, CIP30WalletWrapper } from "cardano-pab-client";
-import { StartParams, mkWalletAddress2 } from "./parameters";
+import { StartParams, mkWalletAddressFromString } from "./parameters";
 /**
  * The representation of the contract Utxo state
  */
@@ -24,7 +24,7 @@ export class UserEndpoints {
       this.contractState = contractState
     }
 
-    public async connect(): Promise<CIP30WalletWrapper> {
+    public async connect(walletName): Promise<CIP30WalletWrapper> {
         const {
             getWalletInitialAPI,
             CIP30WalletWrapper,
@@ -32,9 +32,7 @@ export class UserEndpoints {
             ContractEndpoints
           } = await import("cardano-pab-client");
 
-        const walletInitialAPI = getWalletInitialAPI(window, "eternl");
-        // or
-        // const walletInitialAPI = getWalletInitialAPI(window, "nami");
+        let walletInitialAPI = getWalletInitialAPI(window, walletName);
 
         // this will ask the user to give to this dApp access to their wallet methods
         const walletInjectedFromBrowser = await walletInitialAPI.enable();
@@ -42,13 +40,9 @@ export class UserEndpoints {
         // then we can initialize the CIP30WalletWrapper class of the library
         this.wallet = await CIP30WalletWrapper.init(walletInjectedFromBrowser);
         const addrs = await this.wallet.getUsedAddresses()
-        const utxos = await this.wallet.getUtxos()
-        // console.log("UTXOS: ")
-        // console.log(utxos)
-        // console.log("ADDR: ")
-        // console.log(addrs)
-        const walletAddr = mkWalletAddress2(addrs[1])
-        console.log(this.wallet)
+        const walletAddr = mkWalletAddressFromString(addrs[0])
+        console.log(`Connected Address:`)
+        console.log(walletAddr)
 
         // Try to get unbalanced transaction from PAB
         const walletId = await this.wallet.getWalletId();
@@ -72,8 +66,8 @@ export class UserEndpoints {
             getProtocolParamsFromBlockfrost,
             succeeded
         } = await import("cardano-pab-client");
+        console.log(`Start Params:`)
         console.log(sp)
-        console.log(wallet)
         // Initialize Balancer
         const protocolParams = await getProtocolParamsFromBlockfrost(
             "https://cardano-preprod.blockfrost.io/api/v0",
@@ -96,13 +90,12 @@ export class UserEndpoints {
         } else {
             // the pab yielded the unbalanced transaction. balance, sign and submit it.
             const etx = pabResponse.value;
+            console.log(`Unbalanced tx:`);
             console.log(etx)
             const walletInfo = await wallet.getWalletInfo();
-            console.log("WALLET INFO")
-            console.log(walletInfo)
             const txBudgetApi = new TxBudgetAPI({
-            baseUrl: "http://localhost:3001",
-            timeout: 10000,
+                baseUrl: "http://localhost:3001",
+                timeout: 10000,
             });
 
             const fullyBalancedTx = await balancer.fullBalanceTx(
@@ -122,7 +115,7 @@ export class UserEndpoints {
                   } else {
                       console.log("BALANCER FAILED")
                       console.log(txBudgetResponse.error)
-                    return []
+                      return []
                   }
                 }
             );

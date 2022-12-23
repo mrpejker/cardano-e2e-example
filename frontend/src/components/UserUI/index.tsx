@@ -69,6 +69,7 @@ function UserUI() {
 
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setWalletWrapper }) => {
+  const [selectedWallet, setSelectedWallet] = useState("nami");
   return (
     <Navbar.Collapse className="justify-content-end">
       <Nav.Link className="d-flex">
@@ -78,6 +79,8 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
           onChange={e => {
             console.log("Value Changed")
             console.log(e.target.value)
+            setIsConnected(false)
+            setSelectedWallet(e.target.value)
           }}
           defaultValue={"nami"}
         >
@@ -90,12 +93,10 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
             size="sm"
             onClick={async e => {
                 console.log("Connecting")
-                contractEndpoints.connect()
+                contractEndpoints.connect(selectedWallet)
                   .then(setIsConnected(true))
                   .then(console.log("Connected"))
                   .then(setWalletWrapper)
-
-                // setCurrentContractState(contractEndpoints.reload())
               }
             }
         >

@@ -35,10 +35,10 @@ export function mkWalletAddress(ppkh: string, spkh?: string): WalletAddress {
     };
   }
 
-export function mkWalletAddress2(wa: string): WalletAddress {
+export function mkWalletAddressFromString(wa: string): WalletAddress {
     return {
-      waPayment: { getPubKeyHash: wa.substring(0,56) },
-      waStaking: { getPubKeyHash: wa.substring(56) }
+      waPayment: { getPubKeyHash: wa.substring(2,58) },
+      waStaking: { getPubKeyHash: wa.substring(58) }
     };
   }
 
