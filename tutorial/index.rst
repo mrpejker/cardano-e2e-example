@@ -5,20 +5,20 @@ Tutorial on building end-to-end Cardano dApps
 This tutorial covers the complete end-to-end flow for implementing a decentralized
 Application (dApp) on Cardano Blockchain.
 At the moment of writing it, there is no standard way to fully implement
-an end-user Cardano dApp. Different projects have developed own tools and proposed
-different approaches. The proposal presented here consists on a Client-Server architecture,
-where the Server side is based on the open source libraries **plutus-apps**, originally
-developed by IOG, and the Client side is a web frontend using an open source typescript
+an end-user Cardano dApp. Different projects have developed their own tools and proposed
+different approaches. The proposal presented here consists of a Client-Server architecture,
+where the Server side is based on the open-source libraries **plutus-apps**, originally
+developed by IOG, and the Client side is a web frontend using an open-source typescript
 library which provides the necessary functionality for connecting with the
 Plutus Application Backend to receive unbalanced transactions, and then
-balance, sign and submit them.
+balance, sign, and submit them.
 
 The text is based on a concrete implementation, a dApp example whose purpose is
 to have something simple but containing enough functionality to show how to
 use the proposed tools.
 It's important to note that this tutorial doesn't pretend to cover
 how to design complex solutions on the eUTxO model. The example is very simple and some
-design decisions are related with the specific purpose of including common features of
+design decisions are related to the specific purpose of including common features of
 any interesting dApp: parameterized validators, minting policies, how to read and write
 datums, among others. 
 
@@ -31,7 +31,7 @@ in *Preliminaries* section we introduce the example to implement, a detailed exp
 the proposed architecture, and instructions for building and running the example dApp.
 Then we go into details of the *Server side* of the implementation, covering the main aspects
 of the Haskell implementation, introducing the proposed modules design, going through
-each component, and explaining main implementation aspects.
+each component, and explaining the main implementation aspects.
 Finally, we review the *Client side*, a frontend implementation introducing the PAB Client library and how to
 use it.
 
