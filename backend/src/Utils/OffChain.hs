@@ -9,23 +9,25 @@ Stability   : develop
 module Utils.OffChain where
 
 -- Non-IOG imports
-import Control.Lens ( (^.) )
+import Control.Lens ( (^.), matching )
 import Data.Text    ( Text )
 import Data.Map qualified as Map ( toList, filter )
 
 -- IOG imports
-import Ledger ( Address, TxOutRef, ChainIndexTxOut(..)
-              , Datum, PaymentPubKeyHash(..), StakePubKeyHash(..)
-              , ciTxOutValue, _ciTxOutDatum
-              , toPubKeyHash
-              )
 import Ledger.Constraints ( TxConstraints, mustPayToPubKey
                           , mustPayToPubKeyAddress
                           )
-import Ledger.Value    ( AssetClass, Value, assetClassValueOf )
+import Ledger ( DecoratedTxOut(..)
+              , DatumFromQuery(..), PaymentPubKeyHash(..)
+              , StakePubKeyHash(..)
+              , decoratedTxOutValue, _ScriptDecoratedTxOut
+              , toPubKeyHash, stakePubKeyHashCredential
+              )
+import Ledger.Value    ( AssetClass, assetClassValueOf )
 import Plutus.Contract ( Contract, unspentTxOutFromRef
                         , utxosAt, throwError, datumFromHash
                        )
+import Plutus.V1.Ledger.Api
 
 -- Escrow imports
 import Utils.WalletAddress ( WalletAddress(..) )
@@ -35,35 +37,40 @@ lookupScriptUtxos
     :: forall w s
     .  Address
     -> AssetClass
-    -> Contract w s Text [(TxOutRef, ChainIndexTxOut)]
+    -> Contract w s Text [(TxOutRef, DecoratedTxOut)]
 lookupScriptUtxos addr token =
-    Map.toList . Map.filter (txOutHasToken . (^. ciTxOutValue))
+    Map.toList . Map.filter (txOutHasToken . (^. decoratedTxOutValue))
     <$> utxosAt addr
   where
     txOutHasToken :: Value -> Bool
     txOutHasToken v = assetClassValueOf v token == 1
 
--- | Gets the Datum from a ChainIndexTxOut. Throws an error if it can't find it.
+-- | Gets the Datum from a DecoratedTxOut. Throws an error if it can't find it.
 getDatumWithError
     :: forall w s
-    .  ChainIndexTxOut
+    .  DecoratedTxOut
     -> Contract w s Text Datum
 getDatumWithError txOut =
     getDatumTxOut txOut >>= maybe (throwError "Datum not Found") pure
 
--- | Gets the Maybe Datum from a ChainIndexTxOut.
+-- | Gets the Maybe Datum from a DecoratedTxOut.
 getDatumTxOut
     :: forall w s
-    .  ChainIndexTxOut
+    .  DecoratedTxOut
     -> Contract w s Text (Maybe Datum)
 getDatumTxOut txOut =
-    either datumFromHash (return . Just) (_ciTxOutDatum txOut)
+--    either datumFromHash (return . Just) (decoratedTxOutDatum txOut)
+    case matching _ScriptDecoratedTxOut txOut of
+        Right (_,_,_,(_,DatumInline d),_,_) -> return (Just d)
+        Right (_,_,_,(_,DatumInBody d),_,_) -> return (Just d)
+        Right (_,_,_,(dh,DatumUnknown),_,_) -> datumFromHash dh
+        _ -> return Nothing
 
--- | Finds the ChainIndexTxOut from the given TxOutRef.
+-- | Finds the DecoratedTxOut from the given TxOutRef.
 findUtxoFromRef
     :: forall w s
     .  TxOutRef
-    -> Contract w s Text ChainIndexTxOut
+    -> Contract w s Text DecoratedTxOut
 findUtxoFromRef ref =
     unspentTxOutFromRef ref >>= maybe (throwError "Utxo not found") pure
 
@@ -84,8 +91,10 @@ mustPayToWalletAddress :: forall i o
                        -> TxConstraints i o
 mustPayToWalletAddress WalletAddress{..} val =
   case waStaking of
-    Just staking -> mustPayToPubKeyAddress ppkh (StakePubKeyHash staking) val
+    Just staking -> mustPayToPubKeyAddress ppkh
+            (stakePubKeyHashCredential $ StakePubKeyHash staking) val
     Nothing      -> mustPayToPubKey ppkh val
   where
     ppkh :: PaymentPubKeyHash
     ppkh = PaymentPubKeyHash waPayment
+

@@ -25,7 +25,7 @@ import Plutus.V1.Ledger.Value ( CurrencySymbol, TokenName, Value
                               , assetClass, assetClassValueOf, flattenValue
                               , leq
                               )
-import PlutusTx.Prelude       ( Integer, Bool
+import PlutusTx.Prelude       ( Integer, Bool(..)
                               , ($), (&&), (||), (==)
                               , traceIfFalse
                               )

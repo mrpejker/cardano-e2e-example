@@ -11,16 +11,18 @@ Stability   : develop
 module Utils.OnChain where
 
 -- IOG imports
-import Ledger ( Address, PubKeyHash, TxInfo(..), TxOut(..), Value
-              , findDatum, getDatum, txOutDatum, toPubKeyHash, minAdaTxOut
-              )
+import Ledger ( minAdaTxOut )
 import Ledger.Ada ( toValue )
-import PlutusTx         ( FromData, fromBuiltinData )
 import PlutusTx.Prelude ( Maybe(..), Bool(..)
                         , (.), (>>=), (==)
                         , mapMaybe, map, mconcat
                         , traceError
                         )
+import Plutus.V1.Ledger.Api
+import Plutus.V1.Ledger.Contexts
+import Plutus.V1.Ledger.Address
+import Plutus.V1.Ledger.Tx
+
 
 -- | Get the UTxOs of given address.
 {-# INLINABLE outputsAt #-}
