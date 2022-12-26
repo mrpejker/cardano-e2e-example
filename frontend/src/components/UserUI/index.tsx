@@ -2,8 +2,9 @@ import React, { useState } from "react"
 import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { UserEndpoints, ObsState, UtxoInfo } from "src/contractEndpoints/user";
-import { mkStartParams } from "src/contractEndpoints/parameters";
+import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
+import { getValueAmount, getValueAsset, mkStartParams } from "src/contractEndpoints/parameters";
+import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
 function UserUI() {
@@ -58,6 +59,11 @@ function UserUI() {
       <ContractInformation
         currentContractState={currentContractState}
       />
+      <Reload
+        contractEndpoints={contractEndpoints}
+        isConnected={isConnected}
+        setCurrentContractState={setCurrentContractState}
+      />
 
     </Container>
   )
@@ -71,7 +77,7 @@ type ConnectProps = {
 };
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
-  const [selectedWallet, setSelectedWallet] = useState("nami");
+  const [selectedWallet, setSelectedWallet] = useState("eternl");
   return (
     <Navbar.Collapse className="justify-content-end">
       <Nav.Link className="d-flex">
@@ -84,23 +90,25 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
             setIsConnected(false)
             setSelectedWallet(e.target.value)
           }}
-          defaultValue={"nami"}
+          defaultValue={"eternl"}
         >
           <option value="nami">Nami</option>
           <option value="eternl">Eternl</option>
         </select>
         <Button
-          style={{ marginRight: "16px" }}
-          variant="success"
-          size="sm"
-          onClick={async e => {
-            console.log("Connecting")
-            const ce = await contractEndpoints.connect(selectedWallet)
-            setIsConnected(true)
-            console.log("Connected")
-            setContractEndpoints(ce)
-          }
-          }
+            style={{ marginRight: "16px" }}
+            variant="success"
+            size="sm"
+            onClick={async e => {
+                console.log("Connecting")
+                const ce = await contractEndpoints.connect(selectedWallet)
+                console.log("Connected")
+                setContractEndpoints(ce)
+                setIsConnected(true)
+                const obsState = await contractEndpoints.reload()
+                setCurrentContractState(obsState)
+              }
+            }
         >
           Connect Wallet
         </Button>
@@ -110,10 +118,22 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
 }
 
 // Reload component that reloads the contract state
-const Reload = () => {
+const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
   return (
-    <>
-    </>
+    <Button
+      style={{ marginRight: "16px" }}
+      variant="success"
+      size="sm"
+      disabled={!isConnected}
+      onClick={async e => {
+        console.log("Reloading")
+        const obsState = await contractEndpoints.reload()
+        setCurrentContractState(obsState)
+        }
+      }
+    >
+      Reload
+    </Button>
   )
 }
 
@@ -137,12 +157,11 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
 
     mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
       .then(sp => contractEndpoints.start(sp))
-
   }
   return (
     <>
       <Modal show={showStartModal}>
-        <Modal.Header closeButton>
+        <Modal.Header closeButton onHide={ () => setShowStartModal(false)}>
           <Modal.Title>Start new Escrow</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -191,22 +210,23 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
                   />
                 </Col>
               </Row>
-              <Button variant="primary" type="submit">
-                Submit
-              </Button>
+              <br></br>
+              <Row>
+                <Col></Col>
+                <Col>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    style={{margin: "10px"}}
+                  >
+                    Submit
+                  </Button>
+                </Col>
+                <Col></Col>
+              </Row>
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer
-          style={{
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          <Button variant="primary" onClick={handleClose}>
-            Start
-          </Button>
-        </Modal.Footer>
       </Modal>
     </>
   )
@@ -238,26 +258,26 @@ const ContractInformation = ({ currentContractState }: ContractInformationProps)
         textAlign: "center"
       }}
     >
-      <Table striped bordered hover className="align-middle">
-        <thead>
-          <tr>
-            <th>Sender Address</th>
-            <th>Send Amount</th>
-            <th>Send Asset</th>
-            <th>Receive Amount</th>
-            <th>Receive Asset</th>
-            <th>Resolve</th>
-          </tr>
-        </thead>
-        <tbody>
-          {currentContractState.map((elem: UtxoInfo, index) => (
-            <tr key={index}>
-              <td> {elem.SenderAddr} </td>
-              <td> {elem.SendAmount} </td>
-              <td> {elem.SendAsset} </td>
-              <td> {elem.ReceiveAmount} </td>
-              <td> {elem.ReceiveAsset} </td>
-              <td >
+    {<Table striped bordered hover className="align-middle">
+      <thead>
+        <tr>
+          <th>Sender Address</th>
+          <th>Send Amount</th>
+          <th>Send Asset</th>
+          <th>Receive Amount</th>
+          <th>Receive Asset</th>
+          <th>Resolve</th>
+        </tr>
+      </thead>
+      <tbody>
+        {currentContractState.map((elem: UtxoEscrowInfo, index) => (
+          <tr key={index}>
+            <td> {elem.escrowInfo.sender.waPayment.getPubKeyHash} </td>
+            <td> {getValueAmount(elem.escrowValue)} </td>
+            <td> {getValueAsset(elem.escrowValue)} </td>
+            <td> {elem.escrowInfo.rAmount} </td>
+            <td> {elem.escrowInfo.rAssetClass.unAssetClass[1].unTokenName} </td>
+            <td >
                 <Button
                   style={{ marginRight: "16px" }}
                   variant="success"
@@ -269,11 +289,11 @@ const ContractInformation = ({ currentContractState }: ContractInformationProps)
                   }
                 > Resolve
                 </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>}
     </div>
 
   )

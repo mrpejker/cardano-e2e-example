@@ -1,17 +1,21 @@
 import { ContractEndpoints, CIP30WalletWrapper } from "cardano-pab-client";
-import { StartParams, mkWalletAddressFromString } from "./parameters";
+import { StartParams, mkWalletAddressFromString, Value, TxOutRef, WalletAddress, AssetClass } from "./parameters";
 /**
  * The representation of the contract Utxo state
  */
-export type UtxoInfo = {
-  SenderAddr: String;
-  SendAsset: String;
-  SendAmount: Number;
-  ReceiveAsset: String;
-  ReceiveAmount: Number;
+export type EscrowInfo = {
+  sender: WalletAddress;
+  rAssetClass: AssetClass;
+  rAmount: Number;
 }
 
-export type ObsState = UtxoInfo[]
+export type UtxoEscrowInfo = {
+  escrowUtxo: TxOutRef
+  escrowInfo: EscrowInfo
+  escrowValue: Value
+}
+
+export type ObsState = UtxoEscrowInfo[]
 
 export class UserEndpoints {
   contractState: ObsState = undefined
@@ -120,10 +124,32 @@ export class UserEndpoints {
       const response = await this.wallet.signAndSubmit(fullyBalancedTx);
       if (succeeded(response)) {
         const txHash = response.value;
+        console.log(`TX HASH: ${txHash}`)
         alert(`Start suceeded. Tx hash: ${txHash}`);
       } else {
         alert(`Start failed when trying to submit it. Error: ${response.error}`);
       }
     }
+  }
+
+  public async reload(): Promise<ObsState> {
+    const {
+      ContractEndpoints,
+      succeeded
+    } = await import("cardano-pab-client");
+    console.log("Inside Reload")
+    const response = await this.endpoints.reload({ endpointTag: "reload", params: [] })
+    console.log(response)
+    if (succeeded(response)) {
+      const escrows = response.value as ObsState
+      console.log(escrows)
+      console.log(typeof escrows)
+      return escrows
+      // let utxoInfo = parseReloadResponse(escrows)
+    } else {
+      alert(`Reload Failed. Error: ${response.error}`);
+    }
+    console.log("Finishing Reload")
+    return undefined
   }
 }

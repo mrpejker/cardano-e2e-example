@@ -273,7 +273,11 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/joinplank/plutus-apps.git
-  subdir: doc
+  subdir:
+          blockfrost-haskell/blockfrost-api
+          blockfrost-haskell/blockfrost-client-core
+          blockfrost-haskell/blockfrost-client
+          doc
           freer-extras
           playground-common
           plutus-blockfrost

@@ -19,6 +19,30 @@ export function mkAssetClassFromAc(ac: string): AssetClass {
   }
 }
 
+export type Value = {
+    getValue: [ [ CurrencySymbol, [ [TokenName, number] ] ] ]
+  }
+
+const filterEscrowValue = (elem, index, array) => {
+  const adaT = ''
+  const ctokenT = 'controlToken'
+  const tn = elem[1][0][0].unTokenName
+  return tn !== adaT && tn !== ctokenT
+  }
+
+export function getValueAmount(val: Value): number {
+  return val.getValue.filter(filterEscrowValue)[0][1][0][1]
+}
+
+export function getValueAsset(val: Value): string {
+  return val.getValue.filter(filterEscrowValue)[0][1][0][0].unTokenName
+}
+
+export type TxId = { getTxId: string };
+
+export type TxOutRef = { txOutRefId: TxId, txOutRefIdx: number }
+
+
 export type CurrencySymbol = { unCurrencySymbol: string };
 
 export type TokenName = { unTokenName: string };
