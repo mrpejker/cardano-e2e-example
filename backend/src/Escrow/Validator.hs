@@ -1,4 +1,8 @@
+{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+
 
 {-|
 Module      : Escrow.Validator
@@ -23,14 +27,11 @@ module Escrow.Validator
 where
 
 -- IOG imports
-import Ledger ( CurrencySymbol, MintingPolicy
-              , scriptAddress, scriptCurrencySymbol
-              , mkMintingPolicyScript
-              )
-import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
-                            , ValidatorTypes (DatumType, RedeemerType)
-                            , validatorScript, wrapMintingPolicy, wrapValidator
-                            )
+import Ledger ( CurrencySymbol )
+import Plutus.Script.Utils.V1.Typed.Scripts
+import Plutus.Script.Utils.V1.Scripts
+import Plutus.Script.Utils.V1.Address
+import Plutus.V1.Ledger.Scripts
 import PlutusTx ( compile, applyCode, liftCode )
 
 -- Escrow imports
@@ -55,13 +56,13 @@ escrowInst raddr = mkTypedValidator @Escrowing
                    )
                    $$(compile [|| wrap ||])
   where
-    wrap = wrapValidator @EscrowDatum @EscrowRedeemer
+    wrap = mkUntypedValidator @EscrowDatum @EscrowRedeemer
 
 escrowValidator :: ReceiverAddress -> Validator
 escrowValidator = validatorScript . escrowInst
 
 escrowAddress :: ReceiverAddress -> ContractAddress
-escrowAddress = scriptAddress . escrowValidator
+escrowAddress = mkValidatorAddress . escrowValidator
 
 controlTokenMP :: ContractAddress -> MintingPolicy
 controlTokenMP caddr =
@@ -70,7 +71,7 @@ controlTokenMP caddr =
     `applyCode`
     liftCode caddr
   where
-    wrap = wrapMintingPolicy
+    wrap = mkUntypedMintingPolicy
 
 controlTokenCurrency :: ContractAddress -> CurrencySymbol
 controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
