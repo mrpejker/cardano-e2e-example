@@ -32,7 +32,7 @@ import Test.Tasty             ( TestTree )
 
 -- IOG imports
 import Ledger                 ( Block, OnChainTx(Valid)
-                              , txSignatures, unPaymentPubKey
+                              , CardanoTx, unPaymentPubKey
                               )
 import Ledger.Value           ( assetClass )
 import Plutus.Trace.Emulator  ( activateContractWallet, callEndpoint
@@ -58,39 +58,8 @@ test = checkPredicateOptions
         (walletFundsChange receiverWallet   (paymentA 300    <> paymentB (-30))
         .&&. walletFundsChange senderWallet (paymentA (-100) <> paymentB 10)
         .&&. walletFundsChange w3           (paymentA (-100) <> paymentB 10)
-        .&&. walletFundsChange w4           (paymentA (-100) <> paymentB 10)
-        .&&. assertBlockchain bcCheck)
+        .&&. walletFundsChange w4           (paymentA (-100) <> paymentB 10))
         trace
-  where
-    bcCheck :: [Block] -> Bool
-    bcCheck b = bcCheckAux blocks
-      where
-        blocks :: [Block]
-        blocks = Prelude.reverse . Prelude.filter (/= []) $ b
-
-        bcCheckAux :: [Block] -> Bool
-        bcCheckAux [[ Valid resolve3
-                    , Valid resolve2
-                    , Valid resolve1
-                    , Valid start3
-                    , Valid start2
-                    , Valid start1
-                    , Valid _
-                    ]] =
-               isJust (Map.lookup (unPaymentPubKey senderPpk)
-                        (txSignatures start1))
-            && isJust (Map.lookup (unPaymentPubKey $ mockWalletPaymentPubKey w3)
-                        (txSignatures start2))
-            && isJust (Map.lookup (unPaymentPubKey $ mockWalletPaymentPubKey w4)
-                        (txSignatures start3))
-            && isJust (Map.lookup (unPaymentPubKey receiverPpk)
-                        (txSignatures resolve1))
-            && isJust (Map.lookup (unPaymentPubKey receiverPpk)
-                        (txSignatures resolve2))
-            && isJust (Map.lookup (unPaymentPubKey receiverPpk)
-                        (txSignatures resolve3))
-        bcCheckAux _                = False
-
 
 trace :: EmulatorTrace ()
 trace =

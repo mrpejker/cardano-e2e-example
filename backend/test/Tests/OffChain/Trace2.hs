@@ -49,26 +49,8 @@ test = checkPredicateOptions
         (defaultCheckOptions & emulatorConfig .~ emConfig)
         testMsg
         (walletFundsChange senderWallet (paymentA (-50) <> paymentB 100)
-        .&&. walletFundsChange receiverWallet (paymentB (-100) <> paymentA 50)
-        .&&. assertBlockchain bcCheck)
+        .&&. walletFundsChange receiverWallet (paymentB (-100) <> paymentA 50))
         trace
-  where
-    bcCheck :: [Block] -> Bool
-    bcCheck b = bcCheckAux blocks
-      where
-        blocks :: [Block]
-        blocks = Prelude.reverse . Prelude.filter (/= []) $ b
-
-        bcCheckAux :: [Block] -> Bool
-        bcCheckAux [[ Valid resolve
-                    , Valid start
-                    , Valid _
-                    ]] =
-               isJust (Map.lookup (unPaymentPubKey senderPpk)
-                          (txSignatures start))
-            && isJust (Map.lookup (unPaymentPubKey receiverPpk)
-                          (txSignatures resolve))
-        bcCheckAux _                = False
 
 trace :: EmulatorTrace ()
 trace =
