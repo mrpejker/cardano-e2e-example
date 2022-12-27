@@ -7,9 +7,9 @@ Application (dApp) on Cardano Blockchain.
 At the moment of writing it, there is no standard way to fully implement
 an end-user Cardano dApp. Different projects have developed their own tools and proposed
 different approaches. The proposal presented here consists of a Client-Server architecture,
-where the Server side is based on the open-source libraries **plutus-apps**, originally
-developed by IOG, and the Client side is a web frontend using an open-source typescript
-library which provides the necessary functionality for connecting with the
+where the Server side is based on the open-source libraries **plutus-apps**, developed by IOG,
+and the Client side is a web frontend using the **PAB Client** typescript
+library, which provides the necessary functionality for connecting with the
 Plutus Application Backend to receive unbalanced transactions, and then
 balance, sign, and submit them.
 
