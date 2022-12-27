@@ -25,7 +25,7 @@ the corresponding to Alice.
 
 From now on, we'll call the *sender* to the user that starts an escrow (Alice), and
 the other user (Bob), who ends an escrow by receiving the locked tokens and
-sending back the corresponding payment will be called the *receiver*.
+sending back the corresponding payment, will be called the *receiver*.
 
 We'll consider three operations:
 
