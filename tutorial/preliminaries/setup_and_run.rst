@@ -5,15 +5,18 @@ Now we have in mind the overall dApp architecture, we can do a
 walkthrough of the necessary steps to turn on every service needed to
 get the dApp running. From a top view, we need to get setup and run
 the server and client side. On the server side, we are going to
-compile and run the PAB and Budget service, and given we are going to
-use a public instance of Blockfrost for the indexer, we just need to
-get a api-token and do some minor configuration. The client side will be in
+compile and run the PAB and Budget service. Regarding the Indexer service,
+we are going to use a public instance of Blockfrost, so we just need to get a
+api-token and do some minor configuration. The client side will be in
 charge of running the web page engine.
 
-We must start by cloning three repositories, the joinplank patched plutus-apps
-`repository <https://github.com/joinplank/plutus-apps/>`_, the complete dApp
-implementation that can be found `here <https://github.com/joinplank/cardano-e2e-example/>`__ and
-the budget service from `here <https://github.com/joinplank/plutus-budget-service/>`__.
+We must start by cloning three repositories, the joinplank patched plutus-apps,
+the budget service and the complete dApp implementation:
+
+* ``git clone git@github.com:joinplank/plutus-apps.git``
+* ``git clone git@github.com:joinplank/plutus-budget-service.git``
+* ``git clone git@github.com:joinplank/cardano-e2e-example.git``
+
 In summary, we must have the following folder structure:
 
 .. code-block:: bash
@@ -49,9 +52,7 @@ the ``/etc/nix/nix.conf`` file by adding the following lines:
 With everything setup we need to get inside the ``plutus-apps`` folder, and
 checkout a particular release:
 
-.. code-block:: bash
-
-   $> git checkout a58d3a1934a4a3788da7815540a892dfe417b3bb
+* ``git checkout a58d3a1934a4a3788da7815540a892dfe417b3bb``
 
 So then we can execute :code:`nix-shell` to install all the needed
 dependencies and get inside the development environment, that is from
@@ -120,8 +121,8 @@ endpoint of the service with the example we can find in the folder
      }
    }
 
-Plutus Application Backend
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+PAB
+~~~
 
 The PAB will run the off-chain code for building unbalanced transactions and also
 is going to use the indexer for querying the blockchain. First, we need to get
@@ -212,7 +213,7 @@ Also, we can access the swagger through `localhost:9080/swagger/swagger-ui <http
 Client side
 -----------
 
-The client side, as we mentioned, is going to run the web server. In
+The client side, as we mentioned, is going to run the dApp webpage service. In
 contrast with the server side, we don’t need a particular environment,
 but we need to ensure we are using `node 16.x` version, which is as simple as
 doing :code:`nvm install 16.14.2` and then :code:`nvm use 16`.
@@ -225,7 +226,7 @@ of the server side.
 
    # For development use http://localhost:3000/api (has a proxy to 9080)
    REACT_APP_PAB_URL='http://localhost:3000/api'
-   REACT_APP_ESTIMATOR_URL='http://localhost:3001'
+   REACT_APP_BUDGET_URL='http://localhost:3001'
    REACT_APP_BLOCKFROST_API_KEY='preprod8kzHTV4w3E4WgpIZ9tpqY0YvuPwCAuht'
    REACT_APP_BLOCKFROST_URL="https://cardano-preprod.blockfrost.io/api/v0"
    REACT_APP_LOG_LEVEL=DEBUG
