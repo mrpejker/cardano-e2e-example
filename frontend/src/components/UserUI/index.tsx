@@ -3,7 +3,7 @@ import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootst
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
-import { getValueAmount, getValueAsset, mkStartParams } from "src/contractEndpoints/parameters";
+import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams } from "src/contractEndpoints/parameters";
 import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
@@ -252,8 +252,8 @@ const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: Cancel
       recAddr = formData.get("recAddr") as string,
       txOutRef = formData.get("txOutRef") as string
 
-    // mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
-    //   .then(sp => contractEndpoints.start(sp))
+    mkCancelParams(recAddr, txOutRef)
+      .then(cp => contractEndpoints.cancel(cp))
   }
   return (
     <>
@@ -290,7 +290,7 @@ const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: Cancel
                     type="submit"
                     style={{margin: "10px"}}
                   >
-                    Cancel
+                    Cancel Escrow
                   </Button>
                 </Col>
                 <Col></Col>

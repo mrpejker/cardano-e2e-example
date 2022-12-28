@@ -42,6 +42,12 @@ export type TxId = { getTxId: string };
 
 export type TxOutRef = { txOutRefId: TxId, txOutRefIdx: number }
 
+export function mkTxOutRef(ref: TxId, idx: number): TxOutRef {
+  return {
+    txOutRefId: ref,
+    txOutRefIdx: idx
+  }
+}
 
 export type CurrencySymbol = { unCurrencySymbol: string };
 
@@ -105,4 +111,23 @@ export async function mkStartParams(rAdd: string, sAsset: string, sAm: Number,
     receiveAmount: rAm,
   }
 
+}
+
+export type CancelParams = {
+  cpReceiverAddress: WalletAddress,
+  cpTxOutRef: TxOutRef
+}
+
+export async function mkCancelParams(rAdd: string, ref: string): Promise<CancelParams> {
+  const wAdd = await bech32AddressToWalletAddress(rAdd)
+  return {
+    cpTxOutRef: txOutRefFromString(ref),
+    cpReceiverAddress : wAdd
+  }
+}
+
+function txOutRefFromString(ref: string): TxOutRef {
+  const txId: TxId = {getTxId: ref.substring(0,64)}
+  const idx = Number(ref.substring(65))
+  return mkTxOutRef(txId, idx)
 }
