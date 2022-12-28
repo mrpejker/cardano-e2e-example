@@ -16,8 +16,12 @@ code, which is in charge of building, balancing, signing and submitting transact
 For implementing the off-chain side of a dApp, we propose a Client-Server architecture.
 The unique component on the Client side is the **Browser**,
 which runs the dApp frontend code, balances, signs and submits transactions.
-On the Server side, we run three services: the Plutus Application Backend (**PAB**),
-an Indexer service (currently **Blockfrost**), and a **Budget** service.
+In this approach we consider CIP30 light wallets, which runs on the Browser and
+connects with a Cardano Node for getting blockchain information and submitting
+transactions.
+
+On the Server side, we have three services: the Plutus Application Backend (**PAB**),
+an **Indexer** service, and a **Budget** service. 
 The PAB is in charge of running the dApp off-chain code for building an
 unbalanced transaction. The Indexer service is used by the PAB for querying the
 blockchain. Finally, the Budget service provides the evaluation of Plutus scripts,
