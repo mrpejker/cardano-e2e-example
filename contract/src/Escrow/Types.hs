@@ -15,11 +15,17 @@ module Escrow.Types
       ContractAddress
     , EscrowDatum (..)
     , EscrowRedeemer (..)
+    -- * Business Types
+    , EscrowInfo(..)
+    , ReceiverAddress
+    , SenderAddress
     -- * Smart Constructors
     , mkEscrowDatum
     , cancelRedeemer
     , resolveRedeemer
     , cTokenName
+    -- * Business Smart Constructors
+    , mkEscrowInfo
     )
 where
 
@@ -28,7 +34,9 @@ import Ledger   ( Address, AssetClass, TokenName, Redeemer(..) )
 import PlutusTx ( toBuiltinData, makeIsDataIndexed )
 
 -- Escrow imports
-import Escrow.Business ( EscrowInfo, SenderAddress, mkEscrowInfo )
+import Escrow.Business ( EscrowInfo(..), ReceiverAddress, SenderAddress
+                       , mkEscrowInfo
+                       )
 
 {- | A simply type synonym for explictly annotate were a contract address should
      be use instead of a wallet address.

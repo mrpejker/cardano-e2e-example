@@ -29,7 +29,7 @@ import Ledger       ( TxOutRef )
 import Ledger.Value ( AssetClass )
 
 -- Escrow imports
-import Escrow.Business ( ReceiverAddress )
+import Escrow.Types ( ReceiverAddress )
 
 {-| The start parameter includes the Address of the receiver, that
     will be used to get the contract address and validator.

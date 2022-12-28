@@ -34,9 +34,11 @@ import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
 import PlutusTx ( compile, applyCode, liftCode )
 
 -- Escrow imports
-import Escrow.Business ( ReceiverAddress )
 import Escrow.OnChain  ( mkEscrowValidator, mkControlTokenMintingPolicy )
-import Escrow.Types    ( EscrowDatum, EscrowRedeemer, ContractAddress )
+import Escrow.Types    ( EscrowDatum, EscrowRedeemer
+                       , ContractAddress
+                       , ReceiverAddress
+                       )
 
 -- | Definition of type family describing which types are used
 --   as datum and redeemers.

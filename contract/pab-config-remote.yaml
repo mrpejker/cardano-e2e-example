@@ -1,6 +1,6 @@
 dbConfig:
     dbConfigUser: "postgres"
-    dbConfigPass: "1234"
+    dbConfigPass: "postgres"
     dbConfigHost: "localhost"
     dbConfigPort: 5432
     dbConfigDatabase: "pab"
