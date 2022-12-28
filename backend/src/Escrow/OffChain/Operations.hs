@@ -36,7 +36,7 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , typedValidatorLookups, unspentOutputs
                           )
 import Ledger.Value       ( assetClass, assetClassValue )
-import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
+import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , Promise, select, tell, throwError, type (.\/)
                           , utxosAt, yieldUnbalancedTx, datumFromHash
@@ -44,10 +44,11 @@ import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
 import PlutusTx           ( fromBuiltinData )
 
 -- Escrow imports
-import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
-                                  , ResolveParams(..)
-                                  )
-import Escrow.OffChain.ObservableState ( UtxoEscrowInfo, mkUtxoEscrowInfo )
+import Escrow.OffChain.Interface ( StartParams(..), CancelParams(..)
+                                 , ResolveParams(..), UtxoEscrowInfo
+                                 , EscrowSchema
+                                 , mkUtxoEscrowInfo
+                                 )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
                         , eInfoSenderAddr, valueToSender, signerIsSender
@@ -66,11 +67,6 @@ import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
                            , waPaymentPubKeyHash
                            )
--- | Escrow Schema
-type EscrowSchema = Endpoint "start"   StartParams
-                .\/ Endpoint "cancel"  CancelParams
-                .\/ Endpoint "resolve" ResolveParams
-                .\/ Endpoint "reload"  ()
 
 endpoints
     :: WalletAddress

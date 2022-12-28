@@ -46,19 +46,19 @@ import Plutus.V1.Ledger.Value             ( assetClassValue, assetClassValueOf
 import Ledger                             ( AssetClass )
 
 -- Escrow imports
-import Escrow.Business                 ( EscrowInfo, mkReceiverAddress
-                                       , mkEscrowInfo, mkSenderAddress
-                                       )
-import Escrow.OffChain.Parameters      ( mkResolveParams, mkStartParams
-                                       , mkCancelParams
-                                       )
-import Escrow.OffChain.ObservableState ( UtxoEscrowInfo(..) )
-import Escrow.OffChain.Operations      ( EscrowSchema, endpoints )
-import Utils.OnChain                   ( minAda )
-import Tests.Utils                     ( emConfig, tokenA, tokenACurrencySymbol
-                                       , tokenB, tokenBCurrencySymbol, wallets
-                                       , mockWAddress
-                                       )
+import Escrow.Business            ( EscrowInfo, mkReceiverAddress
+                                  , mkEscrowInfo, mkSenderAddress
+                                  )
+import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
+                                  , mkResolveParams, mkStartParams
+                                  , mkCancelParams
+                                  )
+import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
+import Utils.OnChain              ( minAda )
+import Tests.Utils                ( emConfig, tokenA, tokenACurrencySymbol
+                                  , tokenB, tokenBCurrencySymbol, wallets
+                                  , mockWAddress
+                                  )
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
 options :: CheckOptions
