@@ -1,6 +1,6 @@
 import { ContractEndpoints, CIP30WalletWrapper } from "cardano-pab-client";
 import { StartParams, mkWalletAddressFromString, Value, TxOutRef, WalletAddress,
-         AssetClass, CancelParams } from "./parameters";
+         AssetClass, CancelParams, ResolveParams } from "./parameters";
 /**
  * The representation of the contract Utxo state
  */
@@ -221,6 +221,77 @@ export class UserEndpoints {
         alert(`Cancel suceeded. Tx hash: ${txHash}`);
       } else {
         alert(`Cancel failed when trying to submit it. Error: ${response.error}`);
+      }
+    }
+  }
+
+  public async resolve(rp: ResolveParams) {
+    const {
+      TxBudgetAPI,
+      Balancer,
+      getProtocolParamsFromBlockfrost,
+      succeeded
+    } = await import("cardano-pab-client");
+    console.log(`Resolve Params:`)
+    console.log(rp)
+    // Initialize Balancer
+    const protocolParams = await getProtocolParamsFromBlockfrost(
+      process.env.REACT_APP_BLOCKFROST_URL,
+      process.env.REACT_APP_BLOCKFROST_API_KEY,
+    );
+    const balancer = await Balancer.init(protocolParams);
+
+    // Try to get unbalanced transaction from PAB
+    const pabResponse = await this.endpoints.doOperation(
+      { endpointTag: "resolve", params: rp }
+    );
+
+    if (!succeeded(pabResponse)) {
+      alert(
+        `Didn't got the unbalanced transaction from the PAB. Error: ${pabResponse.error}`
+      );
+    } else {
+      // the pab yielded the unbalanced transaction. balance, sign and submit it.
+      const etx = pabResponse.value;
+      console.log(`Unbalanced tx:`);
+      console.log(etx)
+      const walletInfo = await this.wallet.getWalletInfo();
+      const txBudgetApi = new TxBudgetAPI({
+        baseUrl: process.env.REACT_APP_ESTIMATOR_URL,
+        timeout: 10000,
+      });
+
+      const fullyBalancedTx = await balancer.fullBalanceTx(
+        etx,
+        walletInfo,
+        // configuration for the balanceTx and rebalanceTx methods which are interally
+        // used by this method
+        { feeUpperBound: 1000000, mergeSignerOutputs: false },
+        // a high-order function that exposes the balanced tx and the inputs info so to
+        // calculate the executions units, which are then set in the transaction and
+        // goes to the rebalancing step
+        async (balancedTx, inputsInfo) => {
+          const txBudgetResponse = await txBudgetApi.estimate(balancedTx, inputsInfo);
+          if (succeeded(txBudgetResponse)) {
+            const units = txBudgetResponse.value;
+            return units;
+          } else {
+            console.log("BALANCER FAILED")
+            console.log(txBudgetResponse.error)
+            return []
+          }
+        }
+      );
+      // print to the console the fully balanced tx cbor for debugging purposes
+      console.log(`Balanced tx: ${fullyBalancedTx}`);
+      // now that the transaction is balanced, sign and submit it with the wallet
+      const response = await this.wallet.signAndSubmit(fullyBalancedTx);
+      if (succeeded(response)) {
+        const txHash = response.value;
+        console.log(`TX HASH: ${txHash}`)
+        alert(`Start suceeded. Tx hash: ${txHash}`);
+      } else {
+        alert(`Start failed when trying to submit it. Error: ${response.error}`);
       }
     }
   }

@@ -3,7 +3,7 @@ import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootst
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
-import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams } from "src/contractEndpoints/parameters";
+import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
 import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
@@ -63,6 +63,7 @@ function UserUI() {
       <br></br>
       <ContractInformation
         currentContractState={currentContractState}
+        contractEndpoints={contractEndpoints}
       />
       <Reload
         contractEndpoints={contractEndpoints}
@@ -312,9 +313,10 @@ const Resolve = () => {
 }
 type ContractInformationProps = {
   currentContractState: ObsState
+  contractEndpoints: UserEndpoints
 }
 // Component that displays the started escrows in a table.
-const ContractInformation = ({ currentContractState }: ContractInformationProps) => {
+const ContractInformation = ({ currentContractState, contractEndpoints }: ContractInformationProps) => {
   return (
     <div
       style={{
@@ -348,6 +350,9 @@ const ContractInformation = ({ currentContractState }: ContractInformationProps)
                   onClick={async e => {
                     console.log("Resolving")
                     console.log(elem)
+                    const params = mkResolveParams(elem.escrowUtxo)
+                    const _ = await contractEndpoints.resolve(params)
+                    contractEndpoints.reload()
                   }
                   }
                 > Resolve
