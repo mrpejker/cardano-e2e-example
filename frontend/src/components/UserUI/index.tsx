@@ -12,8 +12,10 @@ function UserUI() {
   const [contractEndpoints, setContractEndpoints] = useState<UserEndpoints>(new UserEndpoints([]));
   const [isConnected, setIsConnected] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
-  const handleShow = () => setShowStartModal(true);
+  const handleShowStart = () => setShowStartModal(true);
+  const handleShowCancel = () => setShowCancelModal(true);
   return (
     <Container>
       <Navbar sticky="top" bg="light">
@@ -30,7 +32,7 @@ function UserUI() {
         style={{ marginRight: "20px" }}
         variant="primary"
         size="lg"
-        onClick={handleShow}
+        onClick={handleShowStart}
         disabled={!isConnected}
       >
         Start new Escrow
@@ -45,13 +47,16 @@ function UserUI() {
         style={{ marginRight: "20px" }}
         variant="primary"
         size="lg"
+        onClick={handleShowCancel}
         disabled={!isConnected}
-        onClick={async () =>
-          console.log("Cancel")
-        }
       >
         Cancel an Escrow
       </Button>
+      <Cancel
+        showCancelModal={showCancelModal}
+        setShowCancelModal={setShowCancelModal}
+        contractEndpoints={contractEndpoints}
+      ></Cancel>
       <br></br>
       <br></br>
       <h2> Active Escrows </h2>
@@ -105,7 +110,7 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
                 console.log("Connected")
                 setContractEndpoints(ce)
                 setIsConnected(true)
-                const obsState = await contractEndpoints.reload()
+                const obsState = await ce.reload()
                 setCurrentContractState(obsState)
               }
             }
@@ -232,10 +237,68 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
   )
 }
 
+type CancelProps = {
+  showCancelModal: boolean
+  setShowCancelModal: React.Dispatch<React.SetStateAction<boolean>>
+  contractEndpoints: UserEndpoints
+};
+
 // Component that displays the form for canceling started escrows.
-const Cancel = () => {
+const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: CancelProps) => {
+  const handleClose = e => {
+    setShowCancelModal(false)
+    e.preventDefault()
+    const formData = new FormData(e.target),
+      recAddr = formData.get("recAddr") as string,
+      txOutRef = formData.get("txOutRef") as string
+
+    // mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
+    //   .then(sp => contractEndpoints.start(sp))
+  }
   return (
     <>
+    <Modal show={showCancelModal}>
+        <Modal.Header closeButton onHide={ () => setShowCancelModal(false)}>
+          <Modal.Title>Cancel an Escrow</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleClose}>
+            <Form.Group className="mb-3" controlId="cancelForm">
+              <Form.Label>Receiver Address</Form.Label>
+              <Form.Control
+                name="recAddr"
+                placeholder="Address"
+                autoFocus
+              />
+              <br></br>
+              <Row>
+                <Col>
+                  <Form.Label>TxOutRef</Form.Label>
+                  <Form.Control
+                    name="txOutRef"
+                    type="text"
+                    placeholder="TxOutRef"
+                  />
+                </Col>
+              </Row>
+              <br></br>
+              <Row>
+                <Col></Col>
+                <Col>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    style={{margin: "10px"}}
+                  >
+                    Cancel
+                  </Button>
+                </Col>
+                <Col></Col>
+              </Row>
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+      </Modal>
     </>
   )
 }
