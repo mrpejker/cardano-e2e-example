@@ -17,7 +17,7 @@ For implementing the off-chain side of a dApp, we propose a Client-Server archit
 The unique component on the Client side is the **Browser**,
 which runs the dApp frontend code, balances, signs and submits transactions.
 In this approach we consider CIP30 light wallets, that run on the Browser and
-connect with a Cardano Node for getting blockchain information and submitting
+interact with the blockchain for getting utxos information and submitting
 transactions.
 
 On the Server side, we have three services: the Plutus Application Backend (**PAB**),
@@ -34,8 +34,7 @@ The following diagram shows the complete flow for performing a dApp operation:
 
 The Browser sends an HTTP request to the corresponding operation endpoint provided by
 the PAB (1), which then performs some queries to the Indexer (2) and gets the information needed
-for building the unbalanced transaction (3). For getting it, it's necessary to poll the PAB status
-by calling an endpoint that we called *reload* (4).
+for building the unbalanced transaction (3). For getting it, it's necessary to poll the PAB status.
 Once the unbalanced transaction is received, the Browser balances it (5) and obtains the memory and CPU units of
 the included scripts by calling the Budget service (6). With that information, the definitive balance
 can be computed (7) and the transaction is ready for signing (8) and submitting (9). 
