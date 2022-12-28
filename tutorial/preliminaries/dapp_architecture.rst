@@ -16,8 +16,8 @@ code, which is in charge of building, balancing, signing and submitting transact
 For implementing the off-chain side of a dApp, we propose a Client-Server architecture.
 The unique component on the Client side is the **Browser**,
 which runs the dApp frontend code, balances, signs and submits transactions.
-In this approach we consider CIP30 light wallets, which runs on the Browser and
-connects with a Cardano Node for getting blockchain information and submitting
+In this approach we consider CIP30 light wallets, that run on the Browser and
+connect with a Cardano Node for getting blockchain information and submitting
 transactions.
 
 On the Server side, we have three services: the Plutus Application Backend (**PAB**),
