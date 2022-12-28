@@ -33,8 +33,7 @@ import Ledger             ( ChainIndexTxOut, TxOutRef, Datum, DatumHash
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustPayToPubKey, mustPayToTheScript
                           , mustSpendScriptOutput, otherScript
-                          , typedValidatorLookups, unspentOutputs, TxConstraints
-                          , mustIncludeDatum
+                          , typedValidatorLookups, unspentOutputs
                           )
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
@@ -42,7 +41,7 @@ import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , Promise, select, tell, throwError, type (.\/)
                           , utxosAt, yieldUnbalancedTx, datumFromHash
                           )
-import PlutusTx           ( fromBuiltinData, toBuiltinData )
+import PlutusTx           ( fromBuiltinData )
 
 -- Escrow imports
 import Escrow.OffChain.Interface ( StartParams(..), CancelParams(..)
@@ -59,7 +58,7 @@ import Escrow.Validator ( Escrowing
                         , controlTokenCurrency, controlTokenMP
                         )
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
-                      , cancelRedeemer, resolveRedeemer, EscrowDatum
+                      , cancelRedeemer, resolveRedeemer
                       )
 import Utils.OffChain ( getPpkhFromAddress
                       , lookupScriptUtxos, getDatumWithError
