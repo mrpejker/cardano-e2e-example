@@ -63,7 +63,6 @@ import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       )
 import Utils.OffChain ( getPpkhFromAddress
                       , lookupScriptUtxos, getDatumWithError
-                      , getChainIndexTxOutDatum
                       )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
