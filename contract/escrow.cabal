@@ -45,6 +45,7 @@ library
     TypeApplications
     TypeFamilies
     TypeOperators
+    TupleSections
 
   -- See Plutus Tx readme for why we need the following flags:
   -- -fobject-code -fno-ignore-interface-pragmas and -fno-omit-interface-pragmas

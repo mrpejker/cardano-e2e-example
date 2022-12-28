@@ -26,22 +26,23 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( ChainIndexTxOut, TxOutRef
-                          , ciTxOutValue, getDatum
+import Ledger             ( ChainIndexTxOut, TxOutRef, Datum, DatumHash
+                          , ciTxOutValue, getDatum, ciTxOutDatum
                           , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
                           , mustPayToPubKey, mustPayToTheScript
                           , mustSpendScriptOutput, otherScript
-                          , typedValidatorLookups, unspentOutputs
+                          , typedValidatorLookups, unspentOutputs, TxConstraints
+                          , mustIncludeDatum
                           )
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( awaitPromise, Contract, Endpoint, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , Promise, select, tell, throwError, type (.\/)
-                          , utxosAt, yieldUnbalancedTx
+                          , utxosAt, yieldUnbalancedTx, datumFromHash
                           )
-import PlutusTx           ( fromBuiltinData )
+import PlutusTx           ( fromBuiltinData, toBuiltinData )
 
 -- Escrow imports
 import Escrow.OffChain.Parameters ( StartParams(..), CancelParams(..)
@@ -57,10 +58,11 @@ import Escrow.Validator ( Escrowing
                         , controlTokenCurrency, controlTokenMP
                         )
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
-                      , cancelRedeemer, resolveRedeemer
+                      , cancelRedeemer, resolveRedeemer, EscrowDatum
                       )
 import Utils.OffChain ( getPpkhFromAddress
                       , lookupScriptUtxos, getDatumWithError
+                      , getChainIndexTxOutDatum
                       )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
@@ -160,7 +162,7 @@ cancelOp addr CancelParams{..} = do
 
     let lkp = mconcat
             [ otherScript validator
-            , unspentOutputs (singleton cpTxOutRef utxo)
+            , unspentOutputs (singleton ref utxo)
             , mintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
@@ -250,8 +252,14 @@ findEscrowUtxo
     -> Contract w s Text (TxOutRef, ChainIndexTxOut)
 findEscrowUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
-        [utxo] -> pure utxo
-        _      -> throwError "Specified Utxo not found"
+        [(oref, o)] -> (oref,) <$> ciTxOutDatum loadDatum o
+        _           -> throwError "Specified Utxo not found"
+  where
+    loadDatum
+        :: Either DatumHash Datum
+        -> Contract w s Text (Either DatumHash Datum)
+    loadDatum lhd@(Left dh) = maybe lhd Right <$> datumFromHash dh
+    loadDatum d = return d
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
      ChainIndexTxOut.
