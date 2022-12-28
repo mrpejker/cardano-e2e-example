@@ -38,8 +38,8 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , Promise, select, tell, throwError, type (.\/)
-                          , utxosAt, yieldUnbalancedTx, datumFromHash
+                          , select, tell, throwError
+                          , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
 
