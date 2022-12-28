@@ -55,7 +55,7 @@ export class UserEndpoints {
 
     this.endpoints = await ContractEndpoints.connect(
       walletId,
-      { endpointTag: "Connect", params: walletAddr },
+      { params: walletAddr },
       pabApi,
     );
 
