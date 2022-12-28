@@ -18,7 +18,7 @@ How to solve it
 ---------------
 
 A third trusted party can be involved. Instead of paying directly to Bob’s wallet,
-Alice locks her tokens in a *smart contract* and specifies what tokens and how many
+Alice locks her tokens into a *smart contract* and specifies what tokens and how many
 of them she wants to receive.
 The smart contract ensures that Bob will receive his tokens only if he pays
 the corresponding to Alice.
@@ -29,11 +29,11 @@ sending back the corresponding payment, will be called the *receiver*.
 
 We'll consider three operations:
 
-- **Start**: the sender starts the escrow locking the funds and setting
+- **Start**: the sender starts the escrow by locking the funds and setting
   the information about the payment to be received.
 
 
-- **Resolve**: the receiver gets the funds locked and pays the corresponding tokens
+- **Resolve**: the receiver gets the locked funds and pays the corresponding tokens
   to the sender, finishing the escrow.
 
 
@@ -44,7 +44,7 @@ eUTxO-model-based solution
 --------------------------
 
 An easy solution can be implemented with Plutus scripts. The sender
-pays the desired value to a script in which specifies all the necessary information:
+pays the desired value to a script, specifying all the necessary information:
 
 - Receiver's address ``RA``.
 - Sender's address ``SA``.
@@ -78,7 +78,7 @@ Operations
 and specifies in the datum the address where they want to receive the payment, together
 with payment information (amount and asset class).
 In addition to that, the value includes the min amount of ADA and the control token.
-The datum includes too the control token asset class.
+The datum also includes the asset class of the control token.
 
 
 The Receiver's address is fixed in the script address (given that it's the validator

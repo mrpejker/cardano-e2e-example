@@ -29,7 +29,7 @@ the Plutus Pioneer Program).
 The structure is as follows:
 in *Preliminaries* section we introduce the example to implement, a detailed explanation of
 the proposed architecture, and instructions for building and running the example dApp.
-Then we go into details of the *Server side*, covering the main aspects
+Then we go into details on the *Server side*, covering the main aspects
 of the Haskell implementation, introducing the proposed modules design, going through
 each component, and explaining the main implementation aspects.
 Finally, we review the *Client side* by introducing the PAB Client library and how to use it.

@@ -19,9 +19,9 @@ which runs the dApp frontend code, balances, signs and submits transactions.
 On the Server side, we run three services: the Plutus Application Backend (**PAB**),
 an Indexer service (currently **Blockfrost**), and a **Budget** service.
 The PAB is in charge of running the dApp off-chain code for building an
-unbalanced transaction. The Indexer service is used by PAB for querying the
+unbalanced transaction. The Indexer service is used by the PAB for querying the
 blockchain. Finally, the Budget service provides the evaluation of Plutus scripts,
-obtaining memory and cpu execution units that a validator consumes, which is
+obtaining memory and CPU execution units that a validator consumes, which is
 needed for completing transactions' balance.
 
 The following diagram shows the complete flow for performing a dApp operation:
@@ -29,10 +29,10 @@ The following diagram shows the complete flow for performing a dApp operation:
 .. figure:: /img/dapp-flow.png
 
 The Browser sends an HTTP request to the corresponding operation endpoint provided by
-PAB (1), which then performs some queries to the Indexer (2) and gets the information needed
+the PAB (1), which then performs some queries to the Indexer (2) and gets the information needed
 for building the unbalanced transaction (3). For getting it, it's necessary to poll the PAB status
 by calling an endpoint that we called *reload* (4).
-Once the unbalanced transaction is received, the Browser balances it (5) and obtains the memory and cpu units of
+Once the unbalanced transaction is received, the Browser balances it (5) and obtains the memory and CPU units of
 the included scripts by calling the Budget service (6). With that information, the definitive balance
 can be computed (7) and the transaction is ready for signing (8) and submitting (9). 
 	    
@@ -73,7 +73,7 @@ and Plutus Prelude. This Haskell code is then compiled into Plutus Core.
 The **OffChain** module contains the core code for building transactions.
 It depends on plutus-apps libraries **Contract Monad** (for querying the blockchain)
 and **Constraints Library** (for building the transaction), the OnChain module for
-including the validators in the transactions, and Business logic for the core
+including the validators in the transactions, and the Business logic for the core
 computations.
 Finally, the web service is implemented on the **Main** module, using the plutus-apps
 tool **PAB**. It basically interprets the OffChain code, exposing the dApps endpoints
@@ -83,8 +83,8 @@ and running the Contract monad for each operation.
 Client Side
 -----------
 
-In our approach, the core part of a dApp is implemented on the Server, but
-important parts are done on Client side. The end user interacts with the dApp
+In our approach, the core part of a dApp is implemented in the Server, but
+important parts are done in the Client side. The end user interacts with the dApp
 web frontend for triggering the operations. The critical work of building
 the unbalanced transaction is done on the server and then we balance, sign
 and submit on the browser.
