@@ -23,7 +23,7 @@ import GHC.Generics ( Generic )
 import Ledger ( TxOutRef, Value )
 
 -- Escrow imports
-import Escrow.Business ( EscrowInfo(..) )
+import Escrow.Types ( EscrowInfo(..) )
 
 {- | Enclose the complete information about a particular escrow instance:
      - The utxo reference for resolving or canceling.
