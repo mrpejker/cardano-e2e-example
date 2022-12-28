@@ -14,9 +14,8 @@ library
     Escrow
     Escrow.Business
     Escrow.OnChain
-    Escrow.OffChain.Parameters
-    Escrow.OffChain.ObservableState
     Escrow.OffChain.Operations
+    Escrow.OffChain.Interface
     Escrow.Types
     Escrow.Validator
     Utils.OffChain
