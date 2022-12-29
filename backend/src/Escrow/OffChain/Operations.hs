@@ -26,8 +26,8 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( ChainIndexTxOut, TxOutRef
-                          , ciTxOutValue, getDatum
+import Ledger             ( ChainIndexTxOut, TxOutRef, Datum, DatumHash
+                          , ciTxOutValue, getDatum, ciTxOutDatum
                           , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
@@ -38,7 +38,7 @@ import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , select, tell, throwError
+                          , select, tell, throwError, datumFromHash
                           , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
@@ -156,7 +156,7 @@ cancelOp addr CancelParams{..} = do
 
     let lkp = mconcat
             [ otherScript validator
-            , unspentOutputs (singleton cpTxOutRef utxo)
+            , unspentOutputs (singleton ref utxo)
             , mintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
@@ -246,8 +246,14 @@ findEscrowUtxo
     -> Contract w s Text (TxOutRef, ChainIndexTxOut)
 findEscrowUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
-        [utxo] -> pure utxo
-        _      -> throwError "Specified Utxo not found"
+        [(oref, o)] -> (oref,) <$> ciTxOutDatum loadDatum o
+        _           -> throwError "Specified Utxo not found"
+  where
+    loadDatum
+        :: Either DatumHash Datum
+        -> Contract w s Text (Either DatumHash Datum)
+    loadDatum lhd@(Left dh) = maybe lhd Right <$> datumFromHash dh
+    loadDatum d = return d
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
      ChainIndexTxOut.
