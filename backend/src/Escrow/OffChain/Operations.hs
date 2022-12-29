@@ -31,7 +31,7 @@ import Ledger             ( ChainIndexTxOut, Datum, DatumHash, TxOutRef
                           , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
-                          , mustPayToPubKey, mustPayToTheScript
+                          , mustPayToTheScript
                           , mustSpendScriptOutput, otherScript
                           , typedValidatorLookups, unspentOutputs
                           )
@@ -51,7 +51,7 @@ import Escrow.OffChain.Interface ( StartParams(..), CancelParams(..)
                                  )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
-                        , eInfoSenderAddr, valueToSender, signerIsSender
+                        , eInfoSenderWallAddr, valueToSender, signerIsSender
                         )
 import Escrow.Validator ( Escrowing
                         , escrowAddress, escrowValidator, escrowInst
@@ -60,8 +60,8 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( getPpkhFromAddress
-                      , lookupScriptUtxos, getDatumWithError
+import Utils.OffChain ( lookupScriptUtxos, getDatumWithError
+                      , mustPayToWalletAddress
                       )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
@@ -192,9 +192,9 @@ resolveOp addr ResolveParams{..} = do
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
     (ref, utxo) <- findEscrowUtxo rpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
-    senderPpkh  <- getPpkhFromAddress (eInfoSenderAddr eInfo)
 
-    let senderPayment = valueToSender eInfo <> minAda
+    let senderWallAddr = eInfoSenderWallAddr eInfo
+        senderPayment  = valueToSender eInfo <> minAda
 
         lkp = mconcat
             [ otherScript validator
@@ -205,7 +205,7 @@ resolveOp addr ResolveParams{..} = do
             [ mustSpendScriptOutput ref resolveRedeemer
             , mustMintValue cTokenVal
             , mustBeSignedBy receiverPpkh
-            , mustPayToPubKey senderPpkh senderPayment
+            , mustPayToWalletAddress senderWallAddr senderPayment
             ]
 
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx

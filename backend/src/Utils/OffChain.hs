@@ -15,14 +15,20 @@ import Data.Map qualified as Map ( toList, filter )
 
 -- IOG imports
 import Ledger ( Address, TxOutRef, ChainIndexTxOut(..)
-              , Datum, PaymentPubKeyHash(..)
+              , Datum, PaymentPubKeyHash(..), StakePubKeyHash(..)
               , ciTxOutValue, _ciTxOutDatum
               , toPubKeyHash
               )
+import Ledger.Constraints ( TxConstraints, mustPayToPubKey
+                          , mustPayToPubKeyAddress
+                          )
 import Ledger.Value    ( AssetClass, Value, assetClassValueOf )
 import Plutus.Contract ( Contract, unspentTxOutFromRef
                         , utxosAt, throwError, datumFromHash
                        )
+
+-- Escrow imports
+import Utils.WalletAddress ( WalletAddress(..) )
 
 -- | Gets a list of utxos for the given address that contains the given Token.
 lookupScriptUtxos
@@ -68,3 +74,16 @@ getPpkhFromAddress
     -> Contract w s Text PaymentPubKeyHash
 getPpkhFromAddress = maybe (throwError "The address should be a wallet address")
                            (return . PaymentPubKeyHash) . toPubKeyHash
+
+-- | To avoid making case-pattern matching inside off-chain functions when
+--   the staking pkh of the wallet address is Nothing.
+mustPayToWalletAddress :: forall i o
+                       .  WalletAddress
+                       -> Value
+                       -> TxConstraints i o
+mustPayToWalletAddress WalletAddress{..} val = case waStaking of
+    Just staking ->
+        let ppkh = PaymentPubKeyHash waPayment
+            spkh = StakePubKeyHash staking
+        in mustPayToPubKeyAddress ppkh spkh val
+    Nothing -> mustPayToPubKey (PaymentPubKeyHash waPayment) val

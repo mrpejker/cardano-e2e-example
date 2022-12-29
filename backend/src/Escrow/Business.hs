@@ -27,6 +27,7 @@ module Escrow.Business
     , signerIsReceiver
     -- * Getters
     , eInfoSenderAddr
+    , eInfoSenderWallAddr
     , valueToSender
     )
 where
@@ -109,6 +110,11 @@ mkEscrowInfo sAdd amount assetClass =
 {-# INLINABLE eInfoSenderAddr #-}
 eInfoSenderAddr :: EscrowInfo -> Address
 eInfoSenderAddr = fromWalletAddress . sAddr . sender
+
+-- | Gets the sender WalletAddress from the EscrowInfo.
+{-# INLINABLE eInfoSenderWallAddr #-}
+eInfoSenderWallAddr :: EscrowInfo -> WalletAddress
+eInfoSenderWallAddr = sAddr . sender
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''ReceiverAddress
