@@ -75,15 +75,17 @@ getPpkhFromAddress
 getPpkhFromAddress = maybe (throwError "The address should be a wallet address")
                            (return . PaymentPubKeyHash) . toPubKeyHash
 
--- | To avoid making case-pattern matching inside off-chain functions when
---   the staking pkh of the wallet address is Nothing.
+{- | To avoid making case-pattern matching inside off-chain functions when
+     the staking pkh of the wallet address is Nothing.
+-}
 mustPayToWalletAddress :: forall i o
                        .  WalletAddress
                        -> Value
                        -> TxConstraints i o
-mustPayToWalletAddress WalletAddress{..} val = case waStaking of
-    Just staking ->
-        let ppkh = PaymentPubKeyHash waPayment
-            spkh = StakePubKeyHash staking
-        in mustPayToPubKeyAddress ppkh spkh val
-    Nothing -> mustPayToPubKey (PaymentPubKeyHash waPayment) val
+mustPayToWalletAddress WalletAddress{..} val =
+  case waStaking of
+    Just staking -> mustPayToPubKeyAddress ppkh (StakePubKeyHash staking) val
+    Nothing      -> mustPayToPubKey ppkh val
+  where
+    ppkh :: PaymentPubKeyHash
+    ppkh = PaymentPubKeyHash waPayment

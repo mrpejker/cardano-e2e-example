@@ -2,9 +2,8 @@ import React, { useState } from "react"
 import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
+import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
 import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams, TxOutRef } from "src/contractEndpoints/parameters";
-import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
 function UserUI() {

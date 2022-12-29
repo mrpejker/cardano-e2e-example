@@ -49,7 +49,6 @@ export class UserEndpoints {
     console.log(`Connected Address:`)
     console.log(walletAddr)
 
-    // Try to get unbalanced transaction from PAB
     const walletId = await this.wallet.getWalletId();
     const pabApi = new PABApi(process.env.REACT_APP_PAB_URL);
 
