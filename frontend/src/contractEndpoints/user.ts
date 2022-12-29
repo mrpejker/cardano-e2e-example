@@ -289,9 +289,9 @@ export class UserEndpoints {
       if (succeeded(response)) {
         const txHash = response.value;
         console.log(`TX HASH: ${txHash}`)
-        alert(`Start suceeded. Tx hash: ${txHash}`);
+        alert(`Resolve suceeded. Tx hash: ${txHash}`);
       } else {
-        alert(`Start failed when trying to submit it. Error: ${response.error}`);
+        alert(`Resolve failed when trying to submit it. Error: ${response.error}`);
       }
     }
   }

@@ -351,8 +351,7 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
                     console.log("Resolving")
                     console.log(elem)
                     const params = mkResolveParams(elem.escrowUtxo)
-                    const _ = await contractEndpoints.resolve(params)
-                    contractEndpoints.reload()
+                    contractEndpoints.resolve(params)
                   }
                   }
                 > Resolve
