@@ -26,8 +26,8 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( ChainIndexTxOut, TxOutRef, Datum, DatumHash
-                          , ciTxOutValue, getDatum, ciTxOutDatum
+import Ledger             ( ChainIndexTxOut, Datum, DatumHash, TxOutRef
+                          , ciTxOutValue, ciTxOutDatum, getDatum
                           , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
