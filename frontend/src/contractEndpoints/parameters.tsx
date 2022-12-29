@@ -131,3 +131,13 @@ function txOutRefFromString(ref: string): TxOutRef {
   const idx = Number(ref.substring(65))
   return mkTxOutRef(txId, idx)
 }
+
+export type ResolveParams = {
+  rpTxOutRef: TxOutRef
+}
+
+export function mkResolveParams(ref: TxOutRef): ResolveParams {
+  return {
+    rpTxOutRef: ref
+  }
+}

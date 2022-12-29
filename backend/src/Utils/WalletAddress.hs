@@ -11,7 +11,7 @@ Stability   : develop
 
 module Utils.WalletAddress
     ( -- * WalletAddress Type
-      WalletAddress
+      WalletAddress(..)
     -- * Smart Constructors
     , mkWalletAddress
     -- * Translation functions

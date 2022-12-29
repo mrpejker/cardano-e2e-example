@@ -2,9 +2,8 @@ import React, { useState } from "react"
 import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
-import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams } from "src/contractEndpoints/parameters";
-import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
+import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
+import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams, TxOutRef } from "src/contractEndpoints/parameters";
 
 // Main component for the UserUI. It includes all the other components.
 function UserUI() {
@@ -63,6 +62,7 @@ function UserUI() {
       <br></br>
       <ContractInformation
         currentContractState={currentContractState}
+        contractEndpoints={contractEndpoints}
       />
       <Reload
         contractEndpoints={contractEndpoints}
@@ -303,18 +303,35 @@ const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: Cancel
   )
 }
 
+type ResolveProps = {
+  txOutRefToResolve: TxOutRef
+  contractEndpoints: UserEndpoints
+}
+
 // Component that handles the resolving of started escrows.
-const Resolve = () => {
+const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
   return (
-    <>
-    </>
+    <Button
+      style={{ marginRight: "16px" }}
+      variant="success"
+      size="sm"
+      onClick={async e => {
+        console.log("Resolving escrow for ref: ")
+        console.log(txOutRefToResolve)
+        const params = mkResolveParams(txOutRefToResolve)
+        await contractEndpoints.resolve(params)
+      }
+      }
+    > Resolve
+    </Button>
   )
 }
 type ContractInformationProps = {
   currentContractState: ObsState
+  contractEndpoints: UserEndpoints
 }
 // Component that displays the started escrows in a table.
-const ContractInformation = ({ currentContractState }: ContractInformationProps) => {
+const ContractInformation = ({ currentContractState, contractEndpoints }: ContractInformationProps) => {
   return (
     <div
       style={{
@@ -340,18 +357,11 @@ const ContractInformation = ({ currentContractState }: ContractInformationProps)
             <td> {getValueAsset(elem.escrowValue)} </td>
             <td> {elem.escrowInfo.rAmount} </td>
             <td> {elem.escrowInfo.rAssetClass.unAssetClass[1].unTokenName} </td>
-            <td >
-                <Button
-                  style={{ marginRight: "16px" }}
-                  variant="success"
-                  size="sm"
-                  onClick={async e => {
-                    console.log("Resolving")
-                    console.log(elem)
-                  }
-                  }
-                > Resolve
-                </Button>
+            <td>
+              <Resolve
+                txOutRefToResolve={elem.escrowUtxo}
+                contractEndpoints={contractEndpoints}
+              />
             </td>
           </tr>
         ))}
