@@ -3,7 +3,7 @@ import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootst
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/user";
-import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
+import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams, TxOutRef } from "src/contractEndpoints/parameters";
 import { CIP30WalletWrapper, ContractEndpoints } from "cardano-pab-client";
 
 // Main component for the UserUI. It includes all the other components.
@@ -304,11 +304,27 @@ const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: Cancel
   )
 }
 
+type ResolveProps = {
+  txOutRefToResolve: TxOutRef
+  contractEndpoints: UserEndpoints
+}
+
 // Component that handles the resolving of started escrows.
-const Resolve = () => {
+const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
   return (
-    <>
-    </>
+    <Button
+      style={{ marginRight: "16px" }}
+      variant="success"
+      size="sm"
+      onClick={async e => {
+        console.log("Resolving escrow for ref: ")
+        console.log(txOutRefToResolve)
+        const params = mkResolveParams(txOutRefToResolve)
+        await contractEndpoints.resolve(params)
+      }
+      }
+    > Resolve
+    </Button>
   )
 }
 type ContractInformationProps = {
@@ -342,20 +358,11 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             <td> {getValueAsset(elem.escrowValue)} </td>
             <td> {elem.escrowInfo.rAmount} </td>
             <td> {elem.escrowInfo.rAssetClass.unAssetClass[1].unTokenName} </td>
-            <td >
-                <Button
-                  style={{ marginRight: "16px" }}
-                  variant="success"
-                  size="sm"
-                  onClick={async e => {
-                    console.log("Resolving")
-                    console.log(elem)
-                    const params = mkResolveParams(elem.escrowUtxo)
-                    contractEndpoints.resolve(params)
-                  }
-                  }
-                > Resolve
-                </Button>
+            <td>
+              <Resolve
+                txOutRefToResolve={elem.escrowUtxo}
+                contractEndpoints={contractEndpoints}
+              />
             </td>
           </tr>
         ))}

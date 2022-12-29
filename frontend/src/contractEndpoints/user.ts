@@ -135,7 +135,6 @@ export class UserEndpoints {
 
   public async reload(): Promise<ObsState> {
     const {
-      ContractEndpoints,
       succeeded
     } = await import("cardano-pab-client");
     console.log("Inside Reload")
