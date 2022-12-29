@@ -23,7 +23,7 @@ In summary, we must have the following folder structure:
 
    .
    ├── cardano-e2e-example
-   │   ├── contract
+   │   ├── backend
    │   └── frontend
    ├── plutus-apps
    └── plutus-budget-service
@@ -67,7 +67,7 @@ Indexer/Blockfrost
 
 We will use a public instance of Blockfrost, so we must get a token key from its
 `website <https://blockfrost.dev/docs/overview/getting-started>`_. Once
-we have this token, inside the ``contract`` folder we need to create a
+we have this token, inside the ``backend`` folder we need to create a
 file, say ``blockfrost-token``, and put the token there. In
 this particular example, the token corresponds to the preprod testnet:
 
@@ -136,11 +136,11 @@ PAB
 
 The PAB will run the off-chain code for building unbalanced transactions, using
 the indexer for querying the blockchain. First, we need to get
-into de `contract` folder to compile everything with :code:`cabal build escrow-pab`.
+into de `backend` folder to compile everything with :code:`cabal build escrow-pab`.
 This will take some minutes the first time.
 
 To run this service, we will use the ``pab-config.yaml``
-configuration file present in the ``contract`` folder, so we must be sure everything
+configuration file present in the ``backend`` folder, so we must be sure everything
 is correctly setup there. This file has a lot of
 settings, but the relevant ones for us are the Blockfrost configuration, the
 wallet mode, the database, and the general PAB service.
