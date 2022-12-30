@@ -13,6 +13,7 @@ import Test.Tasty
 
 import Test.QuickCheck
 import Tests.Prop.Escrow
+import qualified Plutus.Contract.Test.ContractModel as CM
 
 import Tests.OffChain.Trace0 qualified
 import Tests.OffChain.Trace1 qualified
@@ -23,7 +24,7 @@ import Tests.OffChain.Trace3 qualified
 main :: IO ()
 main = do
     -- QuickCheck tests are disabled
-    quickCheck propEscrow
+    quickCheck $ CM.forAllDL testStart propEscrow
     defaultMain tests
 
 tests :: TestTree
