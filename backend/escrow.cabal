@@ -168,12 +168,10 @@ test-suite escrow-tests
   -- IOG dependencies
   --------------------
   build-depends:
-    , cardano-api
     , plutus-contract
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
-    , freer-simple
     , freer-extras
 
   ------------------------
@@ -181,8 +179,6 @@ test-suite escrow-tests
   ------------------------
   build-depends:
       base ^>=4.14.1.0
-    , ansi-terminal
-    , bytestring
     , containers
     , data-default
     , escrow
@@ -190,9 +186,4 @@ test-suite escrow-tests
     , text
     , lens <= 4.19.2
     , tasty
-    , tasty-hunit
-    , text
-    , prettyprinter
-    , serialise
-    , text
     , text

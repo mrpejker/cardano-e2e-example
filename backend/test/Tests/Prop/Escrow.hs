@@ -25,7 +25,6 @@ import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
-import qualified Data.Map as Map
 
 import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger, tabulate )
 

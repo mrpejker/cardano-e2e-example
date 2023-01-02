@@ -30,11 +30,8 @@ import Plutus.Trace.Emulator      ( ContractHandle
 import Plutus.Contract.Test       ( w1, w2, w3, w4
                                   , mockWalletPaymentPubKeyHash
                                   )
-import PlutusTx.Prelude           ( traceError )
 import Ledger                     ( Address, PaymentPubKey, PaymentPubKeyHash
-                                  , PubKey, CardanoTx, Signature
-                                  , pubKeyHashAddress, onCardanoTx
-                                  , txSignatures
+                                  , pubKeyHashAddress
                                   )
 import Ledger.Ada                 ( lovelaceValueOf )
 import Ledger.Value               as Value
