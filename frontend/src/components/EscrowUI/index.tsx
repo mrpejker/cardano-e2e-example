@@ -82,7 +82,6 @@ type ConnectProps = {
 };
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
-  const [isSpinning, setIsSpinning] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState("eternl");
   return (
     <Navbar.Collapse className="justify-content-end">
@@ -101,34 +100,19 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
           <option value="nami">Nami</option>
           <option value="eternl">Eternl</option>
         </select>
-        <Button
-            style={{ marginRight: "16px" }}
-            variant="success"
-            size="sm"
-            onClick={async e => {
-                setIsSpinning(true)
-                console.log("Connecting")
-                const ce = await contractEndpoints.connect(selectedWallet)
-                console.log("Connected")
-                setIsSpinning(false)
-                setContractEndpoints(ce)
-                setIsConnected(true)
-                const obsState = await ce.reload()
-                setCurrentContractState(obsState)
-              }
+        <ButtonWithSpinner
+            onClick={ async () => {
+              console.log("Connecting")
+              const ce = await contractEndpoints.connect(selectedWallet)
+              console.log("Connected")
+              setContractEndpoints(ce)
+              setIsConnected(true)
+              const obsState = await ce.reload()
+              setCurrentContractState(obsState)}
             }
-        >{ isSpinning ?
-          <Spinner
-            as="span"
-            animation="border"
-            size="sm"
-            role="status"
-            aria-hidden="true"
-            className="mx-2"
-          /> :
-          <div>Connect Wallet</div>
-          }
-        </Button>
+            isDisabled={false}
+            text={"Connect Wallet"}
+        />
       </Nav.Link>
     </Navbar.Collapse>
   )
@@ -136,34 +120,16 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
 
 // Reload component that reloads the contract state
 const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
-  const [isSpinning, setIsSpinning] = useState(false);
   return (
-    <Button
-      style={{ marginRight: "16px" }}
-      variant="success"
-      size="sm"
-      disabled={!isConnected}
-      onClick={async e => {
-        setIsSpinning(true)
+    <ButtonWithSpinner
+      onClick={async () => {
         console.log("Reloading")
         const obsState = await contractEndpoints.reload()
         setCurrentContractState(obsState)
-        setIsSpinning(false)
-        }
-      }
-    >
-      { isSpinning ?
-          <Spinner
-            as="span"
-            animation="border"
-            size="sm"
-            role="status"
-            aria-hidden="true"
-            className="mx-2"
-          /> :
-          <div>Reload</div>
-          }
-    </Button>
+      }}
+      isDisabled={!isConnected}
+      text={"Reload"}
+    />
   )
 }
 
@@ -372,33 +338,17 @@ type ResolveProps = {
 
 // Component that handles the resolving of started escrows.
 const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
-  const [isSpinning, setIsSpinning] = useState(false);
   return (
-    <Button
-      style={{ marginRight: "16px" }}
-      variant="success"
-      size="sm"
-      onClick={async e => {
-        setIsSpinning(true)
+    <ButtonWithSpinner
+      onClick={async () => {
         console.log("Resolving escrow for ref: ")
         console.log(txOutRefToResolve)
         const params = mkResolveParams(txOutRefToResolve)
         await contractEndpoints.resolve(params)
-        setIsSpinning(false)
-      }
-      }
-    > { isSpinning ?
-      <Spinner
-        as="span"
-        animation="border"
-        size="sm"
-        role="status"
-        aria-hidden="true"
-        className="mx-2"
-      /> :
-      <div>Resolve</div>
-      }
-    </Button>
+      }}
+      isDisabled={false}
+      text={"Resolve"}
+    />
   )
 }
 type ContractInformationProps = {
@@ -444,6 +394,42 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
     </Table>}
     </div>
 
+  )
+}
+
+type ButtonWithSpinnerProps = {
+  onClick: () => Promise<void>
+  isDisabled : boolean
+  text: string
+}
+
+const ButtonWithSpinner = ({onClick, isDisabled, text}: ButtonWithSpinnerProps) => {
+  const [isSpinning, setIsSpinning] = useState(false);
+  return (
+    <Button
+      style={{ marginRight: "16px" }}
+      variant="success"
+      size="sm"
+      disabled={isDisabled}
+      onClick={async e => {
+        setIsSpinning(true)
+        await onClick()
+        setIsSpinning(false)
+        }
+      }
+    >
+      { isSpinning ?
+          <Spinner
+            as="span"
+            animation="border"
+            size="sm"
+            role="status"
+            aria-hidden="true"
+            className="mx-2"
+          /> :
+          <div>{text}</div>
+          }
+    </Button>
   )
 }
 
