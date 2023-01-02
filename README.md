@@ -7,7 +7,7 @@ pattern of a working end-to-end example.
 
 ```shell
 .
-├── contract
+├── backend
 ├── frontend
 ├── doc
 ├── tutorial
@@ -15,7 +15,7 @@ pattern of a working end-to-end example.
 ```
 The documentation can be found in the `doc` folder, where we have the different
 requirements and design documents. The `tutorial` folder has the complete tutorial
-explaining every design pattern, decision, etc. The `contract` and `frontend` folders
+explaining every design pattern, decision, etc. The `backend` and `frontend` folders
 contain the Haskell server-side implementation and the React implementation of
 the webpage, respectably.
 
@@ -47,7 +47,7 @@ need to compile and run the `PAB`, the frontend `server`, and the `Budget Servic
 ### PAB
 
 We start the nix-shell environment from the plutus-apps folder, then move to the
-example to get inside the `contract` folder and run `cabal build pab`. This will
+example to get inside the `backend` folder and run `cabal build pab`. This will
 take some minutes the first time. Before running the service we need to get a
 [blockfrost token](https://blockfrost.dev/docs/overview/getting-started) and put
 it on the `blockfrost-token` file. Once everything is compiled we need to create
