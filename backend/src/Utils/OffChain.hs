@@ -14,24 +14,16 @@ import Data.Text    ( Text )
 import Data.Map qualified as Map ( toList, filter )
 
 -- IOG imports
-import Ledger.Constraints ( TxConstraints, mustPayToPubKey
-                          , mustPayToPubKeyAddress
-                          )
-import Ledger ( DecoratedTxOut(..)
+import Ledger ( DecoratedTxOut(..), Address, TxOutRef, Datum, DatumHash
               , DatumFromQuery(..), PaymentPubKeyHash(..)
-              , StakePubKeyHash(..)
               , decoratedTxOutDatum
               , decoratedTxOutValue, _ScriptDecoratedTxOut
-              , toPubKeyHash, stakePubKeyHashCredential
+              , toPubKeyHash
               )
-import Ledger.Value    ( AssetClass, assetClassValueOf )
+import Ledger.Value    ( Value, AssetClass, assetClassValueOf )
 import Plutus.Contract ( Contract, unspentTxOutFromRef
-                        , utxosAt, throwError, datumFromHash
+                       , utxosAt, throwError, datumFromHash
                        )
-import Plutus.V1.Ledger.Api
-
--- Escrow imports
-import Utils.WalletAddress ( WalletAddress(..) )
 
 -- | Gets a list of utxos for the given address that contains the given Token.
 lookupScriptUtxos
@@ -60,7 +52,6 @@ getDatumTxOut
     .  DecoratedTxOut
     -> Contract w s Text (Maybe Datum)
 getDatumTxOut txOut =
---    either datumFromHash (return . Just) (decoratedTxOutDatum txOut)
     case matching _ScriptDecoratedTxOut txOut of
         Right (_,_,_,(_,DatumInline d),_,_) -> return (Just d)
         Right (_,_,_,(_,DatumInBody d),_,_) -> return (Just d)
@@ -72,8 +63,8 @@ findUtxoFromRef
     :: forall w s
     .  TxOutRef
     -> Contract w s Text DecoratedTxOut
-findUtxoFromRef ref =
-    unspentTxOutFromRef ref >>= maybe (throwError "Utxo not found") pure
+findUtxoFromRef ref = unspentTxOutFromRef ref >>=
+                      maybe (throwError "Utxo not found") pure
 
 {- | Finds the unique utxo from the given TxOutRef and loads the datum on the
      DecoratedTxOut, fails otherwise.
@@ -102,20 +93,3 @@ getPpkhFromAddress
     -> Contract w s Text PaymentPubKeyHash
 getPpkhFromAddress = maybe (throwError "The address should be a wallet address")
                            (return . PaymentPubKeyHash) . toPubKeyHash
-
-{- | To avoid making case-pattern matching inside off-chain functions when
-     the staking pkh of the wallet address is Nothing.
--}
-mustPayToWalletAddress :: forall i o
-                       .  WalletAddress
-                       -> Value
-                       -> TxConstraints i o
-mustPayToWalletAddress WalletAddress{..} val =
-  case waStaking of
-    Just staking -> mustPayToPubKeyAddress ppkh
-                    (stakePubKeyHashCredential $ StakePubKeyHash staking) val
-    Nothing      -> mustPayToPubKey ppkh val
-  where
-    ppkh :: PaymentPubKeyHash
-    ppkh = PaymentPubKeyHash waPayment
-

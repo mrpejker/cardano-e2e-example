@@ -62,12 +62,11 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( lookupScriptUtxos, filterMUtxo, getDatumWithError
-                      , mustPayToWalletAddress
-                      )
+import Utils.OffChain ( lookupScriptUtxos, filterMUtxo, getDatumWithError )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
                            , waPaymentPubKeyHash
+                           , mustPayToWalletAddress
                            )
 
 endpoints

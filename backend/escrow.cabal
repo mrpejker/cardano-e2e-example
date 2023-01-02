@@ -54,7 +54,6 @@ library
     -Wincomplete-uni-patterns -Wincomplete-record-updates
     -Wredundant-constraints -Widentities -fobject-code
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fplugin-opt PlutusTx.Plugin:defer-errors
 
   --------------------
   -- IOG dependencies
@@ -86,10 +85,11 @@ executable escrow-pab
   other-modules:      EscrowHandlers
   default-language:   Haskell2010
   default-extensions: ImportQualifiedPost
-  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
-                 -Wincomplete-uni-patterns -Wincomplete-record-updates
-                 -Wno-missing-import-lists -Wredundant-constraints -O0
-                 -fplugin-opt PlutusTx.Plugin:defer-errors
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wno-missing-import-lists -Wredundant-constraints -O0
+
   --------------------
   -- IOG dependencies
   --------------------
@@ -163,7 +163,6 @@ test-suite escrow-tests
     -Wredundant-constraints -Widentities -fno-strictness -fobject-code
     -fno-spec-constr -fno-specialise -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas
-    -fplugin-opt PlutusTx.Plugin:defer-errors
 
   --------------------
   -- IOG dependencies
