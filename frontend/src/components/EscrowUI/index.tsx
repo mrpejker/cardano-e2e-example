@@ -207,57 +207,78 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
                 autoFocus
               />
               <br></br>
-              <Row>
-                <Col>
-                  <Form.Label>Send Currency Symbol</Form.Label>
-                  <Form.Control
-                    name="sendCurrency"
-                    type="text"
-                    placeholder="Currency"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Send Token Name</Form.Label>
-                  <Form.Control
-                    name="sendTokenName"
-                    type="text"
-                    placeholder="Token Name"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Send Amount</Form.Label>
-                  <Form.Control
-                    name="sendAmount"
-                    type="number"
-                    placeholder="Amount"
-                  />
-                </Col>
-              </Row>
+              <div className="position-relative">
+                <Row>
+                  <Col>
+                    <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
+                      <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                        Send Asset Class
+                      </div>
+                      <Col className='mx-2 my-4'>
+                        <Form.Control
+                          name="sendCurrency"
+                          type="text"
+                          placeholder="Currency Symbol"
+                        />
+                      </Col>
+                      <Col className='mx-2 my-4'>
+                        <Form.Control
+                          name="sendTokenName"
+                          type="text"
+                          placeholder="Token Name"
+                        />
+                      </Col>
+                    </div>
+                  </Col>
+                  <Col sm={4} >
+                    <div className="position-absolute" style={{ top: -10 }}>
+                        Send Amount
+                    </div>
+                    {/* <Form.Label>Send Amount</Form.Label> */}
+                    <Form.Control
+                      name="sendAmount"
+                      type="number"
+                      placeholder="Amount"
+                      className='my-4'
+                    />
+                  </Col>
+                </Row>
+              </div>
               <br></br>
+              <div className="position-relative">
               <Row>
                 <Col>
-                  <Form.Label>Receive Currency Symbol</Form.Label>
-                  <Form.Control
-                    name="recCurrency"
-                    placeholder="Currency"
-                  />
+                  <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
+                    <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                      Receive Asset Class
+                    </div>
+                    <Col className='mx-2 my-4'>
+                      <Form.Control
+                        name="recCurrency"
+                        placeholder="Currency Symbol"
+                      />
+                    </Col>
+                    <Col className='mx-2 my-4'>
+                      <Form.Control
+                        name="recTokenName"
+                        placeholder="Token name"
+                      />
+                    </Col>
+                  </div>
                 </Col>
-                <Col>
-                  <Form.Label>Receive Token Name</Form.Label>
-                  <Form.Control
-                    name="recTokenName"
-                    placeholder="Token name"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Receive Amount</Form.Label>
+                <Col sm={4}>
+                  <div className="position-absolute" style={{ top: -10 }}>
+                    Receive Amount
+                  </div>
                   <Form.Control
                     name="recAmount"
                     type="number"
                     placeholder="Amount"
+                    className="my-4"
                   />
                 </Col>
               </Row>
+              </div>
               <br></br>
               <Row>
                   <div className="d-flex align-items-center">
