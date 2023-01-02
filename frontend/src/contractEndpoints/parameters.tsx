@@ -10,15 +10,6 @@ export function mkAssetClass(cs: string, tn: string): AssetClass {
   }
 }
 
-export function mkAssetClassFromAc(ac: string): AssetClass {
-  return {
-    unAssetClass: [
-      { unCurrencySymbol: ac.substring(0, 56) },
-      { unTokenName: ac.substring(56) }
-    ]
-  }
-}
-
 export type Value = {
     getValue: [ [ CurrencySymbol, [ [TokenName, number] ] ] ]
   }
@@ -100,14 +91,15 @@ export type StartParams = {
   receiveAmount: Number
 }
 
-export async function mkStartParams(rAdd: string, sAsset: string, sAm: Number,
-  rAsset: string, rAm: Number): Promise<StartParams> {
+export async function mkStartParams(rAdd: string, sCurrency: string,
+  sTokenN: string, sAm: Number, rCurrency: string, rTokenN: string,
+  rAm: Number): Promise<StartParams> {
   const wAdd = await bech32AddressToWalletAddress(rAdd)
   return {
     receiverAddress: wAdd,
-    sendAssetClass: mkAssetClassFromAc(sAsset),
+    sendAssetClass: mkAssetClass(sCurrency, sTokenN),
     sendAmount: sAm,
-    receiveAssetClass: mkAssetClassFromAc(rAsset),
+    receiveAssetClass: mkAssetClass(rCurrency, rTokenN),
     receiveAmount: rAm,
   }
 

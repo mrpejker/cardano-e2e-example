@@ -155,17 +155,20 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
     e.preventDefault()
     const formData = new FormData(e.target),
       recAddr = formData.get("recAddr") as string,
-      sendAsset = formData.get("sendAsset") as string,
+      sendCurrency = formData.get("sendCurrency") as string,
+      sendTN = formData.get("sendTokenName") as string,
       sendAmount = parseInt(formData.get("sendAmount") as string),
-      recAsset = formData.get("recAsset") as string,
+      recCurrency = formData.get("recCurrency") as string,
+      recTN = formData.get("recTokenName") as string,
       recAmount = parseInt(formData.get("recAmount") as string)
 
-    mkStartParams(recAddr, sendAsset, sendAmount, recAsset, recAmount)
+    mkStartParams(recAddr, sendCurrency, sendTN, sendAmount, recCurrency,
+      recTN, recAmount)
       .then(sp => contractEndpoints.start(sp))
   }
   return (
     <>
-      <Modal show={showStartModal}>
+      <Modal show={showStartModal} size="lg">
         <Modal.Header closeButton onHide={ () => setShowStartModal(false)}>
           <Modal.Title>Start new Escrow</Modal.Title>
         </Modal.Header>
@@ -181,11 +184,19 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
               <br></br>
               <Row>
                 <Col>
-                  <Form.Label>Send AssetClass</Form.Label>
+                  <Form.Label>Send Currency Symbol</Form.Label>
                   <Form.Control
-                    name="sendAsset"
+                    name="sendCurrency"
                     type="text"
-                    placeholder="Asset"
+                    placeholder="Currency"
+                  />
+                </Col>
+                <Col>
+                  <Form.Label>Send Token Name</Form.Label>
+                  <Form.Control
+                    name="sendTokenName"
+                    type="text"
+                    placeholder="Token Name"
                   />
                 </Col>
                 <Col>
@@ -200,10 +211,17 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
               <br></br>
               <Row>
                 <Col>
-                  <Form.Label>Receive AssetClass</Form.Label>
+                  <Form.Label>Receive Currency Symbol</Form.Label>
                   <Form.Control
-                    name="recAsset"
-                    placeholder="Asset"
+                    name="recCurrency"
+                    placeholder="Currency"
+                  />
+                </Col>
+                <Col>
+                  <Form.Label>Receive Token Name</Form.Label>
+                  <Form.Control
+                    name="recTokenName"
+                    placeholder="Token name"
                   />
                 </Col>
                 <Col>
@@ -217,17 +235,15 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
               </Row>
               <br></br>
               <Row>
-                <Col></Col>
-                <Col>
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    style={{margin: "10px"}}
-                  >
-                    Submit
-                  </Button>
-                </Col>
-                <Col></Col>
+                  <div className="d-flex align-items-center">
+                    <Button
+                      variant="primary"
+                      type="submit"
+                      className="mx-auto"
+                    >
+                      Submit
+                    </Button>
+                  </div>
               </Row>
             </Form.Group>
           </Form>
