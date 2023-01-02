@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootstrap";
+import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
@@ -58,7 +58,7 @@ function EscrowUI() {
       ></Cancel>
       <br></br>
       <br></br>
-      <h2> Active Escrows </h2>
+      <h2> Escrows to Resolve </h2>
       <br></br>
       <ContractInformation
         currentContractState={currentContractState}
@@ -82,6 +82,7 @@ type ConnectProps = {
 };
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
+  const [isSpinning, setIsSpinning] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState("eternl");
   return (
     <Navbar.Collapse className="justify-content-end">
@@ -105,17 +106,28 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
             variant="success"
             size="sm"
             onClick={async e => {
+                setIsSpinning(true)
                 console.log("Connecting")
                 const ce = await contractEndpoints.connect(selectedWallet)
                 console.log("Connected")
+                setIsSpinning(false)
                 setContractEndpoints(ce)
                 setIsConnected(true)
                 const obsState = await ce.reload()
                 setCurrentContractState(obsState)
               }
             }
-        >
-          Connect Wallet
+        >{ isSpinning ?
+          <Spinner
+            as="span"
+            animation="border"
+            size="sm"
+            role="status"
+            aria-hidden="true"
+            className="mx-2"
+          /> :
+          <div>Connect Wallet</div>
+          }
         </Button>
       </Nav.Link>
     </Navbar.Collapse>
@@ -124,6 +136,7 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
 
 // Reload component that reloads the contract state
 const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
+  const [isSpinning, setIsSpinning] = useState(false);
   return (
     <Button
       style={{ marginRight: "16px" }}
@@ -131,13 +144,25 @@ const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
       size="sm"
       disabled={!isConnected}
       onClick={async e => {
+        setIsSpinning(true)
         console.log("Reloading")
         const obsState = await contractEndpoints.reload()
         setCurrentContractState(obsState)
+        setIsSpinning(false)
         }
       }
     >
-      Reload
+      { isSpinning ?
+          <Spinner
+            as="span"
+            animation="border"
+            size="sm"
+            role="status"
+            aria-hidden="true"
+            className="mx-2"
+          /> :
+          <div>Reload</div>
+          }
     </Button>
   )
 }
@@ -326,19 +351,32 @@ type ResolveProps = {
 
 // Component that handles the resolving of started escrows.
 const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
+  const [isSpinning, setIsSpinning] = useState(false);
   return (
     <Button
       style={{ marginRight: "16px" }}
       variant="success"
       size="sm"
       onClick={async e => {
+        setIsSpinning(true)
         console.log("Resolving escrow for ref: ")
         console.log(txOutRefToResolve)
         const params = mkResolveParams(txOutRefToResolve)
         await contractEndpoints.resolve(params)
+        setIsSpinning(false)
       }
       }
-    > Resolve
+    > { isSpinning ?
+      <Spinner
+        as="span"
+        animation="border"
+        size="sm"
+        role="status"
+        aria-hidden="true"
+        className="mx-2"
+      /> :
+      <div>Resolve</div>
+      }
     </Button>
   )
 }
