@@ -23,26 +23,20 @@ receiving the agreed amount
 module Tests.OffChain.Trace3 where
 
 -- Non-IOG imports
-import Control.Lens           ( (.~), (&) )
-import Control.Monad          ( void )
-import Data.Default           ( Default (..) )
-import Data.Map               qualified as Map
-import Data.Maybe             ( isJust )
-import Test.Tasty             ( TestTree )
+import Control.Lens  ( (.~), (&) )
+import Control.Monad ( void )
+import Data.Default  ( Default (..) )
+import Test.Tasty    ( TestTree )
 
 -- IOG imports
-import Ledger                 ( Block, OnChainTx(Valid)
-                              , CardanoTx, unPaymentPubKey
-                              )
 import Ledger.Value           ( assetClass )
 import Plutus.Trace.Emulator  ( activateContractWallet, callEndpoint
                               , EmulatorTrace, runEmulatorTraceIO', waitNSlots
                               )
-import Plutus.Contract.Test   ( (.&&.), assertBlockchain
+import Plutus.Contract.Test   ( (.&&.)
                               , checkPredicateOptions, defaultCheckOptions
                               , emulatorConfig, walletFundsChange, w3, w4
                               )
-import Wallet.Emulator.Wallet ( mockWalletPaymentPubKey )
 
 -- Escrow imports
 import Escrow

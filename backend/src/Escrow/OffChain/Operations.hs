@@ -26,20 +26,21 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( DecoratedTxOut, TxOutRef, DatumFromQuery(..), DatumHash
-                          , decoratedTxOutValue, decoratedTxOutDatum, getDatum
+import Ledger             ( DecoratedTxOut, TxOutRef
+                          , decoratedTxOutValue, getDatum
                           , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
-                          , mustMintValue, mustPayToPubKey
-                          , mustPayToTheScriptWithDatumInTx, mustSpendScriptOutput
+                          , mustMintValue
+                          , mustPayToTheScriptWithDatumInTx
+                          , mustSpendScriptOutput
                           , plutusV1OtherScript, typedValidatorLookups
                           , unspentOutputs
                           )
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , select, tell, throwError, datumFromHash
+                          , select, tell, throwError
                           , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
@@ -61,7 +62,7 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( lookupScriptUtxos, getDatumWithError
+import Utils.OffChain ( lookupScriptUtxos, filterMUtxo, getDatumWithError
                       , mustPayToWalletAddress
                       )
 import Utils.OnChain  ( minAda )
@@ -149,7 +150,7 @@ cancelOp addr CancelParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findEscrowUtxo cpTxOutRef utxos
+    (ref, utxo) <- filterMUtxo cpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
@@ -191,7 +192,7 @@ resolveOp addr ResolveParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findEscrowUtxo rpTxOutRef utxos
+    (ref, utxo) <- filterMUtxo rpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo
@@ -236,26 +237,6 @@ reloadOp addr = do
      mkEscrowInfo (utxoRef, dtxout) =
          mkUtxoEscrowInfo utxoRef (dtxout ^. decoratedTxOutValue)
          <$> getEscrowInfo dtxout
-
-{- | Off-chain function for getting the specific UTxO from a list of UTxOs by
-     its TxOutRef.
--}
-findEscrowUtxo
-    :: forall w s
-    .  TxOutRef
-    -> [(TxOutRef, DecoratedTxOut)]
-    -> Contract w s Text (TxOutRef, DecoratedTxOut)
-findEscrowUtxo ref utxos =
-    case filter ((==) ref . fst) utxos of
-        [(oref, o)] -> (oref,) <$> decoratedTxOutDatum loadDatum o
-        _           -> throwError "Specified Utxo not found"
-  where
-    loadDatum
-        :: (DatumHash, DatumFromQuery)
-        -> Contract w s Text (DatumHash, DatumFromQuery)
-    loadDatum d@(dh, DatumUnknown) =
-        maybe d ((dh,) . DatumInBody) <$> datumFromHash dh
-    loadDatum d = return d
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
      DecoratedTxOut.

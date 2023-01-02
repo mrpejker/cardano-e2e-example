@@ -20,6 +20,7 @@ import Ledger.Constraints ( TxConstraints, mustPayToPubKey
 import Ledger ( DecoratedTxOut(..)
               , DatumFromQuery(..), PaymentPubKeyHash(..)
               , StakePubKeyHash(..)
+              , decoratedTxOutDatum
               , decoratedTxOutValue, _ScriptDecoratedTxOut
               , toPubKeyHash, stakePubKeyHashCredential
               )
@@ -74,6 +75,26 @@ findUtxoFromRef
 findUtxoFromRef ref =
     unspentTxOutFromRef ref >>= maybe (throwError "Utxo not found") pure
 
+{- | Finds the unique utxo from the given TxOutRef and loads the datum on the
+     DecoratedTxOut, fails otherwise.
+-}
+filterMUtxo
+    :: forall w s
+    .  TxOutRef
+    -> [(TxOutRef, DecoratedTxOut)]
+    -> Contract w s Text (TxOutRef, DecoratedTxOut)
+filterMUtxo ref utxos =
+    case filter ((==) ref . fst) utxos of
+        [(oref, o)] -> (oref,) <$> decoratedTxOutDatum loadDatum o
+        _           -> throwError "Specified Utxo not found"
+  where
+    loadDatum
+        :: (DatumHash, DatumFromQuery)
+        -> Contract w s Text (DatumHash, DatumFromQuery)
+    loadDatum d@(dh, DatumUnknown) =
+        maybe d ((dh,) . DatumInBody) <$> datumFromHash dh
+    loadDatum d = return d
+
 -- | Gets the PaymentPubKeyHash for the given Address
 getPpkhFromAddress
     :: forall w s
@@ -92,7 +113,7 @@ mustPayToWalletAddress :: forall i o
 mustPayToWalletAddress WalletAddress{..} val =
   case waStaking of
     Just staking -> mustPayToPubKeyAddress ppkh
-            (stakePubKeyHashCredential $ StakePubKeyHash staking) val
+                    (stakePubKeyHashCredential $ StakePubKeyHash staking) val
     Nothing      -> mustPayToPubKey ppkh val
   where
     ppkh :: PaymentPubKeyHash

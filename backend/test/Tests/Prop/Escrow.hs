@@ -25,9 +25,8 @@ import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
-import qualified Data.Map as Map
 
-import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger, tabulate )
+import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger )
 
 -- IOG imports
 import Plutus.Contract.Test               ( CheckOptions, Wallet
@@ -37,7 +36,6 @@ import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , StartContract(..), ContractModel(..)
                                           , Action, Actions, DL
                                           , contractState, action, anyActions_
-                                          , assertModel, viewContractState
                                           , defaultCoverageOptions, delay
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
@@ -231,8 +229,6 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
-    monitoring _ (Start sw rw _ _) =
-        tabulate "Starting escrow" [show sw, show rw]
     monitoring _ _ = id
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
@@ -255,7 +251,7 @@ propEscrow = propRunActionsWithOptions options defaultCoverageOptions
 
 testStart :: DL EscrowModel ()
 testStart = do
-    action (Start senderWallet receiverWallet
-            (assetClass tokenACurrencySymbol tokenA, 1)
-            (assetClass tokenBCurrencySymbol tokenB, 1))
+    action $ Start senderWallet receiverWallet
+                   (assetClass tokenACurrencySymbol tokenA, 1)
+                   (assetClass tokenBCurrencySymbol tokenB, 1)
     anyActions_

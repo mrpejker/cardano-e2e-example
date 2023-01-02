@@ -17,22 +17,17 @@ amount
 module Tests.OffChain.Trace2 where
 
 -- Non-IOG imports
-import Control.Lens          ( (.~), (&) )
-import Control.Monad         ( void )
-import Data.Default          ( Default (..) )
-import Data.Map              qualified as Map
-import Data.Maybe            ( isJust )
-import Test.Tasty            ( TestTree )
+import Control.Lens  ( (.~), (&) )
+import Control.Monad ( void )
+import Data.Default  ( Default (..) )
+import Test.Tasty    ( TestTree )
 
 -- IOG imports
-import Ledger                ( Block, OnChainTx(Valid), txSignatures
-                             , unPaymentPubKey
-                             )
 import Ledger.Value          ( assetClass )
 import Plutus.Trace.Emulator ( activateContractWallet, callEndpoint
                              , EmulatorTrace, runEmulatorTraceIO', waitNSlots
                              )
-import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
+import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
                              , defaultCheckOptions, emulatorConfig
                              , walletFundsChange
                              )

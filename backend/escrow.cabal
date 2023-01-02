@@ -48,11 +48,13 @@ library
 
   -- See Plutus Tx readme for why we need the following flags:
   -- -fobject-code -fno-ignore-interface-pragmas and -fno-omit-interface-pragmas
+  -- Enable -fplugin-opt PlutusTx.Plugin:defer-errors for HLS
   ghc-options:
     -Wall -Wnoncanonical-monad-instances -Wunused-packages
     -Wincomplete-uni-patterns -Wincomplete-record-updates
     -Wredundant-constraints -Widentities -fobject-code
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fplugin-opt PlutusTx.Plugin:defer-errors
 
   --------------------
   -- IOG dependencies
@@ -66,15 +68,13 @@ library
     , plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
-    , cardano-ledger-core
-    , cardano-api
 
   ------------------------
   -- Non-IOG dependencies
   ------------------------
   build-depends:
       aeson
-    , base          ^>= 4.14.1.0
+    , base ^>= 4.14.1.0
     , lens
     , containers
     , openapi3
@@ -89,6 +89,7 @@ executable escrow-pab
   ghc-options:   -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
                  -Wincomplete-uni-patterns -Wincomplete-record-updates
                  -Wno-missing-import-lists -Wredundant-constraints -O0
+                 -fplugin-opt PlutusTx.Plugin:defer-errors
   --------------------
   -- IOG dependencies
   --------------------
@@ -109,7 +110,7 @@ executable escrow-pab
   ------------------------
   build-depends:
       aeson
-    , base          ^>= 4.14.1.0
+    , base ^>= 4.14.1.0
     , containers
     , data-default
     , escrow
@@ -162,17 +163,16 @@ test-suite escrow-tests
     -Wredundant-constraints -Widentities -fno-strictness -fobject-code
     -fno-spec-constr -fno-specialise -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas
+    -fplugin-opt PlutusTx.Plugin:defer-errors
 
   --------------------
   -- IOG dependencies
   --------------------
   build-depends:
-    , cardano-api
     , plutus-contract
     , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
-    , freer-simple
     , freer-extras
 
   ------------------------
@@ -180,8 +180,6 @@ test-suite escrow-tests
   ------------------------
   build-depends:
       base ^>=4.14.1.0
-    , ansi-terminal
-    , bytestring
     , containers
     , data-default
     , escrow
@@ -189,8 +187,5 @@ test-suite escrow-tests
     , text
     , lens <= 4.19.2
     , tasty
-    , tasty-hunit
     , text
-    , prettyprinter
-    , serialise
     , text
