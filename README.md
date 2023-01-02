@@ -17,7 +17,7 @@ The documentation can be found in the `doc` folder, where we have the different
 requirements and design documents. The `tutorial` folder has the complete tutorial
 explaining every design pattern, decision, etc. The `backend` and `frontend` folders
 contain the Haskell server-side implementation and the React implementation of
-the webpage, respectably.
+the webpage, respectively.
 
 ## Environment installation
 
