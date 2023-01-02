@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Container, Navbar, Nav, Button, Modal, Form, Table } from "react-bootstrap";
+import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
@@ -58,7 +58,7 @@ function EscrowUI() {
       ></Cancel>
       <br></br>
       <br></br>
-      <h2> Active Escrows </h2>
+      <h2> Escrows to Resolve </h2>
       <br></br>
       <ContractInformation
         currentContractState={currentContractState}
@@ -100,23 +100,19 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
           <option value="nami">Nami</option>
           <option value="eternl">Eternl</option>
         </select>
-        <Button
-            style={{ marginRight: "16px" }}
-            variant="success"
-            size="sm"
-            onClick={async e => {
-                console.log("Connecting")
-                const ce = await contractEndpoints.connect(selectedWallet)
-                console.log("Connected")
-                setContractEndpoints(ce)
-                setIsConnected(true)
-                const obsState = await ce.reload()
-                setCurrentContractState(obsState)
-              }
+        <ButtonWithSpinner
+            onClick={ async () => {
+              console.log("Connecting")
+              const ce = await contractEndpoints.connect(selectedWallet)
+              console.log("Connected")
+              setContractEndpoints(ce)
+              setIsConnected(true)
+              const obsState = await ce.reload()
+              setCurrentContractState(obsState)}
             }
-        >
-          Connect Wallet
-        </Button>
+            isDisabled={false}
+            text={"Connect Wallet"}
+        />
       </Nav.Link>
     </Navbar.Collapse>
   )
@@ -125,20 +121,15 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
 // Reload component that reloads the contract state
 const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
   return (
-    <Button
-      style={{ marginRight: "16px" }}
-      variant="success"
-      size="sm"
-      disabled={!isConnected}
-      onClick={async e => {
+    <ButtonWithSpinner
+      onClick={async () => {
         console.log("Reloading")
         const obsState = await contractEndpoints.reload()
         setCurrentContractState(obsState)
-        }
-      }
-    >
-      Reload
-    </Button>
+      }}
+      isDisabled={!isConnected}
+      text={"Reload"}
+    />
   )
 }
 
@@ -182,57 +173,78 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
                 autoFocus
               />
               <br></br>
-              <Row>
-                <Col>
-                  <Form.Label>Send Currency Symbol</Form.Label>
-                  <Form.Control
-                    name="sendCurrency"
-                    type="text"
-                    placeholder="Currency"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Send Token Name</Form.Label>
-                  <Form.Control
-                    name="sendTokenName"
-                    type="text"
-                    placeholder="Token Name"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Send Amount</Form.Label>
-                  <Form.Control
-                    name="sendAmount"
-                    type="number"
-                    placeholder="Amount"
-                  />
-                </Col>
-              </Row>
+              <div className="position-relative">
+                <Row>
+                  <Col>
+                    <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
+                      <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                        Send Asset Class
+                      </div>
+                      <Col className='mx-2 my-4'>
+                        <Form.Control
+                          name="sendCurrency"
+                          type="text"
+                          placeholder="Currency Symbol"
+                        />
+                      </Col>
+                      <Col className='mx-2 my-4'>
+                        <Form.Control
+                          name="sendTokenName"
+                          type="text"
+                          placeholder="Token Name"
+                        />
+                      </Col>
+                    </div>
+                  </Col>
+                  <Col sm={4} >
+                    <div className="position-absolute" style={{ top: -10 }}>
+                        Send Amount
+                    </div>
+                    {/* <Form.Label>Send Amount</Form.Label> */}
+                    <Form.Control
+                      name="sendAmount"
+                      type="number"
+                      placeholder="Amount"
+                      className='my-4'
+                    />
+                  </Col>
+                </Row>
+              </div>
               <br></br>
+              <div className="position-relative">
               <Row>
                 <Col>
-                  <Form.Label>Receive Currency Symbol</Form.Label>
-                  <Form.Control
-                    name="recCurrency"
-                    placeholder="Currency"
-                  />
+                  <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
+                    <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                      Receive Asset Class
+                    </div>
+                    <Col className='mx-2 my-4'>
+                      <Form.Control
+                        name="recCurrency"
+                        placeholder="Currency Symbol"
+                      />
+                    </Col>
+                    <Col className='mx-2 my-4'>
+                      <Form.Control
+                        name="recTokenName"
+                        placeholder="Token name"
+                      />
+                    </Col>
+                  </div>
                 </Col>
-                <Col>
-                  <Form.Label>Receive Token Name</Form.Label>
-                  <Form.Control
-                    name="recTokenName"
-                    placeholder="Token name"
-                  />
-                </Col>
-                <Col>
-                  <Form.Label>Receive Amount</Form.Label>
+                <Col sm={4}>
+                  <div className="position-absolute" style={{ top: -10 }}>
+                    Receive Amount
+                  </div>
                   <Form.Control
                     name="recAmount"
                     type="number"
                     placeholder="Amount"
+                    className="my-4"
                   />
                 </Col>
               </Row>
+              </div>
               <br></br>
               <Row>
                   <div className="d-flex align-items-center">
@@ -327,19 +339,16 @@ type ResolveProps = {
 // Component that handles the resolving of started escrows.
 const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
   return (
-    <Button
-      style={{ marginRight: "16px" }}
-      variant="success"
-      size="sm"
-      onClick={async e => {
+    <ButtonWithSpinner
+      onClick={async () => {
         console.log("Resolving escrow for ref: ")
         console.log(txOutRefToResolve)
         const params = mkResolveParams(txOutRefToResolve)
         await contractEndpoints.resolve(params)
-      }
-      }
-    > Resolve
-    </Button>
+      }}
+      isDisabled={false}
+      text={"Resolve"}
+    />
   )
 }
 type ContractInformationProps = {
@@ -385,6 +394,42 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
     </Table>}
     </div>
 
+  )
+}
+
+type ButtonWithSpinnerProps = {
+  onClick: () => Promise<void>
+  isDisabled : boolean
+  text: string
+}
+
+const ButtonWithSpinner = ({onClick, isDisabled, text}: ButtonWithSpinnerProps) => {
+  const [isSpinning, setIsSpinning] = useState(false);
+  return (
+    <Button
+      style={{ marginRight: "16px" }}
+      variant="success"
+      size="sm"
+      disabled={isDisabled}
+      onClick={async e => {
+        setIsSpinning(true)
+        await onClick()
+        setIsSpinning(false)
+        }
+      }
+    >
+      { isSpinning ?
+          <Spinner
+            as="span"
+            animation="border"
+            size="sm"
+            role="status"
+            aria-hidden="true"
+            className="mx-2"
+          /> :
+          <div>{text}</div>
+          }
+    </Button>
   )
 }
 
