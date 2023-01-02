@@ -5,8 +5,8 @@ import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
 import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams, TxOutRef } from "src/contractEndpoints/parameters";
 
-// Main component for the UserUI. It includes all the other components.
-function UserUI() {
+// Main component for the EscrowUI. It includes all the other components.
+function EscrowUI() {
   const [currentContractState, setCurrentContractState] = useState<ObsState>([])
   const [contractEndpoints, setContractEndpoints] = useState<UserEndpoints>(new UserEndpoints([]));
   const [isConnected, setIsConnected] = useState(false);
@@ -372,4 +372,4 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
   )
 }
 
-export default UserUI
+export default EscrowUI
