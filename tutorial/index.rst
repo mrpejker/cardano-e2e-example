@@ -66,3 +66,8 @@ Client side
 .. toctree::
    :maxdepth: 2
    :numbered:
+
+   client_side/1_modules_design.rst
+   client_side/2_pab_api.rst
+   client_side/3_contract_endpoints.rst
+   client_side/4_balancer.rst
