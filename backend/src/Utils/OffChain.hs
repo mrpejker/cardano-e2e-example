@@ -24,6 +24,7 @@ import Ledger.Value    ( Value, AssetClass, assetClassValueOf )
 import Plutus.Contract ( Contract, unspentTxOutFromRef
                        , utxosAt, throwError, datumFromHash
                        )
+import Plutus.V1.Ledger.Api
 
 -- | Gets a list of utxos for the given address that contains the given Token.
 lookupScriptUtxos

@@ -22,7 +22,7 @@ import Tests.OffChain.Trace3 qualified
 main :: IO ()
 main = do
     -- QuickCheck tests are disabled
-    -- quickCheck propEscrow
+    quickCheck $ CM.forAllDL testStart propEscrow
     defaultMain tests
 
 tests :: TestTree

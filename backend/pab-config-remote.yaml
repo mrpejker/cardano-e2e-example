@@ -20,6 +20,8 @@ pabWebserverConfig:
 
 walletServerConfig:
   tag: RemoteWalletConfig
+  walletSettings:
+    baseUrl: http://34.66.239.85:8094
 
 blockfrostConfig:
   bfTokenPath: ./preprod-token

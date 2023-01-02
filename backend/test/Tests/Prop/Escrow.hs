@@ -25,8 +25,9 @@ import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
+import qualified Data.Map as Map
 
-import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger )
+import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger, tabulate )
 
 -- IOG imports
 import Plutus.Contract.Test               ( CheckOptions, Wallet
@@ -229,6 +230,8 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
+    monitoring _ (Start sw rw _ _) =
+        tabulate "Starting escrow" [show sw, show rw]
     monitoring _ _ = id
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
