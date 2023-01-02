@@ -62,7 +62,7 @@ export class UserEndpoints {
     );
 
     this.txBudgetApi = new TxBudgetAPI({
-      baseUrl: process.env.REACT_APP_ESTIMATOR_URL,
+      baseUrl: process.env.REACT_APP_BUDGET_URL,
       timeout: 10000,
     })
 
