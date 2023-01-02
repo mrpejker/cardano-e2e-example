@@ -1,5 +1,5 @@
 import { ContractEndpoints, CIP30WalletWrapper,
-         TxBudgetAPI } from "cardano-pab-client";
+         TxBudgetAPI, Balancer} from "cardano-pab-client";
 import { StartParams, mkWalletAddressFromString, Value, TxOutRef, WalletAddress,
          AssetClass, CancelParams, ResolveParams } from "./parameters";
 /**
@@ -24,6 +24,7 @@ export class UserEndpoints {
   endpoints: ContractEndpoints = undefined
   wallet: CIP30WalletWrapper = undefined
   txBudgetApi: TxBudgetAPI = undefined
+  balancer: Balancer = undefined
 
   constructor(
     contractState: ObsState,
@@ -33,11 +34,13 @@ export class UserEndpoints {
 
   public async connect(walletName): Promise<UserEndpoints> {
     const {
+      getProtocolParamsFromBlockfrost,
       getWalletInitialAPI,
+      Balancer,
       CIP30WalletWrapper,
-      PABApi,
       ContractEndpoints,
-      TxBudgetAPI
+      PABApi,
+      TxBudgetAPI,
     } = await import("cardano-pab-client");
 
     let walletInitialAPI = getWalletInitialAPI(window, walletName);
@@ -66,23 +69,22 @@ export class UserEndpoints {
       timeout: 10000,
     })
 
-    return this
-  }
-
-  public async start(sp: StartParams) {
-    const {
-      Balancer,
-      getProtocolParamsFromBlockfrost,
-      succeeded
-    } = await import("cardano-pab-client");
-    console.log(`Start Params:`)
-    console.log(sp)
     // Initialize Balancer
     const protocolParams = await getProtocolParamsFromBlockfrost(
       process.env.REACT_APP_BLOCKFROST_URL,
       process.env.REACT_APP_BLOCKFROST_API_KEY,
     );
-    const balancer = await Balancer.init(protocolParams);
+    this.balancer = await Balancer.init(protocolParams)
+
+    return this
+  }
+
+  public async start(sp: StartParams) {
+    const {
+      succeeded
+    } = await import("cardano-pab-client");
+    console.log(`Start Params:`)
+    console.log(sp)
 
     // Try to get unbalanced transaction from PAB
     const pabResponse = await this.endpoints.doOperation(
@@ -100,7 +102,7 @@ export class UserEndpoints {
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
 
-      const fullyBalancedTx = await balancer.fullBalanceTx(
+      const fullyBalancedTx = await this.balancer.fullBalanceTx(
         etx,
         walletInfo,
         // configuration for the balanceTx and rebalanceTx methods which are interally
@@ -145,7 +147,6 @@ export class UserEndpoints {
     if (succeeded(response)) {
       const escrows = response.value as ObsState
       console.log(escrows)
-      console.log(typeof escrows)
       return escrows
       // let utxoInfo = parseReloadResponse(escrows)
     } else {
@@ -158,18 +159,10 @@ export class UserEndpoints {
 
   public async cancel(cp: CancelParams){
     const {
-      Balancer,
-      getProtocolParamsFromBlockfrost,
       succeeded
     } = await import("cardano-pab-client")
     console.log("Cancelling Escrow")
     console.log(cp)
-      // Initialize Balancer
-    const protocolParams = await getProtocolParamsFromBlockfrost(
-      process.env.REACT_APP_BLOCKFROST_URL,
-      process.env.REACT_APP_BLOCKFROST_API_KEY,
-    );
-    const balancer = await Balancer.init(protocolParams);
     // Try to get unbalanced transaction from PAB
     const pabResponse = await this.endpoints.doOperation(
       { endpointTag: "cancel", params: cp }
@@ -186,7 +179,7 @@ export class UserEndpoints {
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
 
-      const fullyBalancedTx = await balancer.fullBalanceTx(
+      const fullyBalancedTx = await this.balancer.fullBalanceTx(
         etx,
         walletInfo,
         // configuration for the balanceTx and rebalanceTx methods which are interally
@@ -223,18 +216,10 @@ export class UserEndpoints {
 
   public async resolve(rp: ResolveParams) {
     const {
-      Balancer,
-      getProtocolParamsFromBlockfrost,
       succeeded
     } = await import("cardano-pab-client");
     console.log(`Resolve Params:`)
     console.log(rp)
-    // Initialize Balancer
-    const protocolParams = await getProtocolParamsFromBlockfrost(
-      process.env.REACT_APP_BLOCKFROST_URL,
-      process.env.REACT_APP_BLOCKFROST_API_KEY,
-    );
-    const balancer = await Balancer.init(protocolParams);
 
     // Try to get unbalanced transaction from PAB
     const pabResponse = await this.endpoints.doOperation(
@@ -252,7 +237,7 @@ export class UserEndpoints {
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
 
-      const fullyBalancedTx = await balancer.fullBalanceTx(
+      const fullyBalancedTx = await this.balancer.fullBalanceTx(
         etx,
         walletInfo,
         // configuration for the balanceTx and rebalanceTx methods which are interally
