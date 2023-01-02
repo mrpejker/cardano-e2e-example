@@ -1,4 +1,5 @@
-import { ContractEndpoints, CIP30WalletWrapper } from "cardano-pab-client";
+import { ContractEndpoints, CIP30WalletWrapper,
+         TxBudgetAPI } from "cardano-pab-client";
 import { StartParams, mkWalletAddressFromString, Value, TxOutRef, WalletAddress,
          AssetClass, CancelParams, ResolveParams } from "./parameters";
 /**
@@ -22,6 +23,7 @@ export class UserEndpoints {
   contractState: ObsState = undefined
   endpoints: ContractEndpoints = undefined
   wallet: CIP30WalletWrapper = undefined
+  txBudgetApi: TxBudgetAPI = undefined
 
   constructor(
     contractState: ObsState,
@@ -34,7 +36,8 @@ export class UserEndpoints {
       getWalletInitialAPI,
       CIP30WalletWrapper,
       PABApi,
-      ContractEndpoints
+      ContractEndpoints,
+      TxBudgetAPI
     } = await import("cardano-pab-client");
 
     let walletInitialAPI = getWalletInitialAPI(window, walletName);
@@ -58,12 +61,16 @@ export class UserEndpoints {
       pabApi,
     );
 
+    this.txBudgetApi = new TxBudgetAPI({
+      baseUrl: process.env.REACT_APP_BUDGET_URL,
+      timeout: 10000,
+    })
+
     return this
   }
 
   public async start(sp: StartParams) {
     const {
-      TxBudgetAPI,
       Balancer,
       getProtocolParamsFromBlockfrost,
       succeeded
@@ -92,10 +99,6 @@ export class UserEndpoints {
       console.log(`Unbalanced tx:`);
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
-      const txBudgetApi = new TxBudgetAPI({
-        baseUrl: process.env.REACT_APP_ESTIMATOR_URL,
-        timeout: 10000,
-      });
 
       const fullyBalancedTx = await balancer.fullBalanceTx(
         etx,
@@ -107,7 +110,7 @@ export class UserEndpoints {
         // calculate the executions units, which are then set in the transaction and
         // goes to the rebalancing step
         async (balancedTx, inputsInfo) => {
-          const txBudgetResponse = await txBudgetApi.estimate(balancedTx, inputsInfo);
+          const txBudgetResponse = await this.txBudgetApi.estimate(balancedTx, inputsInfo);
           if (succeeded(txBudgetResponse)) {
             const units = txBudgetResponse.value;
             return units;
@@ -155,7 +158,6 @@ export class UserEndpoints {
 
   public async cancel(cp: CancelParams){
     const {
-      TxBudgetAPI,
       Balancer,
       getProtocolParamsFromBlockfrost,
       succeeded
@@ -183,10 +185,6 @@ export class UserEndpoints {
       console.log(`Unbalanced tx:`);
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
-      const txBudgetApi = new TxBudgetAPI({
-        baseUrl: process.env.REACT_APP_ESTIMATOR_URL,
-        timeout: 10000,
-      });
 
       const fullyBalancedTx = await balancer.fullBalanceTx(
         etx,
@@ -198,7 +196,7 @@ export class UserEndpoints {
         // calculate the executions units, which are then set in the transaction and
         // goes to the rebalancing step
         async (balancedTx, inputsInfo) => {
-          const txBudgetResponse = await txBudgetApi.estimate(balancedTx, inputsInfo);
+          const txBudgetResponse = await this.txBudgetApi.estimate(balancedTx, inputsInfo);
           if (succeeded(txBudgetResponse)) {
             const units = txBudgetResponse.value;
             return units;
@@ -225,7 +223,6 @@ export class UserEndpoints {
 
   public async resolve(rp: ResolveParams) {
     const {
-      TxBudgetAPI,
       Balancer,
       getProtocolParamsFromBlockfrost,
       succeeded
@@ -254,10 +251,6 @@ export class UserEndpoints {
       console.log(`Unbalanced tx:`);
       console.log(etx)
       const walletInfo = await this.wallet.getWalletInfo();
-      const txBudgetApi = new TxBudgetAPI({
-        baseUrl: process.env.REACT_APP_ESTIMATOR_URL,
-        timeout: 10000,
-      });
 
       const fullyBalancedTx = await balancer.fullBalanceTx(
         etx,
@@ -269,7 +262,7 @@ export class UserEndpoints {
         // calculate the executions units, which are then set in the transaction and
         // goes to the rebalancing step
         async (balancedTx, inputsInfo) => {
-          const txBudgetResponse = await txBudgetApi.estimate(balancedTx, inputsInfo);
+          const txBudgetResponse = await this.txBudgetApi.estimate(balancedTx, inputsInfo);
           if (succeeded(txBudgetResponse)) {
             const units = txBudgetResponse.value;
             return units;
