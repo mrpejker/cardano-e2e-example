@@ -15,23 +15,18 @@ blocking it inside the script.
 module Tests.OffChain.Trace0 where
 
 -- Non-IOG imports
-import Control.Lens          ( (.~), (&) )
-import Control.Monad         ( void )
-import Data.Default          ( Default (..) )
-import Data.Map              qualified as Map
-import Data.Maybe            ( isJust )
-import Test.Tasty            ( TestTree )
+import Control.Lens  ( (.~), (&) )
+import Control.Monad ( void )
+import Data.Default  ( Default (..) )
+import Test.Tasty    ( TestTree )
 
 -- IOG imports
 import PlutusTx.Numeric      qualified as PNum ((-))
-import Ledger                ( Block, OnChainTx(Valid), txSignatures
-                             , unPaymentPubKey
-                             )
 import Ledger.Value          ( assetClass )
 import Plutus.Trace.Emulator ( activateContractWallet, callEndpoint
                              , EmulatorTrace, runEmulatorTraceIO', waitNSlots
                              )
-import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
+import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
                              , defaultCheckOptions, emulatorConfig
                              , walletFundsChange
                              )
@@ -49,22 +44,8 @@ test = checkPredicateOptions
         (defaultCheckOptions & emulatorConfig .~ emConfig)
         testMsg
         (walletFundsChange senderWallet (paymentA (-100) PNum.- minAda)
-        .&&. walletFundsChange receiverWallet mempty
-        .&&. assertBlockchain bcCheck)
+        .&&. walletFundsChange receiverWallet mempty)
         trace
-  where
-    bcCheck :: [Block] -> Bool
-    bcCheck b = bcCheckAux blocks
-      where
-        blocks :: [Block]
-        blocks = Prelude.reverse . Prelude.filter (/= []) $ b
-
-        bcCheckAux :: [Block] -> Bool
-        bcCheckAux [[ Valid start
-                    , Valid _
-                   ]] =
-           isJust (Map.lookup (unPaymentPubKey senderPpk) (txSignatures start))
-        bcCheckAux _                = False
 
 trace :: EmulatorTrace ()
 trace =

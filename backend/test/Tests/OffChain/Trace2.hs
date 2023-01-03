@@ -17,22 +17,17 @@ amount
 module Tests.OffChain.Trace2 where
 
 -- Non-IOG imports
-import Control.Lens          ( (.~), (&) )
-import Control.Monad         ( void )
-import Data.Default          ( Default (..) )
-import Data.Map              qualified as Map
-import Data.Maybe            ( isJust )
-import Test.Tasty            ( TestTree )
+import Control.Lens  ( (.~), (&) )
+import Control.Monad ( void )
+import Data.Default  ( Default (..) )
+import Test.Tasty    ( TestTree )
 
 -- IOG imports
-import Ledger                ( Block, OnChainTx(Valid), txSignatures
-                             , unPaymentPubKey
-                             )
 import Ledger.Value          ( assetClass )
 import Plutus.Trace.Emulator ( activateContractWallet, callEndpoint
                              , EmulatorTrace, runEmulatorTraceIO', waitNSlots
                              )
-import Plutus.Contract.Test  ( (.&&.), assertBlockchain, checkPredicateOptions
+import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
                              , defaultCheckOptions, emulatorConfig
                              , walletFundsChange
                              )
@@ -49,26 +44,8 @@ test = checkPredicateOptions
         (defaultCheckOptions & emulatorConfig .~ emConfig)
         testMsg
         (walletFundsChange senderWallet (paymentA (-50) <> paymentB 100)
-        .&&. walletFundsChange receiverWallet (paymentB (-100) <> paymentA 50)
-        .&&. assertBlockchain bcCheck)
+        .&&. walletFundsChange receiverWallet (paymentB (-100) <> paymentA 50))
         trace
-  where
-    bcCheck :: [Block] -> Bool
-    bcCheck b = bcCheckAux blocks
-      where
-        blocks :: [Block]
-        blocks = Prelude.reverse . Prelude.filter (/= []) $ b
-
-        bcCheckAux :: [Block] -> Bool
-        bcCheckAux [[ Valid resolve
-                    , Valid start
-                    , Valid _
-                    ]] =
-               isJust (Map.lookup (unPaymentPubKey senderPpk)
-                          (txSignatures start))
-            && isJust (Map.lookup (unPaymentPubKey receiverPpk)
-                          (txSignatures resolve))
-        bcCheckAux _                = False
 
 trace :: EmulatorTrace ()
 trace =

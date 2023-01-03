@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell       #-}
 
+
 {-|
 Module      : Escrow.Validator
 Description : Definition of contract script.
@@ -23,14 +24,20 @@ module Escrow.Validator
 where
 
 -- IOG imports
-import Ledger ( CurrencySymbol, MintingPolicy
-              , scriptAddress, scriptCurrencySymbol
-              , mkMintingPolicyScript
-              )
-import Ledger.Typed.Scripts ( mkTypedValidator, TypedValidator, Validator
-                            , ValidatorTypes (DatumType, RedeemerType)
-                            , validatorScript, wrapMintingPolicy, wrapValidator
-                            )
+import Ledger ( CurrencySymbol )
+import Plutus.Script.Utils.V1.Typed.Scripts ( TypedValidator
+                                            , ValidatorTypes
+                                            , DatumType, RedeemerType
+                                            , mkTypedValidator
+                                            , mkUntypedValidator
+                                            , mkUntypedMintingPolicy
+                                            , validatorScript
+                                            )
+import Plutus.Script.Utils.V1.Scripts ( scriptCurrencySymbol )
+import Plutus.Script.Utils.V1.Address ( mkValidatorAddress )
+import Plutus.V1.Ledger.Scripts       ( Validator, MintingPolicy
+                                      , mkMintingPolicyScript
+                                      )
 import PlutusTx ( compile, applyCode, liftCode )
 
 -- Escrow imports
@@ -48,29 +55,26 @@ instance ValidatorTypes Escrowing where
     type instance RedeemerType Escrowing = EscrowRedeemer
 
 escrowInst :: ReceiverAddress -> TypedValidator Escrowing
-escrowInst raddr = mkTypedValidator @Escrowing
-                   ($$(compile [|| mkEscrowValidator ||])
-                       `applyCode`
-                       liftCode raddr
-                   )
-                   $$(compile [|| wrap ||])
-  where
-    wrap = wrapValidator @EscrowDatum @EscrowRedeemer
+escrowInst raddr =
+    mkTypedValidator @Escrowing
+    ($$(compile [|| mkEscrowValidator ||])
+        `applyCode`
+        liftCode raddr
+    )
+    $$(compile [|| mkUntypedValidator @EscrowDatum @EscrowRedeemer ||])
 
 escrowValidator :: ReceiverAddress -> Validator
 escrowValidator = validatorScript . escrowInst
 
 escrowAddress :: ReceiverAddress -> ContractAddress
-escrowAddress = scriptAddress . escrowValidator
+escrowAddress = mkValidatorAddress . escrowValidator
 
 controlTokenMP :: ContractAddress -> MintingPolicy
 controlTokenMP caddr =
     mkMintingPolicyScript $
-    $$(compile [|| wrap . mkControlTokenMintingPolicy ||])
+    $$(compile [|| mkUntypedMintingPolicy . mkControlTokenMintingPolicy ||])
     `applyCode`
     liftCode caddr
-  where
-    wrap = wrapMintingPolicy
 
 controlTokenCurrency :: ContractAddress -> CurrencySymbol
 controlTokenCurrency = scriptCurrencySymbol . controlTokenMP

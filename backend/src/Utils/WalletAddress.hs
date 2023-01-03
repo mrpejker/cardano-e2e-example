@@ -19,6 +19,8 @@ module Utils.WalletAddress
     , fromWalletAddress
     -- * Getters
     , waPaymentPubKeyHash
+    -- * Constraints
+    , mustPayToWalletAddress
 ) where
 
 -- Non-IOG imports
@@ -32,11 +34,15 @@ import PlutusTx          ( makeIsDataIndexed, makeLift )
 import PlutusTx.Prelude  ( Maybe(..), Eq(..), Ord(..)
                          , (&&), ($), (<$>), (.)
                          )
-import Ledger.Credential ( Credential(..), StakingCredential(..) )
-import Ledger            ( Address(..), PubKeyHash, PaymentPubKeyHash(..)
-                         , stakingCredential, toPubKeyHash
+import Ledger            ( Value, Address(..), PubKeyHash
+                         , PaymentPubKeyHash(..), StakePubKeyHash(..)
+                         , stakingCredential, stakePubKeyHashCredential
+                         , toPubKeyHash
                          )
-
+import Ledger.Credential  ( Credential(..), StakingCredential(..) )
+import Ledger.Constraints ( TxConstraints, mustPayToPubKey
+                          , mustPayToPubKeyAddress
+                          )
 {- | WalletAddress is the representation of public key addresses in the Cardano
      networks. It consists on a public key hash, along with an optional staking
      key hash.
@@ -91,6 +97,23 @@ toStakingCredential = StakingHash . PubKeyCredential
 
 waPaymentPubKeyHash :: WalletAddress -> PaymentPubKeyHash
 waPaymentPubKeyHash = PaymentPubKeyHash . waPayment
+
+{- | Creates an transaction output using `mustPayToPubKeyAddress` or
+     `mustPayToPubKey` , depending if the given wallet address has or not
+     staking hash.
+-}
+mustPayToWalletAddress :: forall i o
+                       .  WalletAddress
+                       -> Value
+                       -> TxConstraints i o
+mustPayToWalletAddress WalletAddress{..} v =
+    case waStaking of
+        Just staking -> mustPayToPubKeyAddress ppkh
+                        (stakePubKeyHashCredential $ StakePubKeyHash staking) v
+        Nothing      -> mustPayToPubKey ppkh v
+  where
+    ppkh :: PaymentPubKeyHash
+    ppkh = PaymentPubKeyHash waPayment
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''WalletAddress

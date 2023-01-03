@@ -1,10 +1,11 @@
-dbConfig:
-    dbConfigUser: "postgres"
-    dbConfigPass: "postgres"
-    dbConfigHost: "localhost"
-    dbConfigPort: 5432
-    dbConfigDatabase: "pab"
-    dbConfigPoolSize: 20
+postgresDB:
+  dbConfigUser: "postgres"
+  dbConfigPass: "postgres"
+  dbConfigHost: "localhost"
+  dbConfigPort: 5432
+  dbConfigDatabase: "pab"
+  dbConfigPoolSize: 20
+  dbConfigMarconiFile: "./marconi.sqlite"
 
 pabWebserverConfig:
   baseUrl: http://localhost:9080
@@ -19,6 +20,9 @@ pabWebserverConfig:
 
 walletServerConfig:
   tag: RemoteWalletConfig
+
+blockfrostConfig:
+  bfTokenPath: ./preprod-token
 
 nodeServerConfig:
   pscSocketPath: ./node.sock
@@ -43,12 +47,10 @@ nodeServerConfig:
   pscInitialTxWallets: []
   pscNodeMode: MockNode
 
-blockfrostConfig:
-  bfTokenPath: ./preprod-token
-
 requestProcessingConfig:
   requestProcessingInterval: 1
 
 developmentOptions:
   pabRollbackHistory: null
-  pabResumeFrom: { "tag" : "PointAtGenesis" }
+  pabResumeFrom:
+    { "tag" : "PointAtGenesis" }

@@ -26,7 +26,7 @@ import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
 
-import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger )
+import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger, tabulate )
 
 -- IOG imports
 import Plutus.Contract.Test               ( CheckOptions, Wallet
@@ -34,7 +34,8 @@ import Plutus.Contract.Test               ( CheckOptions, Wallet
                                           )
 import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , StartContract(..), ContractModel(..)
-                                          , Action, Actions, contractState
+                                          , Action, Actions, DL
+                                          , contractState, action, anyActions_
                                           , defaultCoverageOptions, delay
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
@@ -57,7 +58,7 @@ import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
 import Tests.Utils                ( emConfig, tokenA, tokenACurrencySymbol
                                   , tokenB, tokenBCurrencySymbol, wallets
-                                  , mockWAddress
+                                  , mockWAddress, senderWallet, receiverWallet
                                   )
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
@@ -82,6 +83,9 @@ newtype EscrowModel = EscrowModel
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
+
+shrinkWallet :: Wallet -> [Wallet]
+shrinkWallet w = [w' | w' <- wallets, w' < w]
 
 deriving instance Eq   (ContractInstanceKey EscrowModel w s e params)
 deriving instance Show (ContractInstanceKey EscrowModel w s e params)
@@ -217,8 +221,16 @@ instance ContractModel EscrowModel where
                            (mkReceiverAddress $ mockWAddress resW)
         delay 2
 
-    shrinkAction _ _ = []
+    shrinkAction _ (Start sw rw sv rv) =
+           [Start sw' rw sv rv | sw' <- shrinkWallet sw]
+        ++ [Start sw rw' sv rv | rw' <- shrinkWallet rw]
+    shrinkAction _ (Resolve w ti) =
+           [Resolve w' ti | w' <- shrinkWallet w]
+    shrinkAction _ (Cancel w ti) =
+           [Cancel w' ti | w' <- shrinkWallet w]
 
+    monitoring _ (Start sw rw _ _) =
+        tabulate "Starting escrow" [show sw, show rw]
     monitoring _ _ = id
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
@@ -238,3 +250,10 @@ findEscrowUtxo TransferInfo{..} =
 propEscrow :: Actions EscrowModel -> Property
 propEscrow = propRunActionsWithOptions options defaultCoverageOptions
              (\ _ -> pure True)
+
+testStart :: DL EscrowModel ()
+testStart = do
+    action $ Start senderWallet receiverWallet
+                   (assetClass tokenACurrencySymbol tokenA, 1)
+                   (assetClass tokenBCurrencySymbol tokenB, 1)
+    anyActions_

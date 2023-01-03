@@ -35,6 +35,7 @@ import Plutus.PAB.Effects.Contract.Builtin ( HasDefinitions ( getDefinitions
 -- Escrow imports
 import Escrow ( endpoints )
 import Utils.WalletAddress ( WalletAddress )
+
 {- | The `Escrow` type represents the kind of activation of a wallet to the PAB.
     We can only `Connect` providing the Address of the user connecting to the
     contract.

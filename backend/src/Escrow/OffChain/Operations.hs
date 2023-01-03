@@ -26,19 +26,21 @@ import Data.Text     ( Text )
 import Data.Monoid   ( Last(..) )
 
 -- IOG imports
-import Ledger             ( ChainIndexTxOut, Datum, DatumHash, TxOutRef
-                          , ciTxOutValue, ciTxOutDatum, getDatum
+import Ledger             ( DecoratedTxOut, TxOutRef
+                          , decoratedTxOutValue, getDatum
                           , unPaymentPubKeyHash
                           )
-import Ledger.Constraints ( mintingPolicy, mustBeSignedBy, mustMintValue
-                          , mustPayToTheScript
-                          , mustSpendScriptOutput, otherScript
-                          , typedValidatorLookups, unspentOutputs
+import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
+                          , mustMintValue
+                          , mustPayToTheScriptWithDatumInTx
+                          , mustSpendScriptOutput
+                          , plutusV1OtherScript, typedValidatorLookups
+                          , unspentOutputs
                           )
 import Ledger.Value       ( assetClass, assetClassValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
-                          , select, tell, throwError, datumFromHash
+                          , select, tell, throwError
                           , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
@@ -60,12 +62,11 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( lookupScriptUtxos, getDatumWithError
-                      , mustPayToWalletAddress
-                      )
+import Utils.OffChain ( lookupScriptUtxos, findMUtxo, getDatumWithError )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
                            , waPaymentPubKeyHash
+                           , mustPayToWalletAddress
                            )
 
 endpoints
@@ -114,11 +115,11 @@ startOp addr StartParams{..} = do
 
         lkp = mconcat
               [ typedValidatorLookups (escrowInst receiverAddress)
-              , otherScript validator
-              , mintingPolicy (controlTokenMP contractAddress)
+              , plutusV1OtherScript validator
+              , plutusV1MintingPolicy (controlTokenMP contractAddress)
               ]
         tx  = mconcat
-              [ mustPayToTheScript datum val
+              [ mustPayToTheScriptWithDatumInTx datum val
               , mustMintValue cTokenVal
               , mustBeSignedBy senderPpkh
               ]
@@ -148,16 +149,16 @@ cancelOp addr CancelParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findEscrowUtxo cpTxOutRef utxos
+    (ref, utxo) <- findMUtxo cpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
            (throwError "Sender address invalid")
 
     let lkp = mconcat
-            [ otherScript validator
-            , unspentOutputs (singleton ref utxo)
-            , mintingPolicy (controlTokenMP contractAddress)
+            [ plutusV1OtherScript validator
+            , unspentOutputs (singleton cpTxOutRef utxo)
+            , plutusV1MintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
             [ mustSpendScriptOutput ref cancelRedeemer
@@ -190,16 +191,16 @@ resolveOp addr ResolveParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findEscrowUtxo rpTxOutRef utxos
+    (ref, utxo) <- findMUtxo rpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo
         senderPayment  = valueToSender eInfo <> minAda
 
         lkp = mconcat
-            [ otherScript validator
+            [ plutusV1OtherScript validator
             , unspentOutputs (singleton ref utxo)
-            , mintingPolicy (controlTokenMP contractAddress)
+            , plutusV1MintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
             [ mustSpendScriptOutput ref resolveRedeemer
@@ -230,37 +231,18 @@ reloadOp addr = do
   where
      mkEscrowInfo
          :: forall w
-         .  (TxOutRef, ChainIndexTxOut)
+         .  (TxOutRef, DecoratedTxOut)
          -> Contract w s Text UtxoEscrowInfo
-     mkEscrowInfo (utxoRef, citxout) =
-         mkUtxoEscrowInfo utxoRef (citxout ^. ciTxOutValue)
-         <$> getEscrowInfo citxout
-
-{- | Off-chain function for getting the specific UTxO from a list of UTxOs by
-     its TxOutRef.
--}
-findEscrowUtxo
-    :: forall w s
-    .  TxOutRef
-    -> [(TxOutRef, ChainIndexTxOut)]
-    -> Contract w s Text (TxOutRef, ChainIndexTxOut)
-findEscrowUtxo ref utxos =
-    case filter ((==) ref . fst) utxos of
-        [(oref, o)] -> (oref,) <$> ciTxOutDatum loadDatum o
-        _           -> throwError "Specified Utxo not found"
-  where
-    loadDatum
-        :: Either DatumHash Datum
-        -> Contract w s Text (Either DatumHash Datum)
-    loadDatum lhd@(Left dh) = maybe lhd Right <$> datumFromHash dh
-    loadDatum d = return d
+     mkEscrowInfo (utxoRef, dtxout) =
+         mkUtxoEscrowInfo utxoRef (dtxout ^. decoratedTxOutValue)
+         <$> getEscrowInfo dtxout
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
-     ChainIndexTxOut.
+     DecoratedTxOut.
 -}
 getEscrowInfo
     :: forall w s
-    .  ChainIndexTxOut
+    .  DecoratedTxOut
     -> Contract w s Text EscrowInfo
 getEscrowInfo txOut = getDatumWithError txOut >>=
                       maybe (throwError "Datum format invalid")

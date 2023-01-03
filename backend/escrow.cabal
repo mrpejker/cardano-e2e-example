@@ -48,6 +48,7 @@ library
 
   -- See Plutus Tx readme for why we need the following flags:
   -- -fobject-code -fno-ignore-interface-pragmas and -fno-omit-interface-pragmas
+  -- Enable -fplugin-opt PlutusTx.Plugin:defer-errors for HLS
   ghc-options:
     -Wall -Wnoncanonical-monad-instances -Wunused-packages
     -Wincomplete-uni-patterns -Wincomplete-record-updates
@@ -63,17 +64,16 @@ library
     , plutus-ledger
     , plutus-ledger-constraints
     , plutus-ledger-api
+    , plutus-script-utils
     , plutus-tx
     , plutus-tx-plugin
-    , cardano-ledger-core
-    , cardano-api
 
   ------------------------
   -- Non-IOG dependencies
   ------------------------
   build-depends:
       aeson
-    , base          ^>= 4.14.1.0
+    , base ^>= 4.14.1.0
     , lens
     , containers
     , openapi3
@@ -85,9 +85,11 @@ executable escrow-pab
   other-modules:      EscrowHandlers
   default-language:   Haskell2010
   default-extensions: ImportQualifiedPost
-  ghc-options:   -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
-                 -Wincomplete-uni-patterns -Wincomplete-record-updates
-                 -Wno-missing-import-lists -Wredundant-constraints -O0
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat
+    -Wincomplete-uni-patterns -Wincomplete-record-updates
+    -Wno-missing-import-lists -Wredundant-constraints -O0
+
   --------------------
   -- IOG dependencies
   --------------------
@@ -108,7 +110,7 @@ executable escrow-pab
   ------------------------
   build-depends:
       aeson
-    , base          ^>= 4.14.1.0
+    , base ^>= 4.14.1.0
     , containers
     , data-default
     , escrow
@@ -158,8 +160,8 @@ test-suite escrow-tests
   ghc-options:
     -Wall -Wnoncanonical-monad-instances -Wunused-packages
     -Wincomplete-uni-patterns -Wincomplete-record-updates
-    -Wredundant-constraints -Widentities -fno-strictness
-    -fno-spec-constr -fno-specialise -fobject-code -fno-ignore-interface-pragmas
+    -Wredundant-constraints -Widentities -fno-strictness -fobject-code
+    -fno-spec-constr -fno-specialise -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas
 
   --------------------
@@ -182,6 +184,6 @@ test-suite escrow-tests
     , escrow
     , QuickCheck
     , text
-    , lens
+    , lens <= 4.19.2
     , tasty
     , text

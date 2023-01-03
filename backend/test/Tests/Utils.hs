@@ -16,7 +16,7 @@ module Tests.Utils where
 -- Non-IOG imports
 import Control.Monad   ( void )
 import Data.Default    ( def )
-import Data.Map as Map ( fromList, fromList)
+import Data.Map as Map ( fromList )
 import Data.Maybe      ( fromJust )
 import Data.Monoid     ( Last(..) )
 import Data.Text       ( Text )
