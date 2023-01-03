@@ -30,7 +30,7 @@ dApp and how it's changed on each operation. The corresponding data type
 representation of that state, the relevant functions for
 manipulating it, and any checks that will be done both off-chain and on-chain
 are located here.
-Given that this module is used in the Plutus script implementation,
+Given that this module is used in the validator implementation,
 the `Plutus Prelude` must be used instead of the standard `Haskell Prelude`.
 
 The :code:`OnChain` module contains the validator implementation, written
