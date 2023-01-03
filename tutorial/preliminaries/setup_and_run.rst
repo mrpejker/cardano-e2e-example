@@ -67,14 +67,13 @@ Indexer/Blockfrost
 
 We will use a public instance of Blockfrost, so we must get a token key from its
 `website <https://blockfrost.dev/docs/overview/getting-started>`_. Once
-we have this token, inside the ``backend`` folder we need to create a
-file, say ``blockfrost-token``, and put the token there. In
-this particular example, the token corresponds to the preprod testnet:
-
+we have this token, inside the ``backend`` folder we have the ``config`` folder
+where we can find the ``blockfrost-token-preprod`` file, we will put the token there.
+In this particular example, the token corresponds to the preprod testnet:
 
 .. code-block:: bash
 
-   $> cat blockfrost-token
+   $> cat config/blockfrost-token-preprod
    preprod8kzHTV4w3E4WgpIZ9tpqY0YvuPwCAuht
 
 This file will help us complete the configuration of the PAB.
@@ -139,8 +138,8 @@ the indexer for querying the blockchain. First, we need to get
 into de `backend` folder to compile everything with :code:`cabal build escrow-pab`.
 This will take some minutes the first time.
 
-To run this service, we will use the ``pab-config.yaml``
-configuration file present in the ``backend`` folder, so we must be sure everything
+To run this service, we will use the ``pab-config-preprod.yaml``
+configuration file present in the ``backend/config`` folder, so we must be sure everything
 is correctly setup there. This file has a lot of
 settings, but the relevant ones for us are the Blockfrost configuration, the
 wallet mode, the database, and the general PAB service.
@@ -151,7 +150,7 @@ setup the path to the file we created before with the API token.
 .. code-block:: bash
 
    blockfrostConfig:
-     bfTokenPath: ./blockfrost-token
+     bfTokenPath: ./blockfrost-token-preprod
 
 Because we are using the PAB just for building unbalanced transactions we need
 to use the remote wallet approach:
@@ -188,13 +187,13 @@ Once everything is compiled we must create the database:
 
 .. code-block:: bash
 
-   $> cabal run pab -- --config pab-config.yaml migrate
+   $> cabal run pab -- --config config/pab-config-preprod.yaml migrate
 
 and start the PAB:
 
 .. code-block:: bash
 
-   $> cabal run pab -- --config pab-config.yaml webserver
+   $> cabal run pab -- --config config/pab-config-preprod.yaml webserver
    [pab:Info:15] [2023-01-01 00:00:00 UTC] {"contents":{"contents":{"tag":"RestoringPABState"},"tag":"SMultiAgent"},"tag":"PABMsg"}
    [pab:Info:15] [2023-01-01 00:00:00 UTC] {"contents":{"contents":{"contents":0,"tag":"PABStateRestored"},"tag":"SMultiAgent"},"tag":"PABMsg"}
    [pab:Info:15] [2023-01-01 00:00:00 UTC] {"contents":{"contents":{"contents":9080,"tag":"StartingPABBackendServer"},"tag":"SMultiAgent"},"tag":"PABMsg"}
@@ -235,8 +234,7 @@ of the server side.
 
 .. code-block:: bash
 
-   # For development use http://localhost:3000/api (has a proxy to 9080)
-   REACT_APP_PAB_URL='http://localhost:3000/api'
+   REACT_APP_PAB_URL='http://localhost:9080/api'
    REACT_APP_BUDGET_URL='http://localhost:3001'
    REACT_APP_BLOCKFROST_API_KEY='preprod8kzHTV4w3E4WgpIZ9tpqY0YvuPwCAuht'
    REACT_APP_BLOCKFROST_URL="https://cardano-preprod.blockfrost.io/api/v0"
