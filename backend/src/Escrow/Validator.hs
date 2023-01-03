@@ -1,7 +1,4 @@
-{-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
 
 
 {-|

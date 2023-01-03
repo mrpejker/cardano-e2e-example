@@ -62,7 +62,7 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( lookupScriptUtxos, filterMUtxo, getDatumWithError )
+import Utils.OffChain ( lookupScriptUtxos, findMUtxo, getDatumWithError )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
                            , waPaymentPubKeyHash
@@ -149,7 +149,7 @@ cancelOp addr CancelParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- filterMUtxo cpTxOutRef utxos
+    (ref, utxo) <- findMUtxo cpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
@@ -191,7 +191,7 @@ resolveOp addr ResolveParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- filterMUtxo rpTxOutRef utxos
+    (ref, utxo) <- findMUtxo rpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo

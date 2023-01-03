@@ -69,12 +69,12 @@ findUtxoFromRef ref = unspentTxOutFromRef ref >>=
 {- | Finds the unique utxo from the given TxOutRef and loads the datum on the
      DecoratedTxOut, fails otherwise.
 -}
-filterMUtxo
+findMUtxo
     :: forall w s
     .  TxOutRef
     -> [(TxOutRef, DecoratedTxOut)]
     -> Contract w s Text (TxOutRef, DecoratedTxOut)
-filterMUtxo ref utxos =
+findMUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
         [(oref, o)] -> (oref,) <$> decoratedTxOutDatum loadDatum o
         _           -> throwError "Specified Utxo not found"
