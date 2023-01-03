@@ -1,39 +1,50 @@
 Modules Design
 ==============
 
+The core part of a dApp implementation consists of the Plutus script and
+the off-chain code in charge of building the transactions to be submitted
+for each operation.
+In this approach both Plutus script and off-chain code are implemented in Haskell,
+allowing to share core pieces of code.
+
+In the previous section we presented a high level description of the PAB service
+design. Now we go into more details, showing the actual Haskell modules.
+The entire service is implemented as a cabal project, composed of a library,
+a tests suite and some mostly boilerplate for building the executable that
+will run the web server.
+
+
 .. image:: ../img/modules_dependencies.png
    :width: 100%
 
-The dependency graph exhibits the organization of the library, which
-is basically implemented into two main parts, the :code:`Escrow` where
-we can find the relevant implementation of the dApp and
-the :code:`Utils` where we have some general helper functions that are
-totally agnostic of this particular dApp.  In particular,
-the module :code:`WalletAddress` is pretty handy as a simplified
-version of the :code:`Ledger` type :code:`Address`.
+The dependency graph exhibits the organization of the library. It consists
+of the :code:`Escrow` library itself, which contains the relevant implementation
+of the dApp, and :code:`Utils`, which are common for any dApp (and
+probably will be released as part of a separate library soon).
 
-The module structure of the :code:`Escrow` folder encapsulates three main
-parts. The :code:`Business` module, that is agnostic of the particular details
-of the blockchain and only contains the data type definitions and
-functions for abstractly handling these. For instance, it could be
-common on a dApp to have a kind of internal state that we need to
-create, modify, and delete. So, in this module, we define the
-corresponding data type representation of that state and all the
-functionality needed for computing things over it. One important
-aspect of this module is that it will be shared between the off-chain
-and on-chain implementation avoiding any mismatch during the
-modification and manipulation of the internal state. Also, because we are using
-this on the on-chain implementation, this module needs to use the PlutusPrelude
-instead of the HaskellPrelude. The :code:`Types` module
-is related to this one, but here we have the data types definitions in
-the context of the blockchain, so we have the datum and redeemer type definitions.
+The :code:`Escrow` implementation is divided into three main components:
+`Business`, `OnChain` and `OffChain`. 
+The first one is implemented in a single module, :code:`Business`,
+where we define the core logic for representing the state of the
+dApp and how it's changed on each operation. The corresponding data type
+representation of that state, the relevant functions for
+manipulating it, and any checks that will be done both off-chain and on-chain
+are located here.
+Given that this module is used in the Plutus script implementation,
+the `Plutus Prelude` must be used instead of the standard `Haskell Prelude`.
 
-The :code:`OnChain` and :code:`Validator` modules implement the
-contract script for validating the spending of the corresponding UTxO
-and the compilation from the Haskell implementation to Plutus Core.
+The :code:`OnChain` module contains the Plutus script implementation, written
+in Haskell. The :code:`Validator` module contains the code for compiling from
+Haskell to Plutus, and it's mainly boilerplate.
 
-The :code:`OffChain` groups together all the functionality in charge
-of building an unbalanced transaction (using the *contraints library*) and
-querying the blockchain (using the *ContractMonad*). Here we implement the
-interface and behavior of each operation that, in the end, will define the API
-of the contract that will be exposed by the PAB.
+We propose two submodules inside :code:`OffChain`. :code:`Interface` contains the
+data-types corresponding to the `Observable State` and the `Schemas`,
+needed for communicating with the client side of the dApp. 
+:code:`Operations` contains the core off-chain code for querying the blockchain
+and building the transactions. It depends on `Contract Monad` and `Constraints Library`.
+
+Finally, in :code:`Types` module we define the type definitions corresponding to
+the validator `Parameter`, the `Datum` and `Redeemer`.
+
+Regarding the :code:`Utils`, we have :code:`OnChain` and :code:`OffChain` utilities, together
+with :code:`WalletAddress`, which contains a simflified version of the Ledger type `Address`.
