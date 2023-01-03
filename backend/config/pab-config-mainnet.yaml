@@ -1,11 +1,21 @@
-postgresDB:
-  dbConfigUser: "postgres"
-  dbConfigPass: "postgres"
-  dbConfigHost: "localhost"
-  dbConfigPort: 5432
+sqliteDB:
   dbConfigDatabase: "pab"
   dbConfigPoolSize: 20
-  dbConfigMarconiFile: "./marconi.sqlite"
+
+#postgresDB:
+#  dbConfigUser: "MY_USER"
+#  dbConfigPass: "MY_PASS"
+#  dbConfigHost: "localhost"
+#  dbConfigPort: 5432
+#  dbConfigDatabase: "pab"
+#  dbConfigPoolSize: 20
+#  dbConfigMarconiFile: "./marconi.sqlite"
+
+walletServerConfig:
+  tag: RemoteWalletConfig
+
+blockfrostConfig:
+  bfTokenPath: ./blockfrost-token-mainnet
 
 pabWebserverConfig:
   baseUrl: http://localhost:9080
@@ -18,17 +28,11 @@ pabWebserverConfig:
   endpointTimeout: 5
   enableMarconi: False
 
-walletServerConfig:
-  tag: RemoteWalletConfig
-
-blockfrostConfig:
-  bfTokenPath: ./preprod-token
-
 nodeServerConfig:
   pscSocketPath: ./node.sock
   pscBaseUrl: "localhost"
   pscKeptBlocks: 2160
-  pscNetworkId: "1" # Testnet network ID (main net = empty string)
+  pscNetworkId: "" # Testnet network ID (mainnet = empty string)
   pscSlotConfig:
     # zero time taken from blockfrost API and cardanoscan is 1654041600 in secs
     # https://docs.blockfrost.io/#tag/Cardano-Ledger/paths/~1genesis/get
@@ -38,7 +42,7 @@ nodeServerConfig:
     # Empirically using Ogmios and BuiltinShow for printing on-chain comparison
     # we got 1655683200000 = GMT: Monday, June 20, 2022 12:00:00 AM
     # 19 days after the "official" time.
-    scSlotZeroTime: 1655683200000
+    scSlotZeroTime: 1591566291000
     scSlotLength: 1000 # In milliseconds
   pscFeeConfig:
     fcConstantFee:
