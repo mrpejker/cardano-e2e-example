@@ -13,15 +13,15 @@ starts an escrow by submitting a transaction that pays to a script an amount of 
 asset class. That script is parameterized in the receiver address,
 and the datum contains the rest of the information: sender's address, asset class and
 amount of tokens that the receiver must pay.
-For validating the resolution of an escrow we need to check that the corresponding transaction
-spends the script utxo, pays to the sender the corresponding amount of tokens,
-and it's signed by the receiver.
-For validating that an escrow is canceled, we have to check that the corresponding
-transaction spends the script utxo and it's signed by the sender.
+For validating the resolution of an escrow we need to check that when
+the script utxo is being spent, the sender receives the corresponding amount of tokens,
+and the transaction is signed by the receiver.
+For validating that an escrow is canceled, the transaction spending
+the script utxo must be signed by the sender.
 
 In the :code:`Business` module we implement the data-type corresponding to the `state`
-of the dApp that is located inside the `Datum`. We also implement the necessary checks
-and computations needed for building and validating the transactions.
+of the dApp that will be located inside the `Datum`. We also implement the core checks
+and computations that will be used at building and validating the transactions.
 
 In the :code:`Types` module we implement the data-types corresponding to the `Datum` and
 `Redeemer`, and some other boilerplate.
