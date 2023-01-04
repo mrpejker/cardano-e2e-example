@@ -34,8 +34,7 @@ import Plutus.Contract.Test               ( CheckOptions, Wallet
                                           )
 import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , StartContract(..), ContractModel(..)
-                                          , Action, Actions, DL
-                                          , contractState, action, anyActions_
+                                          , Action, Actions, contractState
                                           , defaultCoverageOptions, delay
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
@@ -58,7 +57,7 @@ import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
 import Tests.Utils                ( emConfig, tokenA, tokenACurrencySymbol
                                   , tokenB, tokenBCurrencySymbol, wallets
-                                  , mockWAddress, senderWallet, receiverWallet
+                                  , mockWAddress
                                   )
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
@@ -250,10 +249,3 @@ findEscrowUtxo TransferInfo{..} =
 propEscrow :: Actions EscrowModel -> Property
 propEscrow = propRunActionsWithOptions options defaultCoverageOptions
              (\ _ -> pure True)
-
-testStart :: DL EscrowModel ()
-testStart = do
-    action $ Start senderWallet receiverWallet
-                   (assetClass tokenACurrencySymbol tokenA, 1)
-                   (assetClass tokenBCurrencySymbol tokenB, 1)
-    anyActions_
