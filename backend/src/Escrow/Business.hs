@@ -47,6 +47,38 @@ import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 import Utils.OnChain ( pubKeyHashInAddress )
 import Utils.WalletAddress ( WalletAddress, fromWalletAddress )
 
+{- | EscrowInfo
+
+Stores most of the information of the escrow:
+ - Sender’s address.
+ - The amount and asset class of the receiver’s payment.
+-}
+data EscrowInfo = EscrowInfo
+                  { sender      :: SenderAddress
+                  , rAmount     :: Integer
+                  , rAssetClass :: AssetClass
+                  }
+    deriving (HP.Eq, HP.Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
+-- | Smart constructor of a EscrowInfo.
+mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo
+mkEscrowInfo sAdd amount assetClass =
+    EscrowInfo { sender      = sAdd
+               , rAmount     = amount
+               , rAssetClass = assetClass
+               }
+
+-- | Gets the sender address from the EscrowInfo.
+{-# INLINABLE eInfoSenderAddr #-}
+eInfoSenderAddr :: EscrowInfo -> Address
+eInfoSenderAddr = fromWalletAddress . sAddr . sender
+
+-- | Gets the sender WalletAddress from the EscrowInfo.
+{-# INLINABLE eInfoSenderWallAddr #-}
+eInfoSenderWallAddr :: EscrowInfo -> WalletAddress
+eInfoSenderWallAddr = sAddr . sender
+
 {- | A SenderAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
@@ -83,38 +115,6 @@ signerIsReceiver pkh ReceiverAddress{..} =
 {-# INLINABLE valueToSender #-}
 valueToSender :: EscrowInfo -> Value
 valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
-
-{- | EscrowInfo
-
-Stores most of the information of the escrow:
- - Sender’s address.
- - The amount and asset class of the receiver’s payment.
--}
-data EscrowInfo = EscrowInfo
-                  { sender      :: SenderAddress
-                  , rAmount     :: Integer
-                  , rAssetClass :: AssetClass
-                  }
-    deriving (HP.Eq, HP.Show, Generic)
-    deriving anyclass (FromJSON, ToJSON)
-
--- | Smart constructor of a EscrowInfo.
-mkEscrowInfo :: SenderAddress -> Integer -> AssetClass -> EscrowInfo
-mkEscrowInfo sAdd amount assetClass =
-    EscrowInfo { sender      = sAdd
-               , rAmount     = amount
-               , rAssetClass = assetClass
-               }
-
--- | Gets the sender address from the EscrowInfo.
-{-# INLINABLE eInfoSenderAddr #-}
-eInfoSenderAddr :: EscrowInfo -> Address
-eInfoSenderAddr = fromWalletAddress . sAddr . sender
-
--- | Gets the sender WalletAddress from the EscrowInfo.
-{-# INLINABLE eInfoSenderWallAddr #-}
-eInfoSenderWallAddr :: EscrowInfo -> WalletAddress
-eInfoSenderWallAddr = sAddr . sender
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''ReceiverAddress

@@ -12,7 +12,7 @@ It consists of a Parameter, Escrow Datum and Escrow Redeemer.
 
 module Escrow.Types
     ( -- * Types
-      ContractAddress
+      ScriptAddress
     , EscrowDatum (..)
     , EscrowRedeemer (..)
     -- * Business Types
@@ -38,10 +38,10 @@ import Escrow.Business ( EscrowInfo(..), ReceiverAddress, SenderAddress
                        , mkEscrowInfo
                        )
 
-{- | A simply type synonym for explictly annotate were a contract address should
-     be use instead of a wallet address.
+{- | A type synonym for explictly differentiate a Wallet Address from a
+     ScriptAddress
 -}
-type ContractAddress = Address
+type ScriptAddress = Address
 
 {- | The EscrowDatum type contains the escrow information about the amount and
      kind of tokens the receiver should send and to which address.
