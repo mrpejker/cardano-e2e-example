@@ -29,7 +29,7 @@ In the :code:`Types` module we implement the data-types corresponding to the `Da
 Business
 -------
 
-We define some types for making eaiser to reason about the roles in an Escrow.
+We define some types for making eaiser to reason about the roles in an escrow.
 Both sender and receiver are identified by a :code:`WalletAddress`, but we define
 wrappers over it:
 
@@ -43,7 +43,7 @@ wrappers over it:
 
 
 Thus, the validator parameter will be :code:`ReceiverAddress`, and the remaining
-information needed once a Escrow is started is defined in the following data-type:
+information needed once a escrow is started is defined in the following data-type:
 	
 .. code:: haskell
 
@@ -56,7 +56,7 @@ information needed once a Escrow is started is defined in the following data-typ
       deriving anyclass (FromJSON, ToJSON)
 
 We have now all the necessary ingredients to define the core functions needed for
-building and validating the resolution or cancellation of an Escrow.
+building and validating the resolution or cancellation of an escrow.
 
 .. code:: haskell
 
@@ -75,13 +75,13 @@ building and validating the resolution or cancellation of an Escrow.
   valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
       
 
-For resolving an Escrow, the transaction signer must be the `Receiver`, and
+For resolving an escrow, the transaction signer must be the `Receiver`, and
 function :code:`signerIsReceiver` should be used when validating.
 In addition to that, the transaction must pay to the sender the corresponding
 value specified in the `EscrowInfo`. The function
 :code:`valueToSender` should be used for computing that value at the moment of
 building the transaction (off-chain), and for validating it (on-chain).
-Similarly, for validating the cancellation of an Escrow, function :code:`signerIsSender`
+Similarly, for validating the cancellation of an escrow, function :code:`signerIsSender`
 should be used.
 
 Due to the simplicity of this dApp example, the Business logic is a short module and
