@@ -45,7 +45,7 @@ import Escrow ( EscrowSchema, UtxoEscrowInfo )
 import Utils.WalletAddress ( WalletAddress, toWalletAddress )
 
 walletsWithValue :: [(Wallet,Value)]
-walletsWithValue = [(w, v <> paymentA 1000 <> paymentB 1000)
+walletsWithValue = [(w, v <> paymentA 1_000_000 <> paymentB 1_000_000)
                    | w <- [senderWallet,receiverWallet,w3,w4]
                    ]
   where
