@@ -3,7 +3,8 @@ import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner } from "rea
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
-import { getValueAmount, getValueAsset, mkStartParams, mkCancelParams, mkResolveParams, TxOutRef } from "src/contractEndpoints/parameters";
+import { mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
+import type { TxOutRef } from "cardano-pab-client";
 
 // Main component for the EscrowUI. It includes all the other components.
 function EscrowUI() {
@@ -82,7 +83,7 @@ type ConnectProps = {
 };
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
-  const [selectedWallet, setSelectedWallet] = useState("eternl");
+  const [selectedWallet, setSelectedWallet] = useState<"eternl" | "nami">("eternl");
   return (
     <Navbar.Collapse className="justify-content-end">
       <Nav.Link className="d-flex">
@@ -93,7 +94,7 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
             console.log("Value Changed")
             console.log(e.target.value)
             setIsConnected(false)
-            setSelectedWallet(e.target.value)
+            setSelectedWallet(e.target.value as "eternl" | "nami")
           }}
           defaultValue={"eternl"}
         >
@@ -375,25 +376,28 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
         </tr>
       </thead>
       <tbody>
-        {currentContractState.map((elem: UtxoEscrowInfo, index) => (
-          <tr key={index}>
-            <td> {elem.escrowInfo.sender.waPayment.getPubKeyHash} </td>
-            <td> {getValueAmount(elem.escrowValue)} </td>
-            <td> {getValueAsset(elem.escrowValue)} </td>
-            <td> {elem.escrowInfo.rAmount} </td>
-            <td> {elem.escrowInfo.rAssetClass.unAssetClass[1].unTokenName} </td>
+        {currentContractState.map(({ escrowInfo, escrowUtxo, escrowValue }: UtxoEscrowInfo, i) => {
+          const [tokenSent] = escrowValue.flatten().filter(
+            // its token name is not ADA nor the contract nft
+            ({ tokenName }) => tokenName !== "" && tokenName !== "controlToken",
+          );
+          return <tr key={i}>
+            <td> {escrowInfo.sender.paymentPubKeyHash} </td>
+            <td> {tokenSent.quantity} </td>
+            <td> {tokenSent.tokenName} </td>
+            <td> {escrowInfo.rAmount} </td>
+            <td> {escrowInfo.rAssetClass.tokenName} </td>
             <td>
               <Resolve
-                txOutRefToResolve={elem.escrowUtxo}
+                txOutRefToResolve={escrowUtxo}
                 contractEndpoints={contractEndpoints}
               />
             </td>
           </tr>
-        ))}
+        })}
       </tbody>
     </Table>}
     </div>
-
   )
 }
 

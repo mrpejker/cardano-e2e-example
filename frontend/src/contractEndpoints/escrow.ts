@@ -1,14 +1,22 @@
-import { ContractEndpoints, CIP30WalletWrapper,
-         TxBudgetAPI, Balancer} from "cardano-pab-client";
-import { StartParams, mkWalletAddressFromString, Value, TxOutRef, WalletAddress,
-         AssetClass, CancelParams, ResolveParams } from "./parameters";
+import type {
+  ContractEndpoints,
+  CIP30WalletWrapper,
+  TxBudgetAPI,
+  Balancer,
+  Value,
+  AssetClass,
+  TxOutRef,
+  WalletAddress
+} from "cardano-pab-client";
+import { StartParams, CancelParams, ResolveParams } from "./parameters";
+
 /**
  * The representation of the contract Utxo state
  */
 export type EscrowInfo = {
   sender: WalletAddress;
   rAssetClass: AssetClass;
-  rAmount: Number;
+  rAmount: number;
 }
 
 export type UtxoEscrowInfo = {
@@ -20,6 +28,7 @@ export type UtxoEscrowInfo = {
 export type ObsState = UtxoEscrowInfo[]
 
 export class UserEndpoints {
+  PABClient: typeof import("cardano-pab-client");
   contractState: ObsState = undefined
   endpoints: ContractEndpoints = undefined
   wallet: CIP30WalletWrapper = undefined
@@ -32,35 +41,36 @@ export class UserEndpoints {
     this.contractState = contractState
   }
 
-  public async connect(walletName): Promise<UserEndpoints> {
-    const {
+  public async connect(walletName: "nami" | "eternl"): Promise<UserEndpoints | null> {
+    // load PAB Client just once!
+    this.PABClient = await import("cardano-pab-client");
+
+    const { Balancer, CIP30WalletWrapper, ContractEndpoints, PABApi,
+      TxBudgetAPI, WalletAddress, getWalletInitialAPI, failed,
       getProtocolParamsFromBlockfrost,
-      getWalletInitialAPI,
-      Balancer,
-      CIP30WalletWrapper,
-      ContractEndpoints,
-      PABApi,
-      TxBudgetAPI,
-    } = await import("cardano-pab-client");
+    } = this.PABClient;
 
-    let walletInitialAPI = getWalletInitialAPI(window, walletName);
-
+    const walletInitialAPI = getWalletInitialAPI(window, walletName);
     // this will ask the user to give to this dApp access to their wallet methods
     const walletInjectedFromBrowser = await walletInitialAPI.enable();
 
     // then we can initialize the CIP30WalletWrapper class of the library
     this.wallet = await CIP30WalletWrapper.init(walletInjectedFromBrowser);
-    const addrs = await this.wallet.getUsedAddresses()
-    const walletAddr = mkWalletAddressFromString(addrs[0])
-    console.log(`Connected Address:`)
-    console.log(walletAddr)
+    const [addr] = await this.wallet.getUsedAddresses();
+    const result = await WalletAddress.fromHexAddress(addr);
+    if (failed(result)) {
+      console.log()
+      return null;
+    }
+    const walletAddr = result.value;
+    console.log(`Connected Address: ${JSON.stringify(walletAddr)}`);
 
     const walletId = await this.wallet.getWalletId();
     const pabApi = new PABApi(process.env.REACT_APP_PAB_URL);
 
     this.endpoints = await ContractEndpoints.connect(
       walletId,
-      { params: walletAddr },
+      { params: walletAddr.toPAB() },
       pabApi,
     );
 
@@ -74,15 +84,13 @@ export class UserEndpoints {
       process.env.REACT_APP_BLOCKFROST_URL,
       process.env.REACT_APP_BLOCKFROST_API_KEY,
     );
-    this.balancer = await Balancer.init(protocolParams)
+    this.balancer = await Balancer.init(protocolParams);
 
-    return this
+    return this;
   }
 
   public async start(sp: StartParams) {
-    const {
-      succeeded
-    } = await import("cardano-pab-client");
+    const { succeeded } = this.PABClient;
     console.log(`Start Params:`)
     console.log(sp)
 
@@ -138,9 +146,7 @@ export class UserEndpoints {
   }
 
   public async reload(): Promise<ObsState> {
-    const {
-      succeeded
-    } = await import("cardano-pab-client");
+    const { succeeded } = this.PABClient;
     console.log("Inside Reload")
     const response = await this.endpoints.reload({ endpointTag: "reload", params: [] })
     console.log(response)
@@ -158,9 +164,7 @@ export class UserEndpoints {
 
 
   public async cancel(cp: CancelParams){
-    const {
-      succeeded
-    } = await import("cardano-pab-client")
+    const { succeeded } = this.PABClient;
     console.log("Cancelling Escrow")
     console.log(cp)
     // Try to get unbalanced transaction from PAB
@@ -215,9 +219,7 @@ export class UserEndpoints {
   }
 
   public async resolve(rp: ResolveParams) {
-    const {
-      succeeded
-    } = await import("cardano-pab-client");
+    const { succeeded } = this.PABClient;
     console.log(`Resolve Params:`)
     console.log(rp)
 
