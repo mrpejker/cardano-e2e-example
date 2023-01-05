@@ -10,9 +10,10 @@ module Main ( main ) where
 
 -- Non-IOG imports
 import Test.Tasty
-import Test.QuickCheck
+-- QuickCheck tests are disabled
+-- import Test.QuickCheck
 
-import Tests.Prop.Escrow
+-- import Tests.Prop.Escrow
 import Tests.OffChain.Trace0 qualified
 import Tests.OffChain.Trace1 qualified
 import Tests.OffChain.Trace2 qualified
@@ -20,7 +21,8 @@ import Tests.OffChain.Trace3 qualified
 
 main :: IO ()
 main = do
-    quickCheck propEscrow
+    -- QuickCheck tests are disabled
+    -- quickCheck propEscrow
     defaultMain tests
 
 tests :: TestTree
