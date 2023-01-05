@@ -27,7 +27,7 @@ In the :code:`Types` module we implement the data-types corresponding to the `Da
 `Redeemer`, and some other boilerplate.
 
 Business
--------
+--------
 
 We define some types for making eaiser to reason about the roles in an escrow.
 Both sender and receiver are identified by a :code:`WalletAddress`, but we define
@@ -91,7 +91,8 @@ logic is implemented in the Business module. Nevertheless, even simple, this exa
 has some pieces of code which are critical and can be shared for building and validating
 the transactions. 
 
-  
+.. _business_logic-types:
+
 Types
 -----
 
