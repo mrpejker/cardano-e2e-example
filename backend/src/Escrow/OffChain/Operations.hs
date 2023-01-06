@@ -149,7 +149,7 @@ cancelOp addr CancelParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findMUtxo cpTxOutRef utxos
+    utxo        <- findMUtxo cpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
@@ -161,7 +161,7 @@ cancelOp addr CancelParams{..} = do
             , plutusV1MintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
-            [ mustSpendScriptOutput ref cancelRedeemer
+            [ mustSpendScriptOutput cpTxOutRef cancelRedeemer
             , mustMintValue cTokenVal
             , mustBeSignedBy senderPpkh
             ]
@@ -191,7 +191,7 @@ resolveOp addr ResolveParams{..} = do
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
     utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    (ref, utxo) <- findMUtxo rpTxOutRef utxos
+    utxo        <- findMUtxo rpTxOutRef utxos
     eInfo       <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo
@@ -199,11 +199,11 @@ resolveOp addr ResolveParams{..} = do
 
         lkp = mconcat
             [ plutusV1OtherScript validator
-            , unspentOutputs (singleton ref utxo)
+            , unspentOutputs (singleton rpTxOutRef utxo)
             , plutusV1MintingPolicy (controlTokenMP contractAddress)
             ]
         tx = mconcat
-            [ mustSpendScriptOutput ref resolveRedeemer
+            [ mustSpendScriptOutput rpTxOutRef resolveRedeemer
             , mustMintValue cTokenVal
             , mustBeSignedBy receiverPpkh
             , mustPayToWalletAddress senderWallAddr senderPayment
