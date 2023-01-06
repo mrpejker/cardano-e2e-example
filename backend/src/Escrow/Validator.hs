@@ -43,7 +43,7 @@ import PlutusTx ( compile, applyCode, liftCode )
 -- Escrow imports
 import Escrow.OnChain  ( mkEscrowValidator, mkControlTokenMintingPolicy )
 import Escrow.Types    ( EscrowDatum, EscrowRedeemer
-                       , ContractAddress
+                       , ScriptAddress
                        , ReceiverAddress
                        )
 
@@ -66,15 +66,15 @@ escrowInst raddr =
 escrowValidator :: ReceiverAddress -> Validator
 escrowValidator = validatorScript . escrowInst
 
-escrowAddress :: ReceiverAddress -> ContractAddress
+escrowAddress :: ReceiverAddress -> ScriptAddress
 escrowAddress = mkValidatorAddress . escrowValidator
 
-controlTokenMP :: ContractAddress -> MintingPolicy
+controlTokenMP :: ScriptAddress -> MintingPolicy
 controlTokenMP caddr =
     mkMintingPolicyScript $
     $$(compile [|| mkUntypedMintingPolicy . mkControlTokenMintingPolicy ||])
     `applyCode`
     liftCode caddr
 
-controlTokenCurrency :: ContractAddress -> CurrencySymbol
+controlTokenCurrency :: ScriptAddress -> CurrencySymbol
 controlTokenCurrency = scriptCurrencySymbol . controlTokenMP

@@ -47,43 +47,6 @@ import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 import Utils.OnChain ( pubKeyHashInAddress )
 import Utils.WalletAddress ( WalletAddress, fromWalletAddress )
 
-{- | A SenderAddress is just a wrapper over Address, used for not confusing
-     concerns.
--}
-newtype SenderAddress = SenderAddress { sAddr :: WalletAddress }
-    deriving newtype (HP.Eq, HP.Show, Eq, FromJSON, ToJSON)
-
-{- | A ReceiverAddress is just a wrapper over Address, used for not confusing
-     concerns.
--}
-newtype ReceiverAddress = ReceiverAddress { rAddr :: WalletAddress }
-    deriving newtype (HP.Show, Eq, FromJSON, ToJSON)
-
--- | Smart constructor of a SenderAddress.
-mkSenderAddress :: WalletAddress -> SenderAddress
-mkSenderAddress addr = SenderAddress { sAddr = addr }
-
--- | Smart constructor of a ReceiverAddress.
-mkReceiverAddress :: WalletAddress -> ReceiverAddress
-mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
-
--- | Checks is the given pubkeyhash is part of the SenderAddress.
-{-# INLINABLE signerIsSender #-}
-signerIsSender :: PubKeyHash -> SenderAddress -> Bool
-signerIsSender pkh SenderAddress{..} =
-    pubKeyHashInAddress pkh (fromWalletAddress sAddr)
-
--- | Checks is the given pubkeyhash is part of the ReceiverAddress.
-{-# INLINABLE signerIsReceiver #-}
-signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
-signerIsReceiver pkh ReceiverAddress{..} =
-    pubKeyHashInAddress pkh (fromWalletAddress rAddr)
-
--- | Given a escrow information builds the value to be paid to the sender.
-{-# INLINABLE valueToSender #-}
-valueToSender :: EscrowInfo -> Value
-valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
-
 {- | EscrowInfo
 
 Stores most of the information of the escrow:
@@ -106,6 +69,26 @@ mkEscrowInfo sAdd amount assetClass =
                , rAssetClass = assetClass
                }
 
+{- | A SenderAddress is just a wrapper over Address, used for not confusing
+     concerns.
+-}
+newtype SenderAddress = SenderAddress { sAddr :: WalletAddress }
+    deriving newtype (HP.Eq, HP.Show, Eq, FromJSON, ToJSON)
+
+-- | Smart constructor of a SenderAddress.
+mkSenderAddress :: WalletAddress -> SenderAddress
+mkSenderAddress addr = SenderAddress { sAddr = addr }
+
+{- | A ReceiverAddress is just a wrapper over Address, used for not confusing
+     concerns.
+-}
+newtype ReceiverAddress = ReceiverAddress { rAddr :: WalletAddress }
+    deriving newtype (HP.Show, Eq, FromJSON, ToJSON)
+
+-- | Smart constructor of a ReceiverAddress.
+mkReceiverAddress :: WalletAddress -> ReceiverAddress
+mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
+
 -- | Gets the sender address from the EscrowInfo.
 {-# INLINABLE eInfoSenderAddr #-}
 eInfoSenderAddr :: EscrowInfo -> Address
@@ -115,6 +98,23 @@ eInfoSenderAddr = fromWalletAddress . sAddr . sender
 {-# INLINABLE eInfoSenderWallAddr #-}
 eInfoSenderWallAddr :: EscrowInfo -> WalletAddress
 eInfoSenderWallAddr = sAddr . sender
+
+-- | Given a escrow information builds the value to be paid to the sender.
+{-# INLINABLE valueToSender #-}
+valueToSender :: EscrowInfo -> Value
+valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
+
+-- | Checks is the given pubkeyhash is part of the SenderAddress.
+{-# INLINABLE signerIsSender #-}
+signerIsSender :: PubKeyHash -> SenderAddress -> Bool
+signerIsSender pkh SenderAddress{..} =
+    pubKeyHashInAddress pkh (fromWalletAddress sAddr)
+
+-- | Checks is the given pubkeyhash is part of the ReceiverAddress.
+{-# INLINABLE signerIsReceiver #-}
+signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
+signerIsReceiver pkh ReceiverAddress{..} =
+    pubKeyHashInAddress pkh (fromWalletAddress rAddr)
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''ReceiverAddress

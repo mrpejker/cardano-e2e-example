@@ -35,7 +35,7 @@ import Escrow.Business ( ReceiverAddress, EscrowInfo(..)
                        , signerIsSender, signerIsReceiver, eInfoSenderAddr
                        , valueToSender
                        )
-import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ContractAddress )
+import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ScriptAddress )
 import Utils.OnChain   ( fromJust, getSingleton
                        , valuePaidTo, outputsAt, getTxOutDatum
                        )
@@ -125,7 +125,7 @@ On Burning:
  - One token is being burned.
 -}
 {-# INLINABLE mkControlTokenMintingPolicy #-}
-mkControlTokenMintingPolicy :: ContractAddress -> () -> ScriptContext -> Bool
+mkControlTokenMintingPolicy :: ScriptAddress -> () -> ScriptContext -> Bool
 mkControlTokenMintingPolicy addr _ ctx =
     traceIfFalse "Burning less or more than one control token" (mintedA == -1)
     ||
