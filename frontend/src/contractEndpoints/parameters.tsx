@@ -1,10 +1,10 @@
-import type { AssetClass, TxOutRef, Plutus, WalletAddress } from "cardano-pab-client";
+import type { TxOutRef, Plutus, WalletAddress } from "cardano-pab-client";
 
 export type StartParams = {
-  receiverAddress: WalletAddress
-  sendAssetClass: AssetClass
+  receiverAddress: ReturnType<WalletAddress["toPAB"]>
+  sendAssetClass: Plutus.AssetClass
   sendAmount: number
-  receiveAssetClass: AssetClass
+  receiveAssetClass: Plutus.AssetClass
   receiveAmount: number
 }
 
@@ -20,12 +20,14 @@ export async function mkStartParams(
   const { WalletAddress, AssetClass, succeeded } = await import("cardano-pab-client");
   const result = await WalletAddress.fromBech32Address(rAdd)
   if (succeeded(result)) {
-    const wAdd = result.value;
+    const receiverAddress = result.value.toPAB();
+    const sendAssetClass = new AssetClass(sCurrency, sTokenN).toPlutusAssetClass();
+    const receiveAssetClass = new AssetClass(rCurrency, rTokenN).toPlutusAssetClass();
     return {
-      receiverAddress: wAdd,
-      sendAssetClass: new AssetClass(sCurrency, sTokenN),
+      receiverAddress,
+      sendAssetClass,
       sendAmount: sAm,
-      receiveAssetClass: new AssetClass(rCurrency, rTokenN),
+      receiveAssetClass,
       receiveAmount: rAm,
     }
   } else {
@@ -33,14 +35,14 @@ export async function mkStartParams(
   }
 }
 
-export type ReceiverAddress = { rAddr: WalletAddress }
+export type ReceiverAddress = { rAddr: ReturnType<WalletAddress["toPAB"]> }
 
 export function mkReceiverAddress(wAdd: WalletAddress): ReceiverAddress {
-  return { rAddr: wAdd }
+  return { rAddr: wAdd.toPAB() }
 }
 
 export type CancelParams = {
-  cpReceiverAddress: WalletAddress,
+  cpReceiverAddress: ReturnType<WalletAddress["toPAB"]>
   cpTxOutRef: Plutus.TxOutRef
 }
 
@@ -49,7 +51,7 @@ export async function mkCancelParams(rAdd: string, ref: string): Promise<CancelP
   const [txId, idx]: string = ref.split["#"];
   const result = await WalletAddress.fromBech32Address(rAdd)
   if (succeeded(result)) {
-    const cpReceiverAddress = result.value;
+    const cpReceiverAddress = result.value.toPAB();
     const cpTxOutRef = new TxOutRef(txId, Number(idx)).toPlutusTxOutRef();
     return { cpTxOutRef, cpReceiverAddress };
   } else {

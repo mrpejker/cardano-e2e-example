@@ -6,9 +6,10 @@ import type {
   Value,
   AssetClass,
   TxOutRef,
-  WalletAddress
+  WalletAddress,
+  Plutus
 } from "cardano-pab-client";
-import { StartParams, CancelParams, ResolveParams } from "./parameters";
+import { CancelParams, ResolveParams, StartParams } from "./parameters";
 
 /**
  * The representation of the contract Utxo state
@@ -59,7 +60,7 @@ export class UserEndpoints {
     const [addr] = await this.wallet.getUsedAddresses();
     const result = await WalletAddress.fromHexAddress(addr);
     if (failed(result)) {
-      console.log()
+      console.log(result.error)
       return null;
     }
     const walletAddr = result.value;
@@ -151,17 +152,16 @@ export class UserEndpoints {
     const response = await this.endpoints.reload({ endpointTag: "reload", params: [] })
     console.log(response)
     if (succeeded(response)) {
-      const escrows = response.value as ObsState
+      const escrows = response.value as PABObservableState;
       console.log(escrows)
-      return escrows
+      const observableState = parsePABObservableState(escrows);
+      console.log("Finishing Reload");
+      return observableState;
       // let utxoInfo = parseReloadResponse(escrows)
     } else {
       alert(`Reload Failed. Error: ${response.error}`);
     }
-    console.log("Finishing Reload")
-    return undefined
   }
-
 
   public async cancel(cp: CancelParams){
     const { succeeded } = this.PABClient;
@@ -273,4 +273,30 @@ export class UserEndpoints {
       }
     }
   }
+}
+
+type PABObservableState = Array<{
+  escrowUtxo: Plutus.TxOutRef,
+  escrowValue: Plutus.Value,
+  escrowInfo: {
+    sender: ReturnType<WalletAddress["toPAB"]>;
+    rAssetClass: Plutus.AssetClass;
+    rAmount: number;
+  }
+}>;
+
+async function parsePABObservableState(escrows: PABObservableState): Promise<ObsState> {
+  const { AssetClass, TxOutRef, Value, WalletAddress } = await import("cardano-pab-client");
+  return escrows.map(
+    ({ escrowUtxo, escrowValue, escrowInfo }) => ({
+      // parse all the PAB structures
+      escrowUtxo: TxOutRef.fromPlutusTxOutRef(escrowUtxo),
+      escrowValue: Value.fromPlutusValue(escrowValue),
+      escrowInfo: {
+        sender: WalletAddress.fromPAB(escrowInfo.sender),
+        rAssetClass: AssetClass.fromPlutusAssetClass(escrowInfo.rAssetClass),
+        rAmount: escrowInfo.rAmount,
+      },
+    })
+  )
 }
