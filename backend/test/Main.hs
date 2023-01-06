@@ -20,7 +20,7 @@ import Tests.OffChain.Trace3 qualified
 
 main :: IO ()
 main = do
-    quickCheck (withMaxSuccess 30 propEscrow)
+    quickCheck 1000 propEscrow
     defaultMain tests
 
 tests :: TestTree

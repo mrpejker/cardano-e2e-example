@@ -18,7 +18,7 @@ of every run fits with some specification of the contract.
 module Tests.Prop.Escrow where
 
 -- Non-IOG imports
-import Control.Lens    ( (^.), (.~), (&), makeLenses )
+import Control.Lens    ( (^.), (.~), (&), makeLenses, over )
 import Data.Data       ( Data )
 import Data.List       ( delete, find )
 import Data.Maybe      ( fromJust, isJust )
@@ -39,11 +39,14 @@ import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
                                           )
-import Plutus.Trace.Emulator              ( callEndpoint, observableState )
+import Plutus.Trace.Emulator              ( callEndpoint, observableState, params )
 import Plutus.V1.Ledger.Value             ( assetClassValue, assetClassValueOf
                                           , singleton, assetClass
                                           )
-import Ledger                             ( AssetClass )
+import Ledger                             ( AssetClass, Params(..)
+                                          , protocolParamsL )
+
+import Cardano.Api.Shelley                 (ProtocolParameters(..))
 
 -- Escrow imports
 import Escrow.Business            ( EscrowInfo, mkReceiverAddress
@@ -247,5 +250,20 @@ findEscrowUtxo TransferInfo{..} =
     sendA uInfo = assetClassValueOf (escrowValue uInfo) tiSendAssetClass
 
 propEscrow :: Actions EscrowModel -> Property
-propEscrow = propRunActionsWithOptions options defaultCoverageOptions
+propEscrow = propRunActionsWithOptions
+             (options & increaseMaxCollateral)
+             defaultCoverageOptions
              (\ _ -> pure True)
+
+{- increasing max amount of collateral inputs,
+   otherwise property tests fail due to tooManyCollateralInputs
+   error.
+-}
+increaseMaxCollateral:: CheckOptions -> CheckOptions
+increaseMaxCollateral = over (emulatorConfig . params) increaseMaxCollIn
+
+increaseMaxCollIn :: Params -> Params
+increaseMaxCollIn = over protocolParamsL fixParams
+  where
+    fixParams pp = pp
+      { protocolParamMaxCollateralInputs = Just 200}
