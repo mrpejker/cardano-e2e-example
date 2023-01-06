@@ -35,13 +35,11 @@ import PlutusTx.Prelude  ( Maybe(..), Eq(..), Ord(..)
                          , (&&), ($), (<$>), (.)
                          )
 import Ledger            ( Value, Address(..), PubKeyHash
-                         , PaymentPubKeyHash(..), StakePubKeyHash(..)
-                         , stakingCredential, stakePubKeyHashCredential
+                         , PaymentPubKeyHash(..), stakingCredential
                          , toPubKeyHash
                          )
 import Ledger.Credential  ( Credential(..), StakingCredential(..) )
-import Ledger.Constraints ( TxConstraints, mustPayToPubKey
-                          , mustPayToAddress
+import Ledger.Constraints ( TxConstraints, mustPayToAddress
                           )
 {- | WalletAddress is the representation of public key addresses in the Cardano
      networks. It consists on a public key hash, along with an optional staking

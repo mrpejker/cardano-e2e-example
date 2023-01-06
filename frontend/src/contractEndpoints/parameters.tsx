@@ -48,7 +48,7 @@ export type CancelParams = {
 
 export async function mkCancelParams(rAdd: string, ref: string): Promise<CancelParams> {
   const { WalletAddress, TxOutRef, succeeded } = await import("cardano-pab-client");
-  const [txId, idx]: string = ref.split["#"];
+  const [txId, idx]: string[] = ref.split("#");
   const result = await WalletAddress.fromBech32Address(rAdd)
   if (succeeded(result)) {
     const cpReceiverAddress = result.value.toPAB();
