@@ -75,15 +75,15 @@ mkEscrowInfo sAdd amount assetClass =
 newtype SenderAddress = SenderAddress { sAddr :: WalletAddress }
     deriving newtype (HP.Eq, HP.Show, Eq, FromJSON, ToJSON)
 
+-- | Smart constructor of a SenderAddress.
+mkSenderAddress :: WalletAddress -> SenderAddress
+mkSenderAddress addr = SenderAddress { sAddr = addr }
+
 {- | A ReceiverAddress is just a wrapper over Address, used for not confusing
      concerns.
 -}
 newtype ReceiverAddress = ReceiverAddress { rAddr :: WalletAddress }
     deriving newtype (HP.Show, Eq, FromJSON, ToJSON)
-
--- | Smart constructor of a SenderAddress.
-mkSenderAddress :: WalletAddress -> SenderAddress
-mkSenderAddress addr = SenderAddress { sAddr = addr }
 
 -- | Smart constructor of a ReceiverAddress.
 mkReceiverAddress :: WalletAddress -> ReceiverAddress
