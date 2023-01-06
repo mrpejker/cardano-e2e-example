@@ -1,5 +1,5 @@
 sqliteDB:
-  dbConfigDatabase: "pab"
+  dbConfigFile: "pab"
   dbConfigPoolSize: 20
 
 #postgresDB:
@@ -15,7 +15,7 @@ walletServerConfig:
   tag: RemoteWalletConfig
 
 blockfrostConfig:
-  bfTokenPath: ./blockfrost-token-preprod
+  bfTokenPath: ./config/blockfrost-token-preprod
 
 pabWebserverConfig:
   baseUrl: http://localhost:9080
