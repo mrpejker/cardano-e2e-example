@@ -73,10 +73,10 @@ findMUtxo
     :: forall w s
     .  TxOutRef
     -> [(TxOutRef, DecoratedTxOut)]
-    -> Contract w s Text (TxOutRef, DecoratedTxOut)
+    -> Contract w s Text DecoratedTxOut
 findMUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
-        [(oref, o)] -> (oref,) <$> decoratedTxOutDatum loadDatum o
+        [(_, o)] -> decoratedTxOutDatum loadDatum o
         _           -> throwError "Specified Utxo not found"
   where
     loadDatum
