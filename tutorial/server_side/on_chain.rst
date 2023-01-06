@@ -21,8 +21,8 @@ the minting policy implementations, amoung other helper functions. Because we ne
 to compile these functions to Plutus, we must use the *Plutus Prelude* instead of
 the *Haskell Prelude*. To avoid confusion about which Prelude we are using, we add
 the ``NoImplicitPrelude`` pragma at the top of the module. As a result we don't
-have any of the common Haskell types and functions in this scope. We must explictly
-import from the Plutus Prelude all we need:
+have any of the common Haskell types and functions in this scope. Thus we must
+explictly import from the Plutus Prelude all we need:
 
 .. code:: haskell
 
@@ -30,6 +30,71 @@ import from the Plutus Prelude all we need:
                            , ($), (&&), (||), (==)
                            , traceIfFalse
                            )
+
+Minting Policy
+--------------
+
+Starting an escrow involves minting a *control token*, thus running a validation
+implemented on its minting policy that allows the minting or burning. We use this
+fact to ensure some good starting properties on the script utxo we are creating.
+
+The minting policy is implemented by ``mkControlTokenMintingPolicy``. The policy
+is parameterized on the script address of the escrow utxo we are creating, besides
+that the policy must take a redeemer (on this particular case ``()``) and a
+script context. In the script context, we will find all transaction information.
+
+The script address parameter allows us to check that when **minting** a unique
+token, checked with ``mintedA == 1``, we can ensure the token is paid to this
+address, with ``controlTokenPaid``. Last, we check also that the sender's address
+on the escrow info corresponds with the signer of the transaction, with ``correctSigner``.
+On **burning**, we only check we are burning exactly the control token, using
+``mintedA == -1``.
+
+.. code:: haskell
+
+   {-# INLINABLE mkControlTokenMintingPolicy #-}
+   mkControlTokenMintingPolicy :: ScriptAddress -> () -> ScriptContext -> Bool
+   mkControlTokenMintingPolicy addr _ ctx =
+       traceIfFalse "Burning less or more than one control token" (mintedA == -1)
+       ||
+       (   traceIfFalse "Minting more than one control token"
+                        (mintedA == 1)
+        && traceIfFalse "The control token was not paid to the script address"
+                        controlTokenPaid
+        && traceIfFalse "The signer is not the sender on the escrow"
+                        correctSigner
+       )
+     where
+       info :: TxInfo
+       info = scriptContextTxInfo ctx
+
+       signer :: PubKeyHash
+       signer = getSingleton $ txInfoSignatories info
+
+       correctSigner :: Bool
+       correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+
+       controlTokenPaid :: Bool
+       controlTokenPaid =
+           assetClassValueOf (txOutValue escrowUtxo) (assetClass mintedCS mintedTN)
+           ==
+           mintedA
+
+       escrowUtxo :: TxOut
+       escrowUtxo = getSingleton $ outputsAt addr info
+
+       escrowDatum :: EscrowDatum
+       escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
+
+       mintedCS :: CurrencySymbol
+       mintedTN :: TokenName
+       mintedA :: Integer
+       (mintedCS, mintedTN, mintedA) = getSingleton $
+                                       flattenValue $ txInfoMint info
+
+
+Validator
+---------
 
 The on-chain validator, which briefly mention is parameterized on the receiver address.
 This design decision allows us to have a unique script address for each ``ReceiverAddress``.
@@ -117,3 +182,41 @@ and check that is at least more than the amount computed by ``valueToSender ei``
      where
        senderV :: Value
        senderV = valuePaidTo (eInfoSenderAddr ei) info
+
+
+Compile to Plutus
+-----------------
+
+.. code:: haskell
+
+   -- | Definition of type family describing which types are used
+   --   as datum and redeemers.
+   data Escrowing
+   instance ValidatorTypes Escrowing where
+       type instance DatumType    Escrowing = EscrowDatum
+       type instance RedeemerType Escrowing = EscrowRedeemer
+
+   escrowInst :: ReceiverAddress -> TypedValidator Escrowing
+   escrowInst raddr =
+       mkTypedValidator @Escrowing
+       ($$(compile [|| mkEscrowValidator ||])
+           `applyCode`
+           liftCode raddr
+       )
+       $$(compile [|| mkUntypedValidator @EscrowDatum @EscrowRedeemer ||])
+
+   escrowValidator :: ReceiverAddress -> Validator
+   escrowValidator = validatorScript . escrowInst
+
+   escrowAddress :: ReceiverAddress -> ContractAddress
+   escrowAddress = mkValidatorAddress . escrowValidator
+
+   controlTokenMP :: ContractAddress -> MintingPolicy
+   controlTokenMP caddr =
+       mkMintingPolicyScript $
+       $$(compile [|| mkUntypedMintingPolicy . mkControlTokenMintingPolicy ||])
+       `applyCode`
+       liftCode caddr
+
+   controlTokenCurrency :: ContractAddress -> CurrencySymbol
+   controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
