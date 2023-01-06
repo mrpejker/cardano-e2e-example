@@ -247,7 +247,7 @@ findEscrowUtxo TransferInfo{..} =
                          tiReceiveAssetClass
 
     sendA :: UtxoEscrowInfo -> Integer
-    sendA uInfo = assetClassValueOf (escrowValue uInfo) tiSendAssetClass
+    sendA = snd . escrowPayment
 
 propEscrow :: Actions EscrowModel -> Property
 propEscrow = propRunActionsWithOptions
