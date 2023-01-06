@@ -41,7 +41,7 @@ import Ledger            ( Value, Address(..), PubKeyHash
                          )
 import Ledger.Credential  ( Credential(..), StakingCredential(..) )
 import Ledger.Constraints ( TxConstraints, mustPayToPubKey
-                          , mustPayToPubKeyAddress
+                          , mustPayToAddress
                           )
 {- | WalletAddress is the representation of public key addresses in the Cardano
      networks. It consists on a public key hash, along with an optional staking
@@ -106,14 +106,8 @@ mustPayToWalletAddress :: forall i o
                        .  WalletAddress
                        -> Value
                        -> TxConstraints i o
-mustPayToWalletAddress WalletAddress{..} v =
-    case waStaking of
-        Just staking -> mustPayToPubKeyAddress ppkh
-                        (stakePubKeyHashCredential $ StakePubKeyHash staking) v
-        Nothing      -> mustPayToPubKey ppkh v
-  where
-    ppkh :: PaymentPubKeyHash
-    ppkh = PaymentPubKeyHash waPayment
+mustPayToWalletAddress wa v =
+    mustPayToAddress (fromWalletAddress wa) v
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''WalletAddress
