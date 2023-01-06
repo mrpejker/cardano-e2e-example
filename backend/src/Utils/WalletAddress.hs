@@ -104,8 +104,7 @@ mustPayToWalletAddress :: forall i o
                        .  WalletAddress
                        -> Value
                        -> TxConstraints i o
-mustPayToWalletAddress wa v =
-    mustPayToAddress (fromWalletAddress wa) v
+mustPayToWalletAddress wa = mustPayToAddress (fromWalletAddress wa)
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''WalletAddress
