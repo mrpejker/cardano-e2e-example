@@ -118,3 +118,169 @@ the `deriving` implementation).
 Operations
 -----------
 
+Now that we have defined the interface of our off-chain code, it's turn to implement the core functionality
+for each operation. First, we define the function that connects each endpoint with the corresponding
+off-chain function. This function is called :code:`endpoints` and will be called from the PAB service
+module. It receives a :code:`WalletAddress` corresponding to the `connected` user that is calling
+the endpoint.
+
+.. code:: Haskell
+
+  endpoints
+      :: WalletAddress
+      -> Contract (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+  endpoints raddr = forever $ handleError logError $ awaitPromise $
+                    startEp `select` cancelEp `select` resolveEp `select` reloadEp
+    where
+      startEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+      startEp = endpoint @"start" $ startOp raddr
+
+      cancelEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+      cancelEp = endpoint @"cancel" $ cancelOp raddr
+
+      resolveEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+      resolveEp = endpoint @"resolve" $ resolveOp raddr
+
+      reloadEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+      reloadEp = endpoint @"reload" $ const $ reloadOp raddr
+
+
+Then we define functions for each operation. Let's review :code:`start`, :code:`resolve` and :code:`reload`
+functions. We will show just some relevant code snippets here.
+
+Starting an escrow consists of paying to a script the desired value that the sender wants to pay to the
+receiver, including in the datum the corresponding Escrow Info.
+
+.. code:: Haskell
+
+  startOp
+      :: forall w s
+      .  WalletAddress
+      -> StartParams
+      -> Contract w s Text ()
+  startOp addr StartParams{..} = do
+      let .....
+          ....
+
+
+So for specifying the transaction, we need to define the value and datum that will be part of
+the script-utxo
+
+.. code:: Haskell
+
+          senderVal = assetClassValue sendAssetClass sendAmount
+          val       = minAda <> cTokenVal <> senderVal
+          datum     = mkEscrowDatum (mkSenderAddress addr)
+                                    receiveAmount
+                                    receiveAssetClass
+                                    cTokenAsset
+
+The value consists of a minimum amount of ADA, the control token which will be minted in this transaction,
+and the tokens that should be paid to the receiver.
+In the datum we include the sender's address, the payment expected and the control token asset class, that
+will be burned at resolving or canceling.
+
+Then we specify the transaction by defining lookups and constraints
+
+.. code:: Haskell
+
+          lkp = mconcat
+                [ typedValidatorLookups (escrowInst receiverAddress)
+                , plutusV1OtherScript validator
+                , plutusV1MintingPolicy (controlTokenMP contractAddress)
+                ]
+          tx  = mconcat
+                [ mustPayToTheScriptWithDatumInTx datum val
+                , mustMintValue cTokenVal
+                , mustBeSignedBy senderPpkh
+                ]
+  
+In :code:`lkp` we define the lookups. In this case we are not spending any script-utxo, but we
+are generating a new one and minting a token, so we declare the validator and minting policy.
+We'll review their implementation in the following section.
+
+In :code:`tx` we define the constraints. We declare that we pay to the script the defined datum and
+value, we mint the control token, and the transaction must be signed by the sender public key.
+
+Now we just need to `yield` the specified unbalanced transaction for being accessible from the
+client side.
+
+.. code:: Haskell
+	  
+          mkTxConstraints lkp tx >>= yieldUnbalancedTx
+
+This would be the unbalanced transaction that `is sent` to the client for balancing, signing and submitting:
+
+.. figure:: /img/unbalancedStart.png
+
+	    
+Let's review now the resolve operation. It receives the wallet address corresponding to the user
+triggering the operation and the reference of the utxo generated at start.
+
+.. code:: Haskell
+	  
+  resolveOp
+      :: forall w s
+      .  WalletAddress
+      -> ResolveParams
+      -> Contract w s Text ()
+  resolveOp addr ResolveParams{..} = do
+
+We have to build a transaction that spends the script utxo, pays to the sender
+the tokens specified in the Escrow Info, and burns the control token.
+First, we get the utxo and extract from there the Escrow Info.
+
+.. code:: Haskell
+
+      utxos <- lookupScriptUtxos contractAddress cTokenAsset
+      utxo  <- findMUtxo rpTxOutRef utxos
+      eInfo <- getEscrowInfo utxo
+
+We use some utility functions for it. `lookupScriptUtxos` gets a list of
+utxos from a given address and containing a token of a given Asset Class.
+`findMUtxo` gets the utxo content from a given utxo reference and a list
+of utxos. Finally `getEscrowInfo` reads the datum of a given utxo and returns
+the Escrow Info inside it.
+
+For defining the transaction, we need to specify the payment that goes to the sender.
+
+.. code:: Haskell
+
+      let senderWallAddr = eInfoSenderWallAddr eInfo
+          senderPayment  = valueToSender eInfo <> minAda
+
+The sender address is defined in the Escrow Info, and for defining the payment
+we use the function `senderPayment`, implemented in the Business logic module.
+This function will be used too in the on-chain validator for checking that the payment received by
+the sender is correct.
+
+Now we define the lookups and constraints.
+
+.. code:: Haskell
+
+          lkp = mconcat
+              [ plutusV1OtherScript validator
+              , unspentOutputs (singleton rpTxOutRef utxo)
+              , plutusV1MintingPolicy (controlTokenMP contractAddress)
+              ]
+          tx = mconcat
+              [ mustSpendScriptOutput rpTxOutRef resolveRedeemer
+              , mustMintValue cTokenVal
+              , mustBeSignedBy receiverPpkh
+              , mustPayToWalletAddress senderWallAddr senderPayment
+              ]
+
+In addition to the validator and control token minting policy, we include
+in the lookups the utxo that is spent in this transaction.
+The constraints specify that we spend the script-utxo using the redeemer
+:code:`resolveRedeemer`, we burn the control token, the transaction must be
+signed by the receiver, and pays to the sender the corresponding tokens specified
+in the Escrow Info.
+
+.. code:: Haskell
+
+      mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
+
+The resulting unbalanced transaction is as follows
+
+.. figure:: /img/unbalancedResolve.png
