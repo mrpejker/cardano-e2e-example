@@ -3,7 +3,6 @@ import type {
   CIP30WalletWrapper,
   TxBudgetAPI,
   Balancer,
-  Value,
   AssetClass,
   TxOutRef,
   WalletAddress,
@@ -286,7 +285,7 @@ type PABObservableState = Array<{
 }>;
 
 async function parsePABObservableState(escrows: PABObservableState): Promise<ObsState> {
-  const { AssetClass, TxOutRef, Value, WalletAddress } = await import("cardano-pab-client");
+  const { AssetClass, TxOutRef, WalletAddress } = await import("cardano-pab-client");
   return escrows.map(
     ({ escrowUtxo, escrowPayment, escrowInfo }) => ({
       // parse all the PAB structures
