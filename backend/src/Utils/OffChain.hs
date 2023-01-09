@@ -77,7 +77,7 @@ findMUtxo
 findMUtxo ref utxos =
     case filter ((==) ref . fst) utxos of
         [(_, o)] -> decoratedTxOutDatum loadDatum o
-        _           -> throwError "Specified Utxo not found"
+        _        -> throwError "Specified Utxo not found"
   where
     loadDatum
         :: (DatumHash, DatumFromQuery)

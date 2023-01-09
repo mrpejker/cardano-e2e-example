@@ -148,9 +148,9 @@ cancelOp addr CancelParams{..} = do
         cTokenAsset    = assetClass cTokenCurrency cTokenName
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    utxo        <- findMUtxo cpTxOutRef utxos
-    eInfo       <- getEscrowInfo utxo
+    utxos <- lookupScriptUtxos contractAddress cTokenAsset
+    utxo  <- findMUtxo cpTxOutRef utxos
+    eInfo <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
            (throwError "Sender address invalid")
@@ -190,9 +190,9 @@ resolveOp addr ResolveParams{..} = do
         cTokenAsset    = assetClass cTokenCurrency cTokenName
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos       <- lookupScriptUtxos contractAddress cTokenAsset
-    utxo        <- findMUtxo rpTxOutRef utxos
-    eInfo       <- getEscrowInfo utxo
+    utxos <- lookupScriptUtxos contractAddress cTokenAsset
+    utxo  <- findMUtxo rpTxOutRef utxos
+    eInfo <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo
         senderPayment  = valueToSender eInfo <> minAda
