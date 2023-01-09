@@ -26,7 +26,7 @@ import Data.Text       ( Text )
 import Data.Monoid     ( Last(..) )
 
 -- IOG imports
-import Ledger             ( DecoratedTxOut, TxOutRef
+import Ledger             ( DecoratedTxOut, TxOutRef, AssetClass, Value
                           , decoratedTxOutValue, decoratedTxOutAddress
                           , getDatum, unPaymentPubKeyHash
                           )
@@ -246,7 +246,7 @@ mkUtxoEscrowInfoFromTxOut
     :: forall w s
     .  (TxOutRef, DecoratedTxOut)
     -> Contract w s Text UtxoEscrowInfo
-mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) = do
+mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) =
     let contractAddress = dtxout ^. decoratedTxOutAddress
         value           = dtxout ^. decoratedTxOutValue
 
@@ -255,9 +255,14 @@ mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) = do
         cTokenVal      = assetClassValue cTokenAsset 1
 
         paymentVal = value PN.- cTokenVal PN.- minAda
+    in
 
-    ePayment <- case flattenValue paymentVal of
-                   [(cs,tn,am)] -> pure (assetClass cs tn, am)
-                   _            -> throwError "Multiple AssetClasses as payment"
-
-    mkUtxoEscrowInfo utxoRef ePayment <$> getEscrowInfo dtxout
+    mkUtxoEscrowInfo utxoRef <$> getPayment paymentVal <*> getEscrowInfo dtxout
+  where
+    getPayment
+        :: Value
+        -> Contract w s Text (AssetClass, Integer)
+    getPayment p = case flattenValue p of
+                        [(cs,tn,am)] -> pure (assetClass cs tn, am)
+                        _            -> throwError
+                                        "Multiple AssetClasses as payment"
