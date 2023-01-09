@@ -43,12 +43,80 @@ is parameterized on the script address of the escrow utxo we are creating, besid
 that the policy must take a redeemer (on this particular case ``()``) and a
 script context. In the script context, we will find all transaction information.
 
-The script address parameter allows us to check that when **minting** a unique
-token, checked with ``mintedA == 1``, we can ensure the token is paid to this
-address, with ``controlTokenPaid``. Last, we check also that the sender's address
-on the escrow info corresponds with the signer of the transaction, with ``correctSigner``.
-On **burning**, we only check we are burning exactly the control token, using
-``mintedA == -1``.
+In general, the most interesting information about the transaction is placed here
+
+.. code:: haskell
+
+   info :: TxInfo
+   info = scriptContextTxInfo ctx
+
+and it helps us to get the signer ``PubKeyHash`` of the transaction. In particular,
+we expect only one signer and that is the reason we use ``getFromSingleton``, that
+will return the only element of a list or fail
+
+.. code:: haskell
+
+   signer :: PubKeyHash
+   signer = getFromSingleton $ txInfoSignatories info
+
+Also from there, we get the complete list of tokens that are minted/burned, and
+again because we only want a single token we use ``getFromSingleton``
+
+.. code:: haskell
+
+   mintedCS :: CurrencySymbol
+   mintedTN :: TokenName
+   mintedA :: Integer
+   (mintedCS, mintedTN, mintedA) = getFromSingleton $
+	                           flattenValue $ txInfoMint info
+
+Last, we need the script utxo created on the transaction so we can check it locked
+the *control token* and the signer corresponds with the escrow information stored
+on the datum. Here ``addr`` is the parameter of the minting policy
+
+.. code:: haskell
+
+   escrowUtxo :: TxOut
+   escrowUtxo = getFromSingleton $ outputsAt addr info
+
+   escrowDatum :: EscrowDatum
+   escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
+
+The minting policy then, will check then that either we are **burning** the *control token*
+
+.. code:: haskell
+
+   traceIfFalse "Burning less or more than one control token" (mintedA == -1)
+
+**or** we are **minting** exactly one. In that case, we also check the token is paid to
+the correct address and the datum information is correct
+
+.. code:: haskell
+
+      traceIfFalse "Minting more than one control token" (mintedA == 1)
+   && traceIfFalse "The control token was not paid to the script address" controlTokenPaid
+   && traceIfFalse "The signer is not the sender on the escrow" correctSigner
+
+From the script utxo we can get the complete locked value ``txOutValue escrowUtxo`` and
+check it has exactly the minted token by filtering the value with ``assetClassValueOf``
+
+.. code:: haskell
+
+   controlTokenPaid :: Bool
+   controlTokenPaid =
+	  assetClassValueOf (txOutValue escrowUtxo) (assetClass mintedCS mintedTN)
+          ==
+          mintedA
+
+For the last check, we simply use the datum information and the business logic
+function ``signerIsSender``
+
+.. code:: haskell
+
+   correctSigner :: Bool
+   correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+
+We get the complete minting policy by putting everything together
 
 .. code:: haskell
 
@@ -96,50 +164,41 @@ On **burning**, we only check we are burning exactly the control token, using
 Validator
 ---------
 
-The on-chain validator, which briefly mention is parameterized on the receiver address.
-This design decision allows us to have a unique script address for each ``ReceiverAddress``.
-Also, a validator function must mandatory take a datum, a redeemer and a script-context
-and return a boolean. Because we are using typed validators we will use the types
-we briefly introduce in the Business Logic :ref:`Types section <business_logic-types>`.
+The on-chain validator as we briefly mentioned is parameterized on the receiver
+address. This design decision allows us to have a unique script address for each
+``ReceiverAddress``. Also, a validator function must mandatory take a datum, a
+redeemer and a script-context and return a boolean. Because we are using typed
+validators we will use the types we briefly introduce in the Business Logic
+:ref:`Types section <business_logic-types>`.
 
 The ``EscrowRedeemer`` allows us to decide which validations over the spending
 utxo we need to perform. Canceling an escrow will excecute ``cancelValidator``
 and resolving will execute ``resolveValidator``.
 
 The common validation we do, independently of the redeemer, is checking we are
-burning the *control token*. We can check this by simply getting all the minting
-information from the ``ScriptContext`` (recalling *burning is negative minting*).
-Once we get the complete list of tokens that are minted/burned with ``txInfoMint info``,
-we check only one token is burned, with ``getSingleton`` and ``mintedA == -1``. And
-the assetclass corresponds with the one stored on the ``EscrowDatum``, with
-``eAssetClass == assetClass mintedCS mintedTN``.
+burning the *control token*
 
 .. code:: haskell
 
-   {-# INLINABLE mkEscrowValidator #-}
-   mkEscrowValidator :: ReceiverAddress
-                     -> EscrowDatum
-                     -> EscrowRedeemer
-                     -> ScriptContext
-                     -> Bool
-   mkEscrowValidator raddr EscrowDatum{..} r ctx =
-       case r of
-           CancelEscrow  -> cancelValidator eInfo signer
-           ResolveEscrow -> resolveValidator info eInfo raddr signer
-       &&
-       traceIfFalse "controlToken was not burned"
-                    (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
-     where
-       info :: TxInfo
-       info = scriptContextTxInfo ctx
+   traceIfFalse "controlToken was not burned"
+                (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
 
-       signer :: PubKeyHash
-       signer = getSingleton $ txInfoSignatories info
+Clearly, for performing this check we need to be sure we are minting a token *negatively*,
+but it's really important to check the currency symbol and the token name are the
+correct ones. A natural option for having this information, which isn't going to
+change, is as a parameter of the validator, but this causes a circular dependency,
+given the minting policy (from where the currency symbol is computed) already
+depends on the address of the validator. So, a solution is to store the asset
+class of the control token on the datum together with the escrow information.
 
-       mintedCS :: CurrencySymbol
-       mintedTN :: TokenName
-       (mintedCS, mintedTN, mintedA) = getSingleton $
-                                       flattenValue $ txInfoMint info
+The remaining validator depends on the redeemer
+
+.. code:: haskell
+
+   case r of
+       CancelEscrow  -> cancelValidator eInfo signer
+       ResolveEscrow -> resolveValidator info eInfo raddr signer
+
 
 Cancel an escrow involves only checking the signer of the transaction is who started
 the escrow. That is, checking the sender's address is the signer. We get the sender
@@ -155,6 +214,7 @@ information of the signer address (without *staking hash*).
    cancelValidator EscrowInfo{..} signer =
        traceIfFalse "cancelValidator: Wrong sender signature"
                     $ signerIsSender signer sender
+
 
 The resolve validation is a little more interesting. We also check the signer, but
 this time it should be the receiver, as we mentioned that is the parameter of the
@@ -183,9 +243,42 @@ and check that is at least more than the amount computed by ``valueToSender ei``
        senderV :: Value
        senderV = valuePaidTo (eInfoSenderAddr ei) info
 
+We get the complete validator by putting everything together
+
+.. code:: haskell
+
+   {-# INLINABLE mkEscrowValidator #-}
+   mkEscrowValidator :: ReceiverAddress
+                     -> EscrowDatum
+                     -> EscrowRedeemer
+                     -> ScriptContext
+                     -> Bool
+   mkEscrowValidator raddr EscrowDatum{..} r ctx =
+       case r of
+           CancelEscrow  -> cancelValidator eInfo signer
+           ResolveEscrow -> resolveValidator info eInfo raddr signer
+       &&
+       traceIfFalse "controlToken was not burned"
+                    (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
+     where
+       info :: TxInfo
+       info = scriptContextTxInfo ctx
+
+       signer :: PubKeyHash
+       signer = getFromSingleton $ txInfoSignatories info
+
+       mintedCS :: CurrencySymbol
+       mintedTN :: TokenName
+       (mintedCS, mintedTN, mintedA) = getFromSingleton $
+                                       flattenValue $ txInfoMint info
+
+
+
 
 Compile to Plutus
 -----------------
+
+
 
 .. code:: haskell
 
