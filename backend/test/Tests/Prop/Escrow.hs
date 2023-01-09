@@ -237,7 +237,6 @@ instance ContractModel EscrowModel where
         tabulate "Reslving escrow" [show rw]
     monitoring _ (Cancel rw _) =
         tabulate "Cancelling escrow" [show rw]
-    monitoring _ _ = id
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
 findEscrowUtxo :: TransferInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo
