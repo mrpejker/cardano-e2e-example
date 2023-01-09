@@ -19,16 +19,16 @@ module Escrow.OffChain.Operations
 where
 
 -- Non-IOG imports
-import Control.Lens  ( (^.) )
-import Control.Monad ( forever, unless )
-import Data.Map      ( singleton, toList )
-import Data.Text     ( Text )
-import Data.Monoid   ( Last(..) )
+import Control.Lens    ( (^.) )
+import Control.Monad   ( forever, unless )
+import Data.Map ( singleton, toList )
+import Data.Text       ( Text )
+import Data.Monoid     ( Last(..) )
 
 -- IOG imports
-import Ledger             ( DecoratedTxOut, TxOutRef
-                          , decoratedTxOutValue, getDatum
-                          , unPaymentPubKeyHash
+import Ledger             ( DecoratedTxOut, TxOutRef, AssetClass, Value
+                          , decoratedTxOutValue, decoratedTxOutAddress
+                          , getDatum, unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
                           , mustMintValue
@@ -37,13 +37,14 @@ import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
                           , plutusV1OtherScript, typedValidatorLookups
                           , unspentOutputs
                           )
-import Ledger.Value       ( assetClass, assetClassValue )
+import Ledger.Value       ( assetClass, assetClassValue, flattenValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , select, tell, throwError
                           , utxosAt, yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
+import PlutusTx.Numeric qualified as PN ( (-) )
 
 -- Escrow imports
 import Escrow.OffChain.Interface ( StartParams(..), CancelParams(..)
@@ -225,17 +226,9 @@ reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
 
     utxos      <- utxosAt contractAddress
-    utxosEInfo <- mapM mkEscrowInfo $ toList utxos
+    utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut $ toList utxos
 
     tell $ Last $ Just utxosEInfo
-  where
-     mkEscrowInfo
-         :: forall w
-         .  (TxOutRef, DecoratedTxOut)
-         -> Contract w s Text UtxoEscrowInfo
-     mkEscrowInfo (utxoRef, dtxout) =
-         mkUtxoEscrowInfo utxoRef (dtxout ^. decoratedTxOutValue)
-         <$> getEscrowInfo dtxout
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
      DecoratedTxOut.
@@ -247,3 +240,29 @@ getEscrowInfo
 getEscrowInfo txOut = getDatumWithError txOut >>=
                       maybe (throwError "Datum format invalid")
                             (pure . eInfo) . (fromBuiltinData . getDatum)
+
+-- | Off-chain function for getting an UtxoEscrowInfo from a DecoratedTxOut.
+mkUtxoEscrowInfoFromTxOut
+    :: forall w s
+    .  (TxOutRef, DecoratedTxOut)
+    -> Contract w s Text UtxoEscrowInfo
+mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) =
+    let contractAddress = dtxout ^. decoratedTxOutAddress
+        value           = dtxout ^. decoratedTxOutValue
+
+        cTokenCurrency = controlTokenCurrency contractAddress
+        cTokenAsset    = assetClass cTokenCurrency cTokenName
+        cTokenVal      = assetClassValue cTokenAsset 1
+
+        paymentVal = value PN.- cTokenVal PN.- minAda
+    in
+
+    mkUtxoEscrowInfo utxoRef <$> getPayment paymentVal <*> getEscrowInfo dtxout
+  where
+    getPayment
+        :: Value
+        -> Contract w s Text (AssetClass, Integer)
+    getPayment p = case flattenValue p of
+                        [(cs,tn,am)] -> pure (assetClass cs tn, am)
+                        _            -> throwError
+                                        "Multiple AssetClasses as payment"

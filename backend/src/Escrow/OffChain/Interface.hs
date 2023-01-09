@@ -30,7 +30,7 @@ import Data.Aeson   ( FromJSON, ToJSON )
 import GHC.Generics ( Generic )
 
 -- IOG imports
-import Ledger          ( TxOutRef, Value )
+import Ledger          ( TxOutRef )
 import Ledger.Value    ( AssetClass )
 import Plutus.Contract ( Endpoint, type (.\/) )
 
@@ -112,17 +112,21 @@ mkResolveParams ref = ResolveParams { rpTxOutRef = ref }
      - The total value locked: The Sender's payment.
 -}
 data UtxoEscrowInfo = UtxoEscrowInfo
-                      { escrowUtxo  :: TxOutRef
-                      , escrowInfo  :: EscrowInfo
-                      , escrowValue :: Value
+                      { escrowUtxo    :: TxOutRef
+                      , escrowInfo    :: EscrowInfo
+                      , escrowPayment :: (AssetClass,Integer)
                       }
     deriving (Show, Generic)
     deriving anyclass (FromJSON, ToJSON)
 
 -- | Smart constructor of a UtxoscrowInfo.
-mkUtxoEscrowInfo :: TxOutRef -> Value -> EscrowInfo -> UtxoEscrowInfo
-mkUtxoEscrowInfo utxoRef v ei = UtxoEscrowInfo
-                                { escrowUtxo  = utxoRef
-                                , escrowInfo  = ei
-                                , escrowValue = v
-                                }
+mkUtxoEscrowInfo
+    :: TxOutRef
+    -> (AssetClass, Integer)
+    -> EscrowInfo
+    -> UtxoEscrowInfo
+mkUtxoEscrowInfo utxoRef pay ei = UtxoEscrowInfo
+                                    { escrowUtxo    = utxoRef
+                                    , escrowInfo    = ei
+                                    , escrowPayment = pay
+                                    }

@@ -376,15 +376,11 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
         </tr>
       </thead>
       <tbody>
-        {currentContractState.map(({ escrowInfo, escrowUtxo, escrowValue }: UtxoEscrowInfo, i) => {
-          const [tokenSent] = escrowValue.flatten().filter(
-            // its token name is not ADA nor the contract nft
-            ({ tokenName }) => tokenName !== "" && tokenName !== "controlToken",
-          );
+        {currentContractState.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
           return <tr key={i}>
             <td> {escrowInfo.sender.paymentPubKeyHash} </td>
-            <td> {tokenSent.quantity} </td>
-            <td> {tokenSent.tokenName} </td>
+            <td> {escrowPayment[1]} </td>
+            <td> {escrowPayment[0].tokenName} </td>
             <td> {escrowInfo.rAmount} </td>
             <td> {escrowInfo.rAssetClass.tokenName} </td>
             <td>

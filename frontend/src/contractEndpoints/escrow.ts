@@ -3,7 +3,6 @@ import type {
   CIP30WalletWrapper,
   TxBudgetAPI,
   Balancer,
-  Value,
   AssetClass,
   TxOutRef,
   WalletAddress,
@@ -23,7 +22,7 @@ export type EscrowInfo = {
 export type UtxoEscrowInfo = {
   escrowUtxo: TxOutRef
   escrowInfo: EscrowInfo
-  escrowValue: Value
+  escrowPayment: [AssetClass, Number]
 }
 
 export type ObsState = UtxoEscrowInfo[]
@@ -277,7 +276,7 @@ export class UserEndpoints {
 
 type PABObservableState = Array<{
   escrowUtxo: Plutus.TxOutRef,
-  escrowValue: Plutus.Value,
+  escrowPayment: [Plutus.AssetClass, Number],
   escrowInfo: {
     sender: ReturnType<WalletAddress["toPAB"]>;
     rAssetClass: Plutus.AssetClass;
@@ -286,12 +285,12 @@ type PABObservableState = Array<{
 }>;
 
 async function parsePABObservableState(escrows: PABObservableState): Promise<ObsState> {
-  const { AssetClass, TxOutRef, Value, WalletAddress } = await import("cardano-pab-client");
+  const { AssetClass, TxOutRef, WalletAddress } = await import("cardano-pab-client");
   return escrows.map(
-    ({ escrowUtxo, escrowValue, escrowInfo }) => ({
+    ({ escrowUtxo, escrowPayment, escrowInfo }) => ({
       // parse all the PAB structures
       escrowUtxo: TxOutRef.fromPlutusTxOutRef(escrowUtxo),
-      escrowValue: Value.fromPlutusValue(escrowValue),
+      escrowPayment: [AssetClass.fromPlutusAssetClass(escrowPayment[0]), escrowPayment[1]],
       escrowInfo: {
         sender: WalletAddress.fromPAB(escrowInfo.sender),
         rAssetClass: AssetClass.fromPlutusAssetClass(escrowInfo.rAssetClass),

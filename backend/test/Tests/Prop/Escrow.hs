@@ -26,7 +26,9 @@ import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
 
-import Test.QuickCheck ( Gen, Property, oneof, elements, chooseInteger, tabulate )
+import Test.QuickCheck ( Gen, Property
+                       , oneof, elements, chooseInteger, tabulate
+                       )
 
 -- IOG imports
 import Plutus.Contract.Test               ( CheckOptions, Wallet
@@ -34,13 +36,16 @@ import Plutus.Contract.Test               ( CheckOptions, Wallet
                                           )
 import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , StartContract(..), ContractModel(..)
-                                          , Action, Actions, contractState
+                                          , Action, Actions
+                                          , contractState
                                           , defaultCoverageOptions, delay
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
                                           )
-import Plutus.Trace.Emulator              ( callEndpoint, observableState, params )
-import Plutus.V1.Ledger.Value             ( assetClassValue, assetClassValueOf
+import Plutus.Trace.Emulator              ( callEndpoint, observableState
+                                          , params
+                                          )
+import Plutus.V1.Ledger.Value             ( assetClassValue
                                           , singleton, assetClass
                                           )
 import Ledger                             ( AssetClass, Params(..)
@@ -247,7 +252,7 @@ findEscrowUtxo TransferInfo{..} =
                          tiReceiveAssetClass
 
     sendA :: UtxoEscrowInfo -> Integer
-    sendA uInfo = assetClassValueOf (escrowValue uInfo) tiSendAssetClass
+    sendA = snd . escrowPayment
 
 propEscrow :: Actions EscrowModel -> Property
 propEscrow = propRunActionsWithOptions
