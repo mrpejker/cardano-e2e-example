@@ -46,7 +46,7 @@ fact to ensure some good starting properties on the script utxo we are creating.
            ||
            (   traceIfFalse "Minting more than one control token"
                             (mintedA == 1)
-            && traceIfFalse "The control token was not paid to the contract address"
+            && traceIfFalse "The control token was not paid to the script address"
                             controlTokenPaid
             && traceIfFalse "The signer is not the sender on the escrow"
                             correctSigner
@@ -83,7 +83,7 @@ function ``signerIsSender``. Also is important to mention the following definiti
 .. code:: haskell
 
     escrowUtxo :: TxOut
-    escrowUtxo = getSingleton $ outputsAt addr info
+    escrowUtxo = getFromSingleton $ outputsAt addr info
 
     escrowDatum :: EscrowDatum
     escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
@@ -191,14 +191,44 @@ and check that is at least more than the amount computed by ``valueToSender ei``
 Validator
 ---------
 
+In this module, we implement the compilation to Plutus of the on-chain validator
+and the minting policy. In general because we are using a typed approach, on both the
+validator and the minting policy, we have to go from a typed to an untyped setting,
+compile to Plutus, and apply the *lifted* parameters. Luckily it's mostly repetitive
+boilerplate, and for that reason, we are not going to get into too much details.
+
 .. code:: haskell
 
-   -- | Definition of type family describing which types are used
-   --   as datum and redeemers.
+   controlTokenMP :: ScriptAddress -> MintingPolicy
+   controlTokenMP saddr =
+       mkMintingPolicyScript $
+       $$(compile [|| mkUntypedMintingPolicy . mkControlTokenMintingPolicy ||])
+       `applyCode`
+       liftCode saddr
+
+The ``compile`` function will translate the Haskell minting policy implementation,
+to which we are going to apply the script address, and finally, wrap everything
+into the ``MintingPolicy`` type with ``mkMintingPolicyScript``.
+
+.. code:: haskell
+
+   controlTokenCurrency :: ScriptAddress -> CurrencySymbol
+   controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
+
+Given a ``MintingPolicy`` we can easily compute its currency symbol. Compiling
+the (typed) on-chain validator involves more or less the same "steps".
+
+.. code:: haskell
+
    data Escrowing
    instance ValidatorTypes Escrowing where
        type instance DatumType    Escrowing = EscrowDatum
        type instance RedeemerType Escrowing = EscrowRedeemer
+
+We define an empty data type that will help us annotate the typed validator, so
+we can type the datum and redeemer types.
+
+.. code:: haskell
 
    escrowInst :: ReceiverAddress -> TypedValidator Escrowing
    escrowInst raddr =
@@ -209,18 +239,18 @@ Validator
        )
        $$(compile [|| mkUntypedValidator @EscrowDatum @EscrowRedeemer ||])
 
+Similarly to the minting policy, we compile the Haskell implementation, and
+apply the corresponding parameter. One key difference is that building a ``TypedValidator``
+involves passing the compiled typed on-chain validator and the compiled translator
+from the typed to the untyped validator.
+
+.. code:: haskell
+
    escrowValidator :: ReceiverAddress -> Validator
    escrowValidator = validatorScript . escrowInst
 
-   escrowAddress :: ReceiverAddress -> ContractAddress
+   escrowAddress :: ReceiverAddress -> ScriptAddress
    escrowAddress = mkValidatorAddress . escrowValidator
 
-   controlTokenMP :: ContractAddress -> MintingPolicy
-   controlTokenMP caddr =
-       mkMintingPolicyScript $
-       $$(compile [|| mkUntypedMintingPolicy . mkControlTokenMintingPolicy ||])
-       `applyCode`
-       liftCode caddr
-
-   controlTokenCurrency :: ContractAddress -> CurrencySymbol
-   controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
+Once we have a ``TypedValidator``, we can get the proper validator and compute
+the address.
