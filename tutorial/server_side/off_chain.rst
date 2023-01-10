@@ -284,3 +284,29 @@ in the Escrow Info.
 The resulting unbalanced transaction is as follows
 
 .. figure:: /img/unbalancedResolve.png
+
+Let's finally review the :code:`reload` operation, which is different to the previous ones.
+In general, we need information from the blockchain for performing operations. For example,
+if a user wants to resolve an escrow, it's necessary to retrieve the information of all the started
+escrows where the receiver is that user.
+In our approach, we use the PAB service for it. The client queries the `status` endpoint receiving the
+observable state, among other information.
+The :code:`reload` operation reads the blockchain and writes the updated observable state. In our
+example, it corresponds with all the active escrows waiting for being resolved by the connected
+user.
+
+.. code:: Haskell
+
+  reloadOp
+      :: forall s
+      .  WalletAddress
+      -> Contract (Last [UtxoEscrowInfo]) s Text ()
+  reloadOp addr = do
+      let contractAddress = escrowAddress $ mkReceiverAddress addr
+
+      utxos      <- utxosAt contractAddress
+      utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut $ toList utxos
+
+      tell $ Last $ Just utxosEInfo
+
+The implementation is simple. We get the list of utxos belonging to the scrip address. 
