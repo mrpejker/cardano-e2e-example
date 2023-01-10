@@ -236,9 +236,12 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
-    monitoring _ (Start sw rw _ _) =
-        tabulate "Starting escrow" [show sw, show rw]
-    monitoring _ _ = id
+    monitoring _ (Start sw _ _ _) =
+        tabulate "Starting escrow" [show sw]
+    monitoring _ (Resolve rw _) =
+        tabulate "Reslving escrow" [show rw]
+    monitoring _ (Cancel rw _) =
+        tabulate "Cancelling escrow" [show rw]
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
 findEscrowUtxo :: TransferInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo
