@@ -1,3 +1,5 @@
+.. _contract_endpoints:
+
 The Contract Endpoints module
 =============================
 
