@@ -236,10 +236,10 @@ First, we get the utxo and extract from there the Escrow Info.
       utxo  <- findMUtxo rpTxOutRef utxos
       eInfo <- getEscrowInfo utxo
 
-We use some utility functions for it. `lookupScriptUtxos` gets a list of
+We use some utility functions for it. :code:`lookupScriptUtxos` gets a list of
 utxos from a given address and containing a token of a given Asset Class.
-`findMUtxo` gets the utxo content from a given utxo reference and a list
-of utxos. Finally `getEscrowInfo` reads the datum of a given utxo and returns
+:code:`findMUtxo` gets the utxo content from a given utxo reference and a list
+of utxos. Finally :code:`getEscrowInfo` reads the datum of a given utxo and returns
 the Escrow Info inside it.
 
 For defining the transaction, we need to specify the payment that goes to the sender.
@@ -250,7 +250,7 @@ For defining the transaction, we need to specify the payment that goes to the se
           senderPayment  = valueToSender eInfo <> minAda
 
 The sender address is defined in the Escrow Info, and for defining the payment
-we use the function `senderPayment`, implemented in the Business logic module.
+we use the function :code:`senderPayment`, implemented in the Business logic module.
 This function will be used too in the on-chain validator for checking that the payment received by
 the sender is correct.
 
@@ -285,15 +285,12 @@ The resulting unbalanced transaction is as follows
 
 .. figure:: /img/unbalancedResolve.png
 
-Let's finally review the :code:`reload` operation, which is different to the previous ones.
-In general, we need information from the blockchain for performing operations. For example,
-if a user wants to resolve an escrow, it's necessary to retrieve the information of all the started
-escrows where the receiver is that user.
-In our approach, we use the PAB service for it. The client queries the `status` endpoint receiving the
-observable state, among other information.
-The :code:`reload` operation reads the blockchain and writes the updated observable state. In our
-example, it corresponds with all the active escrows waiting for being resolved by the connected
-user.
+
+Let's finally review the :code:`reload` operation, which doesn't generate any transaction,
+but it's in charge of reading the blockchain and writing
+the updated obervable state. It corresponds to a list containing
+the information of every escrow waiting to be resolved by the corresponding user address.
+
 
 .. code:: Haskell
 
@@ -309,4 +306,9 @@ user.
 
       tell $ Last $ Just utxosEInfo
 
-The implementation is simple. We get the list of utxos belonging to the scrip address. 
+Given that we are parameterizing the validator on the receiver address, getting the
+corresponding list of escrow info is straightforward. We just need to get the utxos
+belonging to the validator address (using :code:`utxosAt`), read the datum inside each
+utxo (calling :code:`mkUtxoEscrowInfoFromTxOut`) and then write the updated observable state
+(by calling :code:`tell`).
+

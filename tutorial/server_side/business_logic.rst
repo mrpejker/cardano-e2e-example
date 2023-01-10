@@ -27,7 +27,7 @@ In the :code:`Types` module we implement the data-types corresponding to the `Da
 `Redeemer`, and some other boilerplate.
 
 Business
--------
+--------
 
 We define some types for making eaiser to reason about the roles in an escrow.
 Both sender and receiver are identified by a :code:`WalletAddress`, but we define
