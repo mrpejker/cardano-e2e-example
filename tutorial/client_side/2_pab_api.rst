@@ -5,7 +5,7 @@ This module provides functionality for connecting to a PAB running at the server
 It is basically a thin wrapper for doing HTTP requests to the PAB.
 
 We can use this module directly to have a low-level interaction with the PAB.
-However, in our end-to-end example we prefer to use contractEndpoints, a more abstract connection to the PAB built on top of the PAB API module (see next section ...).
+However, in our end-to-end example we prefer to use contractEndpoints, a more abstract connection to the PAB built on top of the PAB API module (see :ref:`next section <contract_endpoints>`).
 
 Currently, only the most important PAB operations are supported, but they are all that we need for running a full featured dApp:
 
@@ -38,11 +38,10 @@ If the PAB has a single handler, it is enough to just specify the activation par
 
 .. code-block:: typescript
 
-    const walletId = ???  // TODO
     const call = {
         params: ...
     }
-    const contractId = await pabApi.activate(walletId, call);
+    const contractId = await pabApi.activate(call);
 
 The structure of the parameters depends on the handler definition, and how its serialization to JSON is defined.
 
@@ -50,18 +49,16 @@ For a PAB that has several handlers, an additional ID for the handler must be pr
 
 .. code-block:: typescript
 
-    const walletId = ???  // TODO
     const call = {
         endpointTag: ... // handler ID
-        params: ...  //
+        params: ...
     }
-    const contractId = await pabApi.activate(walletId, call);
+    const contractId = await pabApi.activate(call);
 
-If successful, the activate call will return a string with the contract instance ID. We will have to provide this ID to the instance specific calls we describe in the following sections.
+If successful, the activate call will return a string with the contract instance ID. We will have to provide this ID to the instance specific calls.
 
 When activating a contract instance, the PAB will execute specific logic defined in the Haskell off-chain code.
 This logic can include doing queries, building and yielding transactions, logging information and updating the observable state.
-
 However, the results of the execution are not immediately returned by the PAB.
 Instead, they must be obtained by querying the instance status as described in :ref:`section 2.4 <pab_api-status>`.
 
@@ -70,7 +67,7 @@ Call an endpoint
 ----------------
 
 To call an endpoint we must provide the contract ID, the endpoint name and the parameters.
-The structure of the parameters depends on the endpoints definition (schema?),
+The structure of the parameters depends on the endpoints schema definition,
 and how the serialization to JSON of the involved types is defined.
 
 For instance, in the e2e example we can call the "start" endpoint this way:
@@ -142,54 +139,32 @@ When the off-chain code yields a transaction, it is added at the end of this lis
 
 Each entry in the list is of ExportTx type and has three fields:
 
-- transaction: The CBOR of the unbalanced transaction in hexadecimal format.
-- inputs: A list with information for each of the transaction input UTxOs included in the lookups ("unspentOutputs" lookup) (TODO: check this!). Each entry includes the following fields:
-    - id: Transaction ID for the UTxO.
-    - index: Output index for the UTxO.
-    - address: Address that owns the UTxO.
-    - amount: lovelace locked in the UTxO.
-    - assets: other assets locked in the UTxO.
-    - datum: if present, datum hash stored into the UTxO.
-- redeemers: List of redeemers for the Plutus scripts that must be executed. Each entry has fields:
-    - purpose: "spending" or "minting".
-    - data: the redeemer data (passed to the validator)
-    - input: only for "spending", the UTxO reference of the spent input.
-    - policy_id: only for "minting", the policy ID of the minted asset.
+* transaction: The CBOR of the unbalanced transaction in hexadecimal format.
+* inputs: A list with information for each of the transaction input UTxOs included in the lookups ("unspentOutputs" lookup) (TODO: check this!). Each entry includes the following fields:
 
-.. code-block:: typescript
+    * id: Transaction ID for the UTxO.
+    * index: Output index for the UTxO.
+    * address: Address that owns the UTxO.
+    * amount: Lovelace locked in the UTxO.
+    * assets: Other assets locked in the UTxO.
+    * datum: If present, datum hash stored into the UTxO.
 
-    export type ExportTxInput = {
-        id: string // txId of the utxo
-        index: number // index of the utxo
-        address: string
-        amount: Amount // of lovelace
-        assets: Assets // others than lovelace
-        datum: string | null
-    };
+* redeemers: List of redeemers for the Plutus scripts that must be executed. Each entry has fields:
 
-    export type ExportTx = {
-        transaction: string;
-        inputs: ExportTxInput[];
-        redeemers: ExportTxRedeemer[];
-    };
-
-    type SpendingRedeemer = {
-        purpose: "spending";
-        data: string;
-        input: { id: string, index: number }
-    };
-
-    type MintingRedeemer = {
-        purpose: "minting";
-        data: string;
-        policy_id: string;
-    };
-
-    export type ExportTxRedeemer = SpendingRedeemer | MintingRedeemer;
+    * purpose: "spending" or "minting".
+    * data: The redeemer data (passed to the validator)
+    * input: Only for "spending", the UTxO reference of the spent input.
+    * policy_id: Only for "minting", the policy ID of the minted asset.
 
 
 Observable state
 ~~~~~~~~~~~~~~~~
+
+In the status, the observable state is included in the
+'cicCurrentState' field, 'observableState' subfield.
+The JSON structure of the observable state depends on the particular dApp and its off-chain code.
+
+In the case of the escrow example, the observable state has the following structure:
 
 .. code-block:: typescript
 
@@ -202,3 +177,6 @@ Observable state
         rAmount: number;
     }
     }>;
+
+We can see here that the observable state is a list that contains all the escrows that can be resolved.
+This information is useful to display in the UI but also to determine the parameters that must be passed to the "resolve".
