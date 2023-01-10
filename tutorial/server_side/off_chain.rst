@@ -7,8 +7,9 @@ that basically consist of querying the blockchain and building transactions.
 We divide the :code:`OffChain` module in two: :code:`Interface` and :code:`Operations`.
 
 Inside :code:`Interface` we define the necessary types for specifying the
-endpoints that the PAB service will provide to the client, and the type for storing the
-current state of the dApp. In `plutus-apps jargon` it corresponds to the `Schema` and the
+endpoints that the PAB service will provide to the client, and a type for
+storing blockchain information that we want to communicate to the client. 
+In `plutus-apps jargon` it corresponds to the `Schema` and the
 `Observable State`.
 
 Inside :code:`Operations` we define the main functions that will be called from the
@@ -19,12 +20,11 @@ that can query the blockchain and build transactions.
 Interface
 ----------
 
-First thing we define is the `Schema`, which basically specifies the API that the
+First thing we define is the Schema, which basically specifies the API that the
 PAB service will provide. 
 
 .. code:: Haskell
 	  
-  -- | Escrow Schema
   type EscrowSchema = Endpoint "start"   StartParams
                   .\/ Endpoint "cancel"  CancelParams
                   .\/ Endpoint "resolve" ResolveParams
@@ -86,7 +86,7 @@ of the endpoint parameter.
 
 
 In addition to the Schema, we define the Observable State. It corresponds to the information
-that we want to get from the blockchain from the client side.
+that we want to get from the client side.
 In this case, we want to provide, for each user, the list of escrows waiting to be resolved
 by this user. Thus, the frontend can display the list of escrows with their information.
 For each escrow we include the utxo reference, the Escrow Info (containing the sender's address
@@ -160,7 +160,7 @@ receiver, including in the datum the corresponding Escrow Info.
       -> Contract w s Text ()
   startOp addr StartParams{..} = do
       let .....
-          ....
+          .....
 
 
 So for specifying the transaction, we need to define the value and datum that will be part of
