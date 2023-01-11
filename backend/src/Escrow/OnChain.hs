@@ -24,7 +24,7 @@ import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
                               )
 import Plutus.V1.Ledger.Value ( CurrencySymbol, Value
                               , assetClass, assetClassValueOf, flattenValue
-                              , leq, AssetClass(unAssetClass)
+                              , leq
                               )
 import PlutusTx.Prelude       ( Integer, Bool
                               , ($), (&&), (||), (==), (>)
@@ -169,10 +169,6 @@ mkControlTokenMintingPolicy addr _ ctx =
 
     correctAmount :: Bool
     correctAmount = rAmount (eInfo escrowDatum) > 0
-
-    -- controlTokenCS :: CurrencySymbol
-    -- controlTokenTN :: TokenName
-    -- (controlTokenCS, controlTokenTN) = unAssetClass (eAssetClass escrowDatum)
 
     escrowUtxo :: TxOut
     escrowUtxo = getSingleton $ outputsAt addr info
