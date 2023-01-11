@@ -20,14 +20,17 @@ module Tests.Prop.Escrow where
 -- Non-IOG imports
 import Control.Lens    ( (^.), (.~), (&), makeLenses, over )
 import Data.Data       ( Data )
+import Data.Default    ( def )
 import Data.List       ( delete, find )
 import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
-import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
+import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust
+                       , fromList )
 
 import Test.QuickCheck ( Gen, Property
                        , oneof, elements, chooseInteger, tabulate
+                       , suchThat
                        )
 
 -- IOG imports
@@ -42,16 +45,17 @@ import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
                                           )
-import Plutus.Trace.Emulator              ( callEndpoint, observableState
+import Plutus.Trace.Emulator              ( EmulatorConfig (EmulatorConfig)
+                                          , callEndpoint, observableState
                                           , params
                                           )
-import Plutus.V1.Ledger.Value             ( assetClassValue
+import Plutus.V1.Ledger.Value             ( Value, assetClassValue
                                           , singleton, assetClass
                                           )
 import Ledger                             ( AssetClass, Params(..)
                                           , protocolParamsL )
-
-import Cardano.Api.Shelley                 (ProtocolParameters(..))
+import Ledger.Ada                         ( lovelaceValueOf )
+import Cardano.Api.Shelley                (ProtocolParameters(..))
 
 -- Escrow imports
 import Escrow.Business            ( EscrowInfo, mkReceiverAddress
@@ -63,10 +67,27 @@ import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
                                   )
 import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
-import Tests.Utils                ( emConfig, tokenA, tokenACurrencySymbol
+import Tests.Utils                ( tokenA, tokenACurrencySymbol
                                   , tokenB, tokenBCurrencySymbol, wallets
                                   , mockWAddress
                                   )
+
+-- | List of Tokens for emulator configuration
+tokens :: [AssetClass]
+tokens = [ assetClass tokenACurrencySymbol tokenA
+         , assetClass tokenBCurrencySymbol tokenB ]
+
+walletsWithValue :: [(Wallet,Value)]
+walletsWithValue = [(w, v <>  mconcat (map (`assetClassValue` 1_000_000) tokens))
+                   | w <- wallets
+                   ]
+  where
+    v :: Value
+    v = lovelaceValueOf 100_000_000
+
+-- | emulator configuration
+emConfig :: EmulatorConfig
+emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
 
 -- | Config the checkOptions to use the emulator config from the Offchain traces
 options :: CheckOptions
@@ -158,17 +179,23 @@ instance ContractModel EscrowModel where
       where
         genWallet :: Gen Wallet
         genWallet = elements wallets
+
         genPayment :: Gen Integer
         genPayment = chooseInteger (1, 50)
+
+        genToken :: Gen AssetClass
+        genToken = elements tokens
 
         genStart :: Wallet -> Gen (Action EscrowModel)
         genStart connWallet = do
             resW <- elements (delete connWallet wallets)
             p1 <- genPayment
             p2 <- genPayment
+            t1 <- genToken
+            t2 <- suchThat genToken (/=t1)
             return $ Start connWallet resW
-                           (assetClass tokenACurrencySymbol tokenA, p1)
-                           (assetClass tokenBCurrencySymbol tokenB, p2)
+                           (t1, p1)
+                           (t2, p2)
 
         genResolve :: Wallet -> [TransferInfo] -> Gen (Action EscrowModel)
         genResolve connWallet toRes = Resolve connWallet <$> elements toRes
@@ -189,7 +216,7 @@ instance ContractModel EscrowModel where
             ti `elem` (s ^. contractState . toResolve) ! rw
 
     nextState (Start sendW resW (acA,aA) (acB,aB)) = do
-        withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
+        withdraw sendW (minAda <> assetClassValue acA aA)
         toResolve $~ insertWith (++) resW [TransferInfo sendW aA acA aB acB]
         wait 2
     nextState (Resolve resW ti@TransferInfo{..}) = do
