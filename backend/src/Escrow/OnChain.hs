@@ -164,15 +164,15 @@ mkControlTokenMintingPolicy addr _ ctx =
     correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
 
     correctControlAssetClass :: Bool
-    correctControlAssetClass = (controlTokenCS == mintedCS)
-                            && (controlTokenTN == mintedTN)
+    correctControlAssetClass =
+      eAssetClass escrowDatum == assetClass mintedCS mintedTN
 
     correctAmount :: Bool
     correctAmount = rAmount (eInfo escrowDatum) > 0
 
-    controlTokenCS :: CurrencySymbol
-    controlTokenTN :: TokenName
-    (controlTokenCS, controlTokenTN) = unAssetClass (eAssetClass escrowDatum)
+    -- controlTokenCS :: CurrencySymbol
+    -- controlTokenTN :: TokenName
+    -- (controlTokenCS, controlTokenTN) = unAssetClass (eAssetClass escrowDatum)
 
     escrowUtxo :: TxOut
     escrowUtxo = getSingleton $ outputsAt addr info

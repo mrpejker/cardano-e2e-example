@@ -96,8 +96,7 @@ toStakingCredential = StakingHash . PubKeyCredential
 waPaymentPubKeyHash :: WalletAddress -> PaymentPubKeyHash
 waPaymentPubKeyHash = PaymentPubKeyHash . waPayment
 
-{- | Creates an transaction output using `mustPayToAddress`
--}
+-- | Creates an transaction output using `mustPayToAddress`
 mustPayToWalletAddress :: forall i o
                        .  WalletAddress
                        -> Value
