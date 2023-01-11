@@ -50,7 +50,7 @@ import Plutus.Trace.Emulator              ( EmulatorConfig (EmulatorConfig)
                                           , params
                                           )
 import Plutus.V1.Ledger.Value             ( Value, assetClassValue
-                                          , singleton, assetClass
+                                          , assetClass
                                           )
 import Ledger                             ( AssetClass, Params(..)
                                           , protocolParamsL )
