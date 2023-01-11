@@ -18,15 +18,16 @@ module Escrow.OnChain
 where
 
 -- IOG imports
+-- IOG imports
 import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
-                              , PubKeyHash
+                              , PubKeyHash, TokenName
                               )
-import Plutus.V1.Ledger.Value ( CurrencySymbol, TokenName, Value
+import Plutus.V1.Ledger.Value ( CurrencySymbol, Value
                               , assetClass, assetClassValueOf, flattenValue
-                              , leq
+                              , leq, AssetClass(unAssetClass)
                               )
 import PlutusTx.Prelude       ( Integer, Bool
-                              , ($), (&&), (||), (==)
+                              , ($), (&&), (||), (==), (>)
                               , traceIfFalse
                               )
 
@@ -131,20 +132,17 @@ mkControlTokenMintingPolicy addr _ ctx =
     ||
     (   traceIfFalse "Minting more than one control token"
                      (mintedA == 1)
-     && traceIfFalse "The control token was not paid to the contract address"
+     && traceIfFalse "The control token was not paid to the script address"
                      controlTokenPaid
-     && traceIfFalse "The signer is not the sender on the escrow"
-                     correctSigner
+     && traceIfFalse "Wrong information in Datum"
+                     correctDatum
     )
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
-    signer :: PubKeyHash
-    signer = getSingleton $ txInfoSignatories info
-
-    correctSigner :: Bool
-    correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+    mintedCS :: CurrencySymbol
+    mintedTN :: TokenName
+    mintedA :: Integer
+    (mintedCS, mintedTN, mintedA) = getSingleton $
+                                    flattenValue $ txInfoMint info
 
     controlTokenPaid :: Bool
     controlTokenPaid =
@@ -152,14 +150,37 @@ mkControlTokenMintingPolicy addr _ ctx =
         ==
         mintedA
 
+    correctDatum :: Bool
+    correctDatum =
+        traceIfFalse "The signer is not the sender on the escrow"
+                     correctSigner
+     && traceIfFalse "The asset minted does not match with the control token"
+                     correctControlAssetClass
+     && traceIfFalse "The receive amount of tokens to exchange is not positive"
+                     correctAmount
+
+    correctSigner :: Bool
+    correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+
+    correctControlAssetClass :: Bool
+    correctControlAssetClass = (controlTokenCS == mintedCS)
+                            && (controlTokenTN == mintedTN)
+
+    correctAmount :: Bool
+    correctAmount = rAmount (eInfo escrowDatum) > 0
+
+    controlTokenCS :: CurrencySymbol
+    controlTokenTN :: TokenName
+    (controlTokenCS, controlTokenTN) = unAssetClass (eAssetClass escrowDatum)
+
     escrowUtxo :: TxOut
     escrowUtxo = getSingleton $ outputsAt addr info
 
     escrowDatum :: EscrowDatum
     escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
 
-    mintedCS :: CurrencySymbol
-    mintedTN :: TokenName
-    mintedA :: Integer
-    (mintedCS, mintedTN, mintedA) = getSingleton $
-                                    flattenValue $ txInfoMint info
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
