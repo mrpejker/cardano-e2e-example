@@ -70,16 +70,17 @@ mkEscrowValidator raddr EscrowDatum{..} r ctx =
     traceIfFalse "controlToken was not burned"
                  (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
-    signer :: PubKeyHash
-    signer = getSingleton $ txInfoSignatories info
-
     mintedCS :: CurrencySymbol
     mintedTN :: TokenName
     (mintedCS, mintedTN, mintedA) = getSingleton $
                                     flattenValue $ txInfoMint info
+
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
 
 {- | Checks:
  - The address that is trying to cancel the escrow is the same as the Sender’s
@@ -179,8 +180,8 @@ mkControlTokenMintingPolicy addr _ ctx =
     escrowDatum :: EscrowDatum
     escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
 
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
     signer :: PubKeyHash
     signer = getSingleton $ txInfoSignatories info
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
