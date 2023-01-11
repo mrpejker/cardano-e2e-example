@@ -18,7 +18,6 @@ module Escrow.OnChain
 where
 
 -- IOG imports
--- IOG imports
 import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
                               , PubKeyHash, TokenName
                               )
@@ -27,7 +26,7 @@ import Plutus.V1.Ledger.Value ( CurrencySymbol, Value
                               , leq
                               )
 import PlutusTx.Prelude       ( Integer, Bool
-                              , ($), (&&), (||), (==), (>)
+                              , ($), (&&), (||), (==), (>), (<>)
                               , traceIfFalse
                               )
 
@@ -119,9 +118,11 @@ The token minting policy is parametrized by the contract address and has the
 following checks:
 
 On minting:
- - Only one token with the correct token name is minted.
- - The sender’s address is signing the transaction.
- - The token is paid to the contract address.
+- Only one token with the correct token name is minted
+- The token is paid to the contract address
+- The sender’s address is signing the transaction
+- The token being minted is the correct control token
+- The amount of tokens that the receiver wants to offer is more than 0
 
 On Burning:
  - One token is being burned.
@@ -129,9 +130,9 @@ On Burning:
 {-# INLINABLE mkControlTokenMintingPolicy #-}
 mkControlTokenMintingPolicy :: ScriptAddress -> () -> ScriptContext -> Bool
 mkControlTokenMintingPolicy addr _ ctx =
-    traceIfFalse "Burning less or more than one control token" (mintedA == -1)
+    traceIfFalse "Burning less or more than one token" (mintedA == -1)
     ||
-    (   traceIfFalse "Minting more than one control token"
+    (   traceIfFalse "Minting more than one token"
                      (mintedA == 1)
      && traceIfFalse "The control token was not paid to the script address"
                      controlTokenPaid
@@ -153,12 +154,16 @@ mkControlTokenMintingPolicy addr _ ctx =
 
     correctDatum :: Bool
     correctDatum =
-        traceIfFalse "The signer is not the sender on the escrow"
-                     correctSigner
-     && traceIfFalse "The asset minted does not match with the control token"
-                     correctControlAssetClass
-     && traceIfFalse "The receive amount of tokens to exchange is not positive"
-                     correctAmount
+        traceIfFalse
+          "Sender address in Datum doesn't coincide with transaction signer"
+          correctSigner
+     && traceIfFalse
+          ("Control token Asset Class in Datum doesn't coincide with the" <>
+          "minted token")
+          correctControlAssetClass
+     && traceIfFalse
+          "Amount of tokens to pay to Receiver in Datum is less than 0"
+          correctAmount
 
     correctSigner :: Bool
     correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
