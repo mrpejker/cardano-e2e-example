@@ -1,18 +1,16 @@
 On-Chain
 ========
 
-Each time a user starts an escrow, a new script utxo is created, locking the tokens
-to be paid and containing in the datum all the information needed for successfully
-completing the exchange. Also, when a start happens, we mint a control token that
-will be locked in this script utxo, and will be in charge of validating that it is
-*well-formed*. Thus, every time we want to cancel or resolve an escrow, by finding
-the corresponding *control token* on the script utxo we are sure the information
-on it is correct.
+The on-chain side of the implementation consists of validators and minting policies.
+In our example, the sender locks in a script-utxo the tokens to be paid to the
+receiver, containing in the datum all the necessary information. In the same
+transaction, a `control token` is minted too, for checking that information.
+For cancelling or resolving, it's necessary to spend the script-utxo, which must
+contain the control token, and the validator performs all the necessary checks.
 
-In the :code:`OnChain` module, we will find the Haskell implementation of the on-chain
-validator and the minting policy, amoung other helper functions. In the :code:`Validator`
-module we define mostly boilerplate code for compiling the validator and minting
-policy to Plutus.
+In the :code:`OnChain` module, we find the Haskell implementation of the 
+validator and the minting policy, among other helper functions. In the :code:`Validator`
+module we define mostly boilerplate code for compiling to Plutus.
 
 OnChain
 -------
@@ -23,7 +21,7 @@ which Prelude we are using, we add the ``NoImplicitPrelude`` pragma at the top o
 the module. As a result we don't have any of the common types and functions in this
 scope. Thus we must explictly import from the Prelude all we need:
 
-.. code:: haskell
+.. code:: Haskell
 
    import PlutusTx.Prelude ( Integer, Bool
                            , ($), (&&), (||), (==)
@@ -36,8 +34,15 @@ Minting Policy
 Starting an escrow involves minting a *control token*, thus running a validation
 implemented on its minting policy that allows the minting or burning. We use this
 fact to ensure some good starting properties on the script utxo we are creating.
+For that, we have to distinct if we are minting or burning by checking 
+information inside the script context: if the amount of minted tokens is -1 we
+are burning, if it's 1 we are minting. If the transaction mints a different amount
+of tokens, the minting policy fails and so the start operation.
+If we are minting the control token, then we have to check that it's paid to the
+escrow script and the datum is correct.
 
-.. code:: haskell
+
+.. code:: Haskell
 
    {-# INLINABLE mkControlTokenMintingPolicy #-}
    mkControlTokenMintingPolicy :: ScriptAddress -> () -> ScriptContext -> Bool
@@ -48,51 +53,57 @@ fact to ensure some good starting properties on the script utxo we are creating.
                             (mintedA == 1)
             && traceIfFalse "The control token was not paid to the script address"
                             controlTokenPaid
-            && traceIfFalse "The signer is not the sender on the escrow"
-                            correctSigner
+            && traceIfFalse "Wrong information in Datum"
+                            correctDatum
            )
      where
        ....
 
 The minting policy is parameterized on the script address of the escrow utxo we are
-creating, besides that the policy must take a redeemer (on this particular case ``()``)
-and a script context. In the script context, we will find all the transaction information.
-So, either we are **burning** the *control token* without any other minting or
-burning. **Or** we are **minting** exactly one token. In that case, we also
-check the token is paid to the correct address and the datum information is correct.
+creating, so we know where the control token must go. We check that it's paid
+to the script-utxo in function :code:`controlTokenPaid`
 
-.. code:: haskell
+.. code:: Haskell
 
-   controlTokenPaid :: Bool
-   controlTokenPaid =
-	  assetClassValueOf (txOutValue escrowUtxo) (assetClass mintedCS mintedTN)
+      controlTokenPaid :: Bool
+      controlTokenPaid =
+          assetClassValueOf (txOutValue escrowUtxo) (assetClass mintedCS mintedTN)
           ==
           mintedA
 
-From the script utxo we can get the complete locked value ``txOutValue escrowUtxo`` and
-check it has exactly the minted token by filtering the value with ``assetClassValueOf``.
+      escrowUtxo :: TxOut
+      escrowUtxo = getSingleton $ outputsAt addr info
 
-.. code:: haskell
+      mintedCS :: CurrencySymbol
+      mintedTN :: TokenName
+      mintedA :: Integer
+      (mintedCS, mintedTN, mintedA) = getSingleton $
+                                      flattenValue $ txInfoMint info
+      
 
-   correctSigner :: Bool
-   correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+As we mentioned before, we ensure that only one token is being minted, and it's implemented
+by calling :code:`getSingleton` from the Utils, which takes a list and fails (by :code:`traceError`)
+if the list doesn't contain exactly one element. It's also used for getting the unique
+output utxo belonging to the script.
 
-For the last check, we simply use the datum information and the business logic
-function ``signerIsSender``. Also is important to mention the following definitions:
+For ensuring that the datum is correct we need to check that the `sender address` coincides with
+the transaction signer, the amount of tokens to receive is greater than zero, and the control
+token Asset Class is the one that it's being minted.
 
-.. code:: haskell
+.. code:: Haskell
 
-    escrowUtxo :: TxOut
-    escrowUtxo = getFromSingleton $ outputsAt addr info
+      correctDatum :: Bool
+      correctDatum =
+          traceIfFalse "The signer is not the sender on the escrow"
+                       correctSigner
+       && traceIfFalse "The asset minted does not match with the control token"
+                       correctControlAssetClass
+       && traceIfFalse "The receive amount of tokens to exchange is not positive"
+                       correctAmount
 
-    escrowDatum :: EscrowDatum
-    escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
+For implementing those three checks we simply read the script-utxo datum and
+compare its information with the corresponding one.
 
-Both these checks use the escrow utxo got from the script address and the escrow
-datum. Notice that because we are typing ``escrowDatum`` we ensure the correct
-format of the complete datum. The use of ``fromJust`` here could look strange but
-is a "convenient" way of failing because if that is the case, then we don't want
-any validation to continue.
 
 Validator
 ~~~~~~~~~
