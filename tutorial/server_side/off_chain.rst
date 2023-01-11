@@ -159,15 +159,13 @@ receiver, including in the datum the corresponding Escrow Info.
       -> StartParams
       -> Contract w s Text ()
   startOp addr StartParams{..} = do
-      let .....
-          .....
-
 
 So for specifying the transaction, we need to define the value and datum that will be part of
 the script-utxo
 
 .. code:: Haskell
 
+      let 
           senderVal = assetClassValue sendAssetClass sendAmount
           val       = minAda <> cTokenVal <> senderVal
           datum     = mkEscrowDatum (mkSenderAddress addr)
