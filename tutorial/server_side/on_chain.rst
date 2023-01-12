@@ -1,11 +1,12 @@
 On-Chain
 ========
 
-The on-chain side of the implementation consists of validators and minting policies.
+The on-chain side of the server implementation consists of validators and minting policies.
 In our example, the sender locks in a script-utxo the tokens to be paid to the
-receiver, containing in the datum all the necessary information. In the same
-transaction, a `control token` is minted too, for checking that information.
-For cancelling or resolving, it's necessary to spend the script-utxo, which must
+receiver, containing in the datum all the necessary information. In order to check
+that it's valid, a `control token` is minted in the same transaction,
+so a validation can be performed by running the corresponding minting policy.
+For canceling or resolving, it's necessary to spend the script-utxo, which must
 contain the control token, and the validator performs all the necessary checks.
 
 In the :code:`OnChain` module, we find the Haskell implementation of the 
@@ -32,7 +33,7 @@ Minting Policy
 ~~~~~~~~~~~~~~
 
 Starting an escrow involves minting a *control token*, thus running a validation
-implemented on its minting policy that allows the minting or burning. We use this
+implemented on its minting policy. We use this
 fact to ensure some good starting properties on the script utxo we are creating.
 For that, we have to distinct if we are minting or burning by checking 
 information inside the script context: if the amount of minted tokens is -1 we
@@ -102,18 +103,24 @@ token Asset Class is the one that it's being minted.
                        correctAmount
 
 For implementing those three checks we simply read the script-utxo datum and
-compare its information with the corresponding one.
+compare its information with the expected one.
 
 
 Validator
 ~~~~~~~~~
 
-The on-chain validator as we briefly mentioned is parameterized on the receiver
+The on-chain validator, as we briefly mentioned, is parameterized on the receiver
 address. This design decision allows us to have a unique script address for each
-``ReceiverAddress``. Also, a validator function must mandatory take a datum, a
-redeemer and a script-context and return a boolean. Because we are using typed
-validators we will use the types we briefly introduce in the Business Logic
-:ref:`Types section <business_logic-types>`.
+``ReceiverAddress``. Given that we are minting a control token, it would be
+desired to include in the parameter its asset class too for checking that it's burned
+when canceling or resolving. However we can't do it because
+a circularity problem: in the control token minting policy we need the script
+address for ensuring that the token is paid to the corresponding utxo. We solved
+this issue by including in the datum the control token asset class, as we showed before.
+
+The validator will run when the script uxto is spent, and it corresponds to `Cancel` and
+`Resolve` operations, which are the only two constructors of :code:`EscrowRedeemer` type. In both
+cases we have to check that the control token is burned.
 
 .. code:: haskell
 
@@ -131,31 +138,25 @@ validators we will use the types we briefly introduce in the Business Logic
        traceIfFalse "controlToken was not burned"
                     (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
      where
-       ....
+       info :: TxInfo
+       info = scriptContextTxInfo ctx
 
-The common validation we do, independently of the redeemer, is checking we are
-burning the *control token*.
+       signer :: PubKeyHash
+       signer = getSingleton $ txInfoSignatories info
 
-.. code:: haskell
+       .....
 
-   mintedCS :: CurrencySymbol
-   mintedTN :: TokenName
-   mintedA :: Integer
-   (mintedCS, mintedTN, mintedA) = getFromSingleton $
-	                           flattenValue $ txInfoMint info
 
-For performing this check we need to be sure we are minting a token *negatively*,
-but it's really important to check the currency symbol and the token name are the
-correct ones. A natural option for having this information, which isn't going to
-change, is as a parameter of the validator, but this causes a circular dependency,
-given the minting policy (from where the currency symbol is computed) already
-depends on the address of the validator. So, a solution is to store the asset
-class of the control token on the datum (``eAssetClass``) together with the escrow
-information.
+We modularize the validator implementing two separated functions for each case:
+:code:`cancelValidator` and :code:`resolveValidator`. For implementing the
+first one we need the Escrow Info (which is inside the datum) and the signer
+(which is extracted from the Script Context). For implementing the second one
+we also pass the entire Script Context info and the validator parameter (the
+receiver address).
 
-The ``EscrowRedeemer`` allows us to decide which validations over the spending
-utxo we need to perform. Canceling an escrow will excecute ``cancelValidator``
-and resolving will use ``resolveValidator``.
+      
+Validating a cancel operation is simple: we have to check that the escrow sender
+is the one signing the transaction. 
 
 .. code:: haskell
 
@@ -165,12 +166,13 @@ and resolving will use ``resolveValidator``.
        traceIfFalse "cancelValidator: Wrong sender signature"
                     $ signerIsSender signer sender
 
-Cancel an escrow involves only checking the signer of the transaction is who started
-the escrow. That is, checking the sender's address is the signer. We get the sender
-address from the ``EscrowInfo`` inside the ``EscrowDatum``, and the signer from
-``txInfoSignatories info``. One important thing to notice here, and in general every
-time we use txInfoSignatories, is that the script context only has the *pubkey hash*
-information of the signer address (without *staking hash*).
+The sender address is stored in the datum at start, so at canceling we check that
+the information in the datum coincides with the transaction signer.
+
+A more interesting validation is required for resolving an escrow. We check that
+the signer is the receiver, and
+the corresonding payment is paid to the sender.
+
 
 .. code:: haskell
 
@@ -191,16 +193,18 @@ information of the signer address (without *staking hash*).
        senderV :: Value
        senderV = valuePaidTo (eInfoSenderAddr ei) info
 
-The resolve validation is a little more interesting. We also check the signer, but
-this time it should be the receiver, as we mentioned that is the parameter of the
-validator. The interesting validation we need to perform is to be sure the sender
-address gets paid, at least the amount the EscrowInfo said it needs to be paid to
-complete the agreement. From the script context we can retrive all the tokens that
-are being paid to the sender address, with ``valuePaidTo (eInfoSenderAddr ei) info``
-and check that is at least more than the amount computed by ``valueToSender ei``.
+We need the Script Context info for reading the value that is being paid in
+this transaction, and the validator parameter for knowing the receiver address.
+Notice that we use the `business logic` function :code:`valueToSender` for
+computing the (minimum) value that should be paid.
 
 Validator
 ---------
+
+The content of this module is mainly boilerplate. It corresponds to the compilation
+of the validator and minting policy, from Haskell to Plutus.
+
+
 
 In this module, we implement the compilation to Plutus of the on-chain validator
 and the minting policy. In general because we are using a typed approach, on both the
