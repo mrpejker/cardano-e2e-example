@@ -1,7 +1,7 @@
-import type { TxOutRef, Plutus, WalletAddress } from "cardano-pab-client";
+import type { TxOutRef, Plutus, WalletAddress, Address } from "cardano-pab-client";
 
 export type StartParams = {
-  receiverAddress: ReturnType<WalletAddress["toPAB"]>
+  receiverAddress: WalletAddress
   sendAssetClass: Plutus.AssetClass
   sendAmount: number
   receiveAssetClass: Plutus.AssetClass
@@ -17,10 +17,10 @@ export async function mkStartParams(
   rTokenN: string,
   rAm: number,
 ): Promise<StartParams> {
-  const { WalletAddress, AssetClass, succeeded } = await import("cardano-pab-client");
-  const result = await WalletAddress.fromBech32Address(rAdd)
+  const { Address, AssetClass, succeeded } = await import("cardano-pab-client");
+  const result = await Address.fromBech32(rAdd)
   if (succeeded(result)) {
-    const receiverAddress = result.value.toPAB();
+    const receiverAddress = result.value.toWalletAddress();
     const sendAssetClass = new AssetClass(sCurrency, sTokenN).toPlutusAssetClass();
     const receiveAssetClass = new AssetClass(rCurrency, rTokenN).toPlutusAssetClass();
     return {
@@ -35,23 +35,23 @@ export async function mkStartParams(
   }
 }
 
-export type ReceiverAddress = { rAddr: ReturnType<WalletAddress["toPAB"]> }
+export type ReceiverAddress = { rAddr: WalletAddress }
 
-export function mkReceiverAddress(wAdd: WalletAddress): ReceiverAddress {
-  return { rAddr: wAdd.toPAB() }
+export function mkReceiverAddress(wAdd: Address): ReceiverAddress {
+  return { rAddr: wAdd.toWalletAddress() }
 }
 
 export type CancelParams = {
-  cpReceiverAddress: ReturnType<WalletAddress["toPAB"]>
+  cpReceiverAddress: WalletAddress
   cpTxOutRef: Plutus.TxOutRef
 }
 
 export async function mkCancelParams(rAdd: string, ref: string): Promise<CancelParams> {
-  const { WalletAddress, TxOutRef, succeeded } = await import("cardano-pab-client");
+  const { Address, TxOutRef, succeeded } = await import("cardano-pab-client");
   const [txId, idx]: string[] = ref.split("#");
-  const result = await WalletAddress.fromBech32Address(rAdd)
+  const result = await Address.fromBech32(rAdd)
   if (succeeded(result)) {
-    const cpReceiverAddress = result.value.toPAB();
+    const cpReceiverAddress = result.value.toWalletAddress();
     const cpTxOutRef = new TxOutRef(txId, Number(idx)).toPlutusTxOutRef();
     return { cpTxOutRef, cpReceiverAddress };
   } else {
