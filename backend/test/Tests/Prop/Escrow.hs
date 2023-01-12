@@ -76,6 +76,7 @@ import Tests.Utils                ( wallets, mockWAddress )
 mkTokenName :: String -> TokenName
 mkTokenName = tokenName . fromString
 
+-- | Builds a CurrencySymbol if it takes only 4 characters on Hexa
 mkCurrencySymbol :: String -> CurrencySymbol
 mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
                  . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
@@ -202,14 +203,11 @@ instance ContractModel EscrowModel where
         genCancel resWallet toCancel = Cancel resWallet <$> elements toCancel
 
     precondition _ Start{} =
-        -- Must check the wallet has enough funds.
         True
     precondition s (Resolve rw ti) =
-        -- Must check the wallet has enough funds.
         member rw (s ^. contractState . toResolve) &&
             ti `elem` (s ^. contractState . toResolve) ! rw
     precondition s (Cancel rw ti) =
-        -- Must check the wallet has enough funds.
         member rw (s ^. contractState . toResolve) &&
             ti `elem` (s ^. contractState . toResolve) ! rw
 
@@ -301,6 +299,7 @@ increaseMaxCollIn = over protocolParamsL fixParams
     fixParams pp = pp
       { protocolParamMaxCollateralInputs = Just 200}
 
+-- | generators of Values used on quickcheck tests
 genWallet :: Gen Wallet
 genWallet = elements wallets
 
