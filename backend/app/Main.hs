@@ -15,8 +15,7 @@ import Plutus.PAB.Effects.Contract.Builtin ( handleBuiltin )
 import Plutus.PAB.Run                      ( runWith )
 
 -- Escrow imports
-import EscrowHandlers ( Escrow )
-
+import Handlers ( Escrow )
 
 main :: IO ()
 main = runWith $ handleBuiltin @Escrow

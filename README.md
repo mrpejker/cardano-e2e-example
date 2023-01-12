@@ -66,11 +66,11 @@ Before running the service we need to get a [blockfrost token](https://blockfros
 and put it on the `blockfrost-token-preprod` file. Once everything is compiled
 we need to create the database
 
-`cabal run pab -- --config config/pab-config-preprod.yaml migrate`
+`cabal run escrow-pab -- --config config/pab-config-preprod.yaml migrate`
 
 and start the PAB
 
-`cabal run pab -- --config config/pab-config-preprod.yaml webserver`
+`cabal run escrow-pab -- --config config/pab-config-preprod.yaml webserver`
 
 ### Frontend
 
