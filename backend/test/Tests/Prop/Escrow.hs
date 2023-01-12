@@ -24,9 +24,12 @@ import Data.Default    ( def )
 import Data.List       ( delete, find )
 import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
-import Data.Text       ( Text )
-import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust
-                       , fromList )
+import Data.Text       ( Text , pack , append )
+import Data.Map as Map ( (!), Map, empty, lookup, member
+                       , insertWith, adjust, fromList
+                       )
+import Data.ByteString.UTF8 ( fromString )
+import Text.Hex        ( decodeHex)
 
 import Test.QuickCheck ( Gen, Property
                        , oneof, elements, chooseInteger, tabulate
@@ -49,8 +52,9 @@ import Plutus.Trace.Emulator              ( EmulatorConfig (EmulatorConfig)
                                           , callEndpoint, observableState
                                           , params
                                           )
-import Plutus.V1.Ledger.Value             ( Value, assetClassValue
-                                          , assetClass
+import Plutus.V1.Ledger.Value             ( Value, CurrencySymbol, TokenName
+                                          , assetClassValue, assetClass
+                                          , tokenName, currencySymbol
                                           )
 import Ledger                             ( AssetClass, Params(..)
                                           , protocolParamsL )
@@ -67,15 +71,26 @@ import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
                                   )
 import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
-import Tests.Utils                ( tokenA, tokenACurrencySymbol
-                                  , tokenB, tokenBCurrencySymbol, wallets
-                                  , mockWAddress
+import Tests.Utils                ( wallets, mockWAddress
                                   )
 
--- | List of Tokens for emulator configuration
+mkTokenName :: String -> TokenName
+mkTokenName = tokenName . fromString
+
+mkCurrencySymbol :: String -> CurrencySymbol
+mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
+                 . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
+
+-- | List of AssetClass for emulator configuration
 tokens :: [AssetClass]
-tokens = [ assetClass tokenACurrencySymbol tokenA
-         , assetClass tokenBCurrencySymbol tokenB ]
+tokens = [assetClass
+            (mkCurrencySymbol $ replicate 4 hex )
+            (mkTokenName $ replicate n hex)
+         | hex <- hexChars
+         , n <- [1..4]
+         ]
+    where
+        hexChars = ['a' .. 'f']
 
 walletsWithValue :: [(Wallet,Value)]
 walletsWithValue = [(w, v <>  mconcat (map (`assetClassValue` 1_000_000) tokens))
@@ -177,25 +192,10 @@ instance ContractModel EscrowModel where
             | isJust toRes && not (null $ fromJust toRes)
             ]
       where
-        genWallet :: Gen Wallet
-        genWallet = elements wallets
-
-        genPayment :: Gen Integer
-        genPayment = chooseInteger (1, 50)
-
-        genToken :: Gen AssetClass
-        genToken = elements tokens
-
         genStart :: Wallet -> Gen (Action EscrowModel)
         genStart connWallet = do
             resW <- elements (delete connWallet wallets)
-            p1 <- genPayment
-            p2 <- genPayment
-            t1 <- genToken
-            t2 <- suchThat genToken (/=t1)
-            return $ Start connWallet resW
-                           (t1, p1)
-                           (t2, p2)
+            uncurry (Start connWallet resW) <$> gen2Tokens
 
         genResolve :: Wallet -> [TransferInfo] -> Gen (Action EscrowModel)
         genResolve connWallet toRes = Resolve connWallet <$> elements toRes
@@ -263,8 +263,8 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
-    monitoring _ (Start sw _ _ _) =
-        tabulate "Starting escrow" [show sw]
+    monitoring _ (Start _ _ (ac,_) _) =
+        tabulate "Starting escrow" [show ac]
     monitoring _ (Resolve rw _) =
         tabulate "Reslving escrow" [show rw]
     monitoring _ (Cancel rw _) =
@@ -302,3 +302,20 @@ increaseMaxCollIn = over protocolParamsL fixParams
   where
     fixParams pp = pp
       { protocolParamMaxCollateralInputs = Just 200}
+
+genWallet :: Gen Wallet
+genWallet = elements wallets
+
+genPayment :: Gen Integer
+genPayment = chooseInteger (1, 50)
+
+genAssetClass :: Gen AssetClass
+genAssetClass = elements tokens
+
+gen2Tokens :: Gen ((AssetClass, Integer), (AssetClass,Integer))
+gen2Tokens = do
+    ac1 <- genAssetClass
+    ac2 <- suchThat genAssetClass (/= ac1)
+    p1 <- genPayment
+    p2 <- genPayment
+    return ((ac1, p1), (ac2, p2))
