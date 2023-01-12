@@ -28,7 +28,7 @@ export type UtxoEscrowInfo = {
 
 export type ObsState = UtxoEscrowInfo[]
 
-export class UserEndpoints {
+export class EscrowEndpoints {
   PABClient: typeof import("cardano-pab-client");
   contractState: ObsState = undefined
   endpoints: ContractEndpoints = undefined
@@ -42,7 +42,7 @@ export class UserEndpoints {
     this.contractState = contractState
   }
 
-  public async connect(walletName: "nami" | "eternl"): Promise<UserEndpoints | null> {
+  public async connect(walletName: "nami" | "eternl"): Promise<EscrowEndpoints | null> {
     // load PAB Client just once!
     this.PABClient = await import("cardano-pab-client");
 
