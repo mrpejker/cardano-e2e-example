@@ -24,7 +24,7 @@ import Data.Default    ( def )
 import Data.List       ( delete, find )
 import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
-import Data.Text       ( Text , pack , append )
+import Data.Text       ( Text , pack )
 import Data.Map as Map ( (!), Map, empty, lookup, member
                        , insertWith, adjust, fromList
                        )
@@ -71,8 +71,7 @@ import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
                                   )
 import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
-import Tests.Utils                ( wallets, mockWAddress
-                                  )
+import Tests.Utils                ( wallets, mockWAddress )
 
 mkTokenName :: String -> TokenName
 mkTokenName = tokenName . fromString
@@ -82,18 +81,17 @@ mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
                  . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
 
 -- | List of AssetClass for emulator configuration
-tokens :: [AssetClass]
-tokens = [assetClass
+allAssetClasses :: [AssetClass]
+allAssetClasses = [ assetClass
             (mkCurrencySymbol $ replicate 4 hex )
             (mkTokenName $ replicate n hex)
-         | hex <- hexChars
+         | hex <- ['a'..'z']
          , n <- [1..4]
          ]
-    where
-        hexChars = ['a' .. 'f']
 
 walletsWithValue :: [(Wallet,Value)]
-walletsWithValue = [(w, v <>  mconcat (map (`assetClassValue` 1_000_000) tokens))
+walletsWithValue = [(w, v <>  mconcat
+                    (map (`assetClassValue` 1_000_000) allAssetClasses))
                    | w <- wallets
                    ]
   where
@@ -310,7 +308,7 @@ genPayment :: Gen Integer
 genPayment = chooseInteger (1, 50)
 
 genAssetClass :: Gen AssetClass
-genAssetClass = elements tokens
+genAssetClass = elements allAssetClasses
 
 gen2Tokens :: Gen ((AssetClass, Integer), (AssetClass,Integer))
 gen2Tokens = do
