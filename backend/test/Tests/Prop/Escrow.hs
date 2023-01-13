@@ -20,14 +20,20 @@ module Tests.Prop.Escrow where
 -- Non-IOG imports
 import Control.Lens    ( (^.), (.~), (&), makeLenses, over )
 import Data.Data       ( Data )
+import Data.Default    ( def )
 import Data.List       ( delete, find )
 import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
-import Data.Text       ( Text )
-import Data.Map as Map ( (!), Map, empty, lookup, member, insertWith, adjust )
+import Data.Text       ( Text , pack )
+import Data.Map as Map ( (!), Map, empty, lookup, member
+                       , insertWith, adjust, fromList
+                       )
+import Data.ByteString.UTF8 ( fromString )
+import Text.Hex        ( decodeHex)
 
 import Test.QuickCheck ( Gen, Property
                        , oneof, elements, chooseInteger, tabulate
+                       , suchThat
                        )
 
 -- IOG imports
@@ -42,16 +48,18 @@ import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
                                           , deposit, propRunActionsWithOptions
                                           , wait, withdraw
                                           )
-import Plutus.Trace.Emulator              ( callEndpoint, observableState
+import Plutus.Trace.Emulator              ( EmulatorConfig (EmulatorConfig)
+                                          , callEndpoint, observableState
                                           , params
                                           )
-import Plutus.V1.Ledger.Value             ( assetClassValue
-                                          , singleton, assetClass
+import Plutus.V1.Ledger.Value             ( Value, CurrencySymbol, TokenName
+                                          , assetClassValue, assetClass
+                                          , tokenName, currencySymbol
                                           )
 import Ledger                             ( AssetClass, Params(..)
                                           , protocolParamsL )
-
-import Cardano.Api.Shelley                 (ProtocolParameters(..))
+import Ledger.Ada                         ( lovelaceValueOf )
+import Cardano.Api.Shelley                (ProtocolParameters(..))
 
 -- Escrow imports
 import Escrow.Business            ( EscrowInfo, mkReceiverAddress
@@ -63,14 +71,7 @@ import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
                                   )
 import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
-import Tests.Utils                ( emConfig, tokenA, tokenACurrencySymbol
-                                  , tokenB, tokenBCurrencySymbol, wallets
-                                  , mockWAddress
-                                  )
-
--- | Config the checkOptions to use the emulator config from the Offchain traces
-options :: CheckOptions
-options = defaultCheckOptions & emulatorConfig .~ emConfig
+import Tests.Utils                ( wallets, mockWAddress )
 
 {- | The representation of the EscrowInfo plus the Value contained in script
      Utxo.
@@ -90,6 +91,12 @@ newtype EscrowModel = EscrowModel
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
+
+propEscrow :: Actions EscrowModel -> Property
+propEscrow = propRunActionsWithOptions
+             (options & increaseMaxCollateral)
+             defaultCoverageOptions
+             (\ _ -> pure True)
 
 shrinkWallet :: Wallet -> [Wallet]
 shrinkWallet w = [w' | w' <- wallets, w' < w]
@@ -156,19 +163,10 @@ instance ContractModel EscrowModel where
             | isJust toRes && not (null $ fromJust toRes)
             ]
       where
-        genWallet :: Gen Wallet
-        genWallet = elements wallets
-        genPayment :: Gen Integer
-        genPayment = chooseInteger (1, 50)
-
         genStart :: Wallet -> Gen (Action EscrowModel)
         genStart connWallet = do
             resW <- elements (delete connWallet wallets)
-            p1 <- genPayment
-            p2 <- genPayment
-            return $ Start connWallet resW
-                           (assetClass tokenACurrencySymbol tokenA, p1)
-                           (assetClass tokenBCurrencySymbol tokenB, p2)
+            uncurry (Start connWallet resW) <$> gen2Tokens
 
         genResolve :: Wallet -> [TransferInfo] -> Gen (Action EscrowModel)
         genResolve connWallet toRes = Resolve connWallet <$> elements toRes
@@ -177,19 +175,16 @@ instance ContractModel EscrowModel where
         genCancel resWallet toCancel = Cancel resWallet <$> elements toCancel
 
     precondition _ Start{} =
-        -- Must check the wallet has enough funds.
         True
     precondition s (Resolve rw ti) =
-        -- Must check the wallet has enough funds.
         member rw (s ^. contractState . toResolve) &&
             ti `elem` (s ^. contractState . toResolve) ! rw
     precondition s (Cancel rw ti) =
-        -- Must check the wallet has enough funds.
         member rw (s ^. contractState . toResolve) &&
             ti `elem` (s ^. contractState . toResolve) ! rw
 
     nextState (Start sendW resW (acA,aA) (acB,aB)) = do
-        withdraw sendW (minAda <> singleton tokenACurrencySymbol tokenA aA)
+        withdraw sendW (minAda <> assetClassValue acA aA)
         toResolve $~ insertWith (++) resW [TransferInfo sendW aA acA aB acB]
         wait 2
     nextState (Resolve resW ti@TransferInfo{..}) = do
@@ -257,12 +252,6 @@ findEscrowUtxo TransferInfo{..} =
     sendA :: UtxoEscrowInfo -> Integer
     sendA = snd . escrowPayment
 
-propEscrow :: Actions EscrowModel -> Property
-propEscrow = propRunActionsWithOptions
-             (options & increaseMaxCollateral)
-             defaultCoverageOptions
-             (\ _ -> pure True)
-
 {- increasing max amount of collateral inputs,
    otherwise property tests fail due to tooManyCollateralInputs
    error.
@@ -275,3 +264,55 @@ increaseMaxCollIn = over protocolParamsL fixParams
   where
     fixParams pp = pp
       { protocolParamMaxCollateralInputs = Just 200}
+
+-- | generators of Values used on quickcheck tests
+genWallet :: Gen Wallet
+genWallet = elements wallets
+
+genPayment :: Gen Integer
+genPayment = chooseInteger (1, 50)
+
+genAssetClass :: Gen AssetClass
+genAssetClass = elements allAssetClasses
+
+gen2Tokens :: Gen ((AssetClass, Integer), (AssetClass,Integer))
+gen2Tokens = do
+    ac1 <- genAssetClass
+    ac2 <- suchThat genAssetClass (/= ac1)
+    p1 <- genPayment
+    p2 <- genPayment
+    return ((ac1, p1), (ac2, p2))
+
+mkTokenName :: String -> TokenName
+mkTokenName = tokenName . fromString
+
+-- | Builds a CurrencySymbol if it takes only 4 characters on Hexa
+mkCurrencySymbol :: String -> CurrencySymbol
+mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
+                 . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
+
+-- | List of AssetClass for emulator configuration
+allAssetClasses :: [AssetClass]
+allAssetClasses = [ assetClass
+            (mkCurrencySymbol $ replicate 4 hex )
+            (mkTokenName $ replicate n hex)
+         | hex <- ['a'..'f']
+         , n <- [1..4]
+         ]
+
+walletsWithValue :: [(Wallet,Value)]
+walletsWithValue = [(w, v <>  mconcat
+                    (map (`assetClassValue` 1_000_000) allAssetClasses))
+                   | w <- wallets
+                   ]
+  where
+    v :: Value
+    v = lovelaceValueOf 100_000_000
+
+-- | emulator configuration
+emConfig :: EmulatorConfig
+emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
+
+-- | Config the checkOptions to use the emulator config from the Offchain traces
+options :: CheckOptions
+options = defaultCheckOptions & emulatorConfig .~ emConfig

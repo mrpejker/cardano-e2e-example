@@ -180,9 +180,11 @@ test-suite escrow-tests
   ------------------------
   build-depends:
       base ^>=4.14.1.0
+    , utf8-string
     , containers
     , data-default
     , escrow
+    , hex-text
     , QuickCheck
     , text
     , lens <= 4.19.2
