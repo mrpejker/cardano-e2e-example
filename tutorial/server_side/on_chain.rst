@@ -7,16 +7,16 @@ receiver, containing in the datum all the necessary information. In order to che
 that it's valid, a `control token` is minted in the same transaction,
 so a validation can be performed by running the corresponding minting policy.
 For canceling or resolving, it's necessary to spend the script-utxo, which must
-contain the control token, and the validator performs all the necessary checks.
+contain the control token, so the validator performs all the necessary checks.
 
 In the :code:`OnChain` module, we find the Haskell implementation of the 
-validator and the minting policy, among other helper functions. In the :code:`Validator`
-module we define mostly boilerplate code for compiling to Plutus.
+validator and the minting policy, as boolean functions.
+In the :code:`Validator` module we define mostly boilerplate code for compiling to Plutus.
 
-OnChain
--------
+OnChain Module
+--------------
 
-Because all the functions on this module needs to be compiled to Plutus we must
+Because all the functions on this module will be compiled to Plutus we must
 use the *Plutus Prelude* instead of the *Haskell Prelude*. To avoid confusion about
 which Prelude we are using, we add the ``NoImplicitPrelude`` pragma at the top of
 the module. As a result we don't have any of the common types and functions in this
@@ -34,8 +34,8 @@ Minting Policy
 
 Starting an escrow involves minting a *control token*, thus running a validation
 implemented on its minting policy. We use this
-fact to ensure some good starting properties on the script utxo we are creating.
-For that, we have to distinct if we are minting or burning by checking 
+fact to ensure some good starting properties on the script-utxo we are creating.
+For that, we have to distinguish if we are minting or burning by checking 
 information inside the script context: if the amount of minted tokens is -1 we
 are burning, if it's 1 we are minting. If the transaction mints a different amount
 of tokens, the minting policy fails and so the start operation.
@@ -118,7 +118,7 @@ a circularity problem: in the control token minting policy we need the script
 address for ensuring that the token is paid to the corresponding utxo. We solved
 this issue by including in the datum the control token asset class, as we showed before.
 
-The validator will run when the script uxto is spent, and it corresponds to `Cancel` and
+The validator will run when the script-uxto is spent, and it corresponds to `Cancel` and
 `Resolve` operations, which are the only two constructors of :code:`EscrowRedeemer` type. In both
 cases we have to check that the control token is burned.
 
@@ -147,7 +147,7 @@ cases we have to check that the control token is burned.
        .....
 
 
-We modularize the validator implementing two separated functions for each case:
+We modularize the validator implementing functions for each case:
 :code:`cancelValidator` and :code:`resolveValidator`. For implementing the
 first one we need the Escrow Info (which is inside the datum) and the signer
 (which is extracted from the Script Context). For implementing the second one
@@ -171,7 +171,7 @@ the information in the datum coincides with the transaction signer.
 
 A more interesting validation is required for resolving an escrow. We check that
 the signer is the receiver, and
-the corresonding payment is paid to the sender.
+the corresonding payment goes to the sender.
 
 
 .. code:: haskell
@@ -198,19 +198,15 @@ this transaction, and the validator parameter for knowing the receiver address.
 Notice that we use the `business logic` function :code:`valueToSender` for
 computing the (minimum) value that should be paid.
 
-Validator
----------
+Validator Module
+----------------
 
-The content of this module is mainly boilerplate. It corresponds to the compilation
+The content of the :code:`Validator` module is mainly boilerplate. It corresponds to the compilation
 of the validator and minting policy, from Haskell to Plutus.
 
+For compiling the minting policy, we need to convert the boolean function
+:code:`mkControlTokenMintingPolicy` into a compiled :code:`MintingPolicy`.
 
-
-In this module, we implement the compilation to Plutus of the on-chain validator
-and the minting policy. In general because we are using a typed approach, on both the
-validator and the minting policy, we have to go from a typed to an untyped setting,
-compile to Plutus, and apply the *lifted* parameters. Luckily it's mostly repetitive
-boilerplate, and for that reason, we are not going to get into too much details.
 
 .. code:: haskell
 
@@ -221,18 +217,24 @@ boilerplate, and for that reason, we are not going to get into too much details.
        `applyCode`
        liftCode saddr
 
-The ``compile`` function will translate the Haskell minting policy implementation,
-to which we are going to apply the script address, and finally, wrap everything
-into the ``MintingPolicy`` type with ``mkMintingPolicyScript``.
+Whithout going into details, :code:`controlTokenMP` compiles our boolean function
+to Plutus, obtaining a :code:`MintingPolicy`. For that, it first generates an `untyped` version
+of our function, and then compiles it. Given that :code:`mkControlTokenMintingPolicy`
+receives a parameter, it must be compiled too, by calling :code:`liftCode` function.
+
+Obtaining the resulting currency symbol is straightforward
 
 .. code:: haskell
 
    controlTokenCurrency :: ScriptAddress -> CurrencySymbol
    controlTokenCurrency = scriptCurrencySymbol . controlTokenMP
 
-Given a ``MintingPolicy`` we can easily compute its currency symbol. Compiling
-the (typed) on-chain validator involves more or less the same "steps".
 
+Let's now review how to compile the main validator. It's slightly different
+to the minting policy. First we need to indicate which types correspond to
+Datum and Redeemer, by defining an empty data type and then instantiating
+:code:`ValidatorTypes` typeclass
+   
 .. code:: haskell
 
    data Escrowing
@@ -240,8 +242,8 @@ the (typed) on-chain validator involves more or less the same "steps".
        type instance DatumType    Escrowing = EscrowDatum
        type instance RedeemerType Escrowing = EscrowRedeemer
 
-We define an empty data type that will help us annotate the typed validator, so
-we can type the datum and redeemer types.
+Then we compile our boolean function :code:`mkEscrowValidator` to
+a :code:`TypedValidator`
 
 .. code:: haskell
 
@@ -254,10 +256,8 @@ we can type the datum and redeemer types.
        )
        $$(compile [|| mkUntypedValidator @EscrowDatum @EscrowRedeemer ||])
 
-Similarly to the minting policy, we compile the Haskell implementation, and
-apply the corresponding parameter. One key difference is that building a ``TypedValidator``
-involves passing the compiled typed on-chain validator and the compiled translator
-from the typed to the untyped validator.
+Finally we obtain the :code:`Validator` and :code:`ScriptAddress`, that are needed
+in the off-chain code for building the transactions
 
 .. code:: haskell
 
@@ -267,5 +267,3 @@ from the typed to the untyped validator.
    escrowAddress :: ReceiverAddress -> ScriptAddress
    escrowAddress = mkValidatorAddress . escrowValidator
 
-Once we have a ``TypedValidator``, we can get the proper validator and compute
-the address.
