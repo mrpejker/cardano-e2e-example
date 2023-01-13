@@ -2,7 +2,7 @@
 
 {-|
 Module      : Escrow.OnChain
-Description : OnChain validator for the Escrow contract.
+Description : OnChain validator for the Escrow dApp.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
 Maintainer  : opensource@joinplank.com
 Stability   : develop
@@ -114,12 +114,12 @@ resolveValidator info ei raddr signer =
 
 {- | Escrow Control Token minting policy
 
-The token minting policy is parametrized by the contract address and has the
+The token minting policy is parametrized by the script address and has the
 following checks:
 
 On minting:
 - Only one token with the correct token name is minted
-- The token is paid to the contract address
+- The token is paid to the script address
 - The sender’s address is signing the transaction
 - The token being minted is the correct control token
 - The amount of tokens that the receiver wants to offer is more than 0
