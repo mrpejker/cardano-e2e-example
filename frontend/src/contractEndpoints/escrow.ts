@@ -30,56 +30,69 @@ export type ObsState = UtxoEscrowInfo[]
 
 export class EscrowEndpoints {
   PABClient: typeof import("cardano-pab-client");
-  contractState: ObsState = undefined
-  endpoints: ContractEndpoints = undefined
-  wallet: CIP30WalletWrapper = undefined
-  txBudgetApi: TxBudgetAPI = undefined
-  balancer: Balancer = undefined
 
-  constructor(
-    contractState: ObsState,
+  endpoints: ContractEndpoints;
+
+  wallet: CIP30WalletWrapper;
+
+  txBudgetApi: TxBudgetAPI;
+
+  balancer: Balancer;
+
+  private constructor(
+    PABClient: typeof import("cardano-pab-client"),
+    endpoints: ContractEndpoints,
+    wallet: CIP30WalletWrapper,
+    txBudgetApi: TxBudgetAPI,
+    balancer: Balancer,
   ) {
-    this.contractState = contractState
+    this.PABClient = PABClient;
+    this.endpoints = endpoints;
+    this.wallet = wallet;
+    this.txBudgetApi = txBudgetApi;
+    this.balancer = balancer;
   }
 
-  public async connect(walletName: "nami" | "eternl"): Promise<EscrowEndpoints | null> {
+  public static async connect(walletName: "nami" | "eternl"): Promise<EscrowEndpoints | null> {
     // load PAB Client just once!
-    this.PABClient = await import("cardano-pab-client");
+    const PABClient = await import("cardano-pab-client");
 
     const { Balancer, CIP30WalletWrapper, ContractEndpoints, TxBudgetAPI,
       getWalletInitialAPI, getProtocolParamsFromBlockfrost,
-    } = this.PABClient;
+    } = PABClient;
 
     const walletInitialAPI = getWalletInitialAPI(window, walletName);
     // this will ask the user to give to this dApp access to their wallet methods
     const walletInjectedFromBrowser = await walletInitialAPI.enable();
 
     // Initialize CIP30 wallet wrapper
-    this.wallet = await CIP30WalletWrapper.init(walletInjectedFromBrowser);
+    const wallet = await CIP30WalletWrapper.init(walletInjectedFromBrowser);
 
-    const walletAddress = await this.wallet.getWalletAddress();
+    const walletAddress = await wallet.getWalletAddress();
     console.log(`Connected Address: ${JSON.stringify(walletAddress)}`);
 
+    const { pabUrl, budgetUrl, blockfrostUrl, blockfrostApiKey } = getEnvs();
+
     // Initialize ContractEndpoints
-    this.endpoints = await ContractEndpoints.connect(
-      process.env.REACT_APP_PAB_URL,
+    const endpoints = await ContractEndpoints.connect(
+      pabUrl,
       { contents: walletAddress },
     );
 
     // Initialize tx budget service API
-    this.txBudgetApi = new TxBudgetAPI({
-      baseUrl: process.env.REACT_APP_BUDGET_URL,
+    const txBudgetApi = new TxBudgetAPI({
+      baseUrl: budgetUrl,
       timeout: 10000,
     })
 
     // Initialize Balancer
     const protocolParams = await getProtocolParamsFromBlockfrost(
-      process.env.REACT_APP_BLOCKFROST_URL,
-      process.env.REACT_APP_BLOCKFROST_API_KEY,
+      blockfrostUrl,
+      blockfrostApiKey,
     );
-    this.balancer = await Balancer.init(protocolParams);
+    const balancer = await Balancer.init(protocolParams);
 
-    return this;
+    return new EscrowEndpoints(PABClient, endpoints, wallet, txBudgetApi, balancer);
   }
 
   public async start(sp: StartParams) {
@@ -128,13 +141,11 @@ export class EscrowEndpoints {
     alert(`Start suceeded. Tx hash: ${txHash}`);
   }
 
-  public async reload(): Promise<ObsState> {
+  public async reload(): Promise<ObsState | null> {
     const { failed } = this.PABClient;
     const response = await this.endpoints.reload({ tag: "reload", contents: [] })
     if (failed(response)) {
-      console.log(`Reload Failed. Error: ${response.error}`);
-      alert(`Reload Failed. Error: ${response.error}`);
-      return;
+      return null;
     }
     const escrows = response.value as PABObservableState;
     console.log(escrows)
@@ -252,4 +263,32 @@ async function parsePABObservableState(escrows: PABObservableState): Promise<Obs
       },
     })
   )
+}
+
+/**
+ * Gets and returns the needed .env variables. Throws an error if someone of them is not defined.
+ */
+function getEnvs(): {
+  pabUrl: string,
+  budgetUrl: string,
+  blockfrostUrl: string,
+  blockfrostApiKey: string,
+} {
+  const pabUrl = process.env.REACT_APP_PAB_URL;
+  if (!pabUrl) {
+    throw new Error("REACT_APP_PAB_URL .env variable needed but not defined!");
+  }
+  const budgetUrl = process.env.REACT_APP_BUDGET_URL;
+  if (!budgetUrl) {
+    throw new Error("REACT_APP_BUDGET_URL .env variable needed but not defined!");
+  }
+  const blockfrostUrl = process.env.REACT_APP_BLOCKFROST_URL;
+  if (!blockfrostUrl) {
+    throw new Error("REACT_APP_BLOCKFROST_URL .env variable needed but not defined!");
+  }
+  const blockfrostApiKey = process.env.REACT_APP_BLOCKFROST_API_KEY;
+  if (!blockfrostApiKey) {
+    throw new Error("REACT_APP_BLOCKFROST_API_KEY .env variable needed but not defined!");
+  }
+  return { pabUrl, budgetUrl, blockfrostUrl, blockfrostApiKey };
 }

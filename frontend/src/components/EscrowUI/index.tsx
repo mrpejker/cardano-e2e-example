@@ -6,23 +6,19 @@ import { EscrowEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints
 import { mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
 import type { TxOutRef } from "cardano-pab-client";
 
-// Main component for the EscrowUI. It includes all the other components.
 function EscrowUI() {
   const [currentContractState, setCurrentContractState] = useState<ObsState>([])
-  const [contractEndpoints, setContractEndpoints] = useState<EscrowEndpoints>(new EscrowEndpoints([]));
+  const [contractEndpoints, setContractEndpoints] = useState<EscrowEndpoints | undefined>();
   const [isConnected, setIsConnected] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
-  const handleShowStart = () => setShowStartModal(true);
-  const handleShowCancel = () => setShowCancelModal(true);
   return (
     <Container>
       <Navbar sticky="top" bg="light">
         <Navbar.Brand><h1>Exchange Escrow</h1></Navbar.Brand>
         <Connect
           setCurrentContractState={setCurrentContractState}
-          contractEndpoints={contractEndpoints}
           setIsConnected={setIsConnected}
           setContractEndpoints={setContractEndpoints}
         />
@@ -32,7 +28,7 @@ function EscrowUI() {
         style={{ marginRight: "20px" }}
         variant="primary"
         size="lg"
-        onClick={handleShowStart}
+        onClick={() => setShowStartModal(true)}
         disabled={!isConnected}
       >
         Start new Escrow
@@ -42,12 +38,11 @@ function EscrowUI() {
         setShowStartModal={setShowStartModal}
         contractEndpoints={contractEndpoints}
       />
-
       <Button
         style={{ marginRight: "20px" }}
         variant="primary"
         size="lg"
-        onClick={handleShowCancel}
+        onClick={() => setShowCancelModal(true)}
         disabled={!isConnected}
       >
         Cancel an Escrow
@@ -56,7 +51,7 @@ function EscrowUI() {
         showCancelModal={showCancelModal}
         setShowCancelModal={setShowCancelModal}
         contractEndpoints={contractEndpoints}
-      ></Cancel>
+      />
       <br></br>
       <br></br>
       <h2> Escrows to Resolve </h2>
@@ -70,19 +65,18 @@ function EscrowUI() {
         isConnected={isConnected}
         setCurrentContractState={setCurrentContractState}
       />
-
     </Container>
-  )
+  );
 }
 
 type ConnectProps = {
   setCurrentContractState: React.Dispatch<React.SetStateAction<ObsState>>
-  contractEndpoints: EscrowEndpoints
   setIsConnected: React.Dispatch<React.SetStateAction<boolean>>
-  setContractEndpoints: React.Dispatch<React.SetStateAction<EscrowEndpoints>>
+  setContractEndpoints: React.Dispatch<React.SetStateAction<EscrowEndpoints | undefined>>
 };
+
 // Connect component that handles the wallet and endpoint connection.
-const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
+const Connect = ({ setCurrentContractState, setIsConnected, setContractEndpoints }: ConnectProps) => {
   const [selectedWallet, setSelectedWallet] = useState<"eternl" | "nami">("eternl");
   return (
     <Navbar.Collapse className="justify-content-end">
@@ -102,15 +96,25 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
           <option value="eternl">Eternl</option>
         </select>
         <ButtonWithSpinner
-            onClick={ async () => {
+            onClick={async () => {
               console.log("Connecting")
-              const ce = await contractEndpoints.connect(selectedWallet)
-              console.log("Connected")
-              setContractEndpoints(ce)
-              setIsConnected(true)
-              const obsState = await ce.reload()
-              setCurrentContractState(obsState)}
-            }
+              const ce = await EscrowEndpoints.connect(selectedWallet)
+              if (!ce) {
+                console.log(`Connect failed.`);
+                alert(`Connect failed.`);
+              } else {
+                console.log("Connected")
+                setContractEndpoints(ce);
+                setIsConnected(true);
+                const obsState = await ce.reload();
+                if (!obsState) {
+                  console.log(`Reload failed.`);
+                  alert(`Reload failed.`);
+                } else {
+                  setCurrentContractState(obsState);
+                }
+              }
+            }}
             isDisabled={false}
             text={"Connect Wallet"}
         />
@@ -119,14 +123,28 @@ const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, s
   )
 }
 
+type ReloadProps = {
+  contractEndpoints: EscrowEndpoints | undefined
+  isConnected: boolean
+  setCurrentContractState: React.Dispatch<React.SetStateAction<ObsState>>
+};
+
 // Reload component that reloads the contract state
-const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
+const Reload = ({ contractEndpoints, isConnected, setCurrentContractState }: ReloadProps) => {
   return (
     <ButtonWithSpinner
       onClick={async () => {
+        if (!contractEndpoints) {
+          throw new Error("contractEndpoints not defined!");
+        }
         console.log("Reloading")
         const obsState = await contractEndpoints.reload()
-        setCurrentContractState(obsState)
+        if (!obsState) {
+          console.log(`Reload failed.`);
+          alert(`Reload failed.`);
+        } else {
+          setCurrentContractState(obsState);
+        }
       }}
       isDisabled={!isConnected}
       text={"Reload"}
@@ -137,12 +155,15 @@ const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
 type StartProps = {
   showStartModal: boolean
   setShowStartModal: React.Dispatch<React.SetStateAction<boolean>>
-  contractEndpoints: EscrowEndpoints
+  contractEndpoints: EscrowEndpoints | undefined
 };
+
 // Component that displays the form for starting a new Escrow.
 const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartProps) => {
-
-  const handleClose = e => {
+  const handleClose = async (e: any) => {
+    if (!contractEndpoints) {
+      throw new Error("contractEndpoints not defined!");
+    }
     setShowStartModal(false)
     e.preventDefault()
     const formData = new FormData(e.target),
@@ -154,10 +175,18 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
       recTN = formData.get("recTokenName") as string,
       recAmount = parseInt(formData.get("recAmount") as string)
 
-    mkStartParams(recAddr, sendCurrency, sendTN, sendAmount, recCurrency,
-      recTN, recAmount)
-      .then(sp => contractEndpoints.start(sp))
+    const startParams = await mkStartParams(
+      recAddr,
+      sendCurrency,
+      sendTN,
+      sendAmount,
+      recCurrency,
+      recTN,
+      recAmount
+    );
+    await contractEndpoints.start(startParams)
   }
+
   return (
     <>
       <Modal show={showStartModal} size="lg">
@@ -269,67 +298,68 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
 type CancelProps = {
   showCancelModal: boolean
   setShowCancelModal: React.Dispatch<React.SetStateAction<boolean>>
-  contractEndpoints: EscrowEndpoints
+  contractEndpoints: EscrowEndpoints | undefined
 };
 
 // Component that displays the form for canceling started escrows.
-const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: CancelProps) => {
-  const handleClose = e => {
+const Cancel = ({ showCancelModal, setShowCancelModal, contractEndpoints }: CancelProps) => {
+  const handleClose = async (e: any) => {
+    if (!contractEndpoints) {
+      throw new Error("contractEndpoints not defined!");
+    }
     setShowCancelModal(false)
     e.preventDefault()
     const formData = new FormData(e.target),
       recAddr = formData.get("recAddr") as string,
       txOutRef = formData.get("txOutRef") as string
 
-    mkCancelParams(recAddr, txOutRef)
-      .then(cp => contractEndpoints.cancel(cp))
+    const cancelParams = await mkCancelParams(recAddr, txOutRef);
+    await contractEndpoints.cancel(cancelParams);
   }
   return (
-    <>
     <Modal show={showCancelModal}>
-        <Modal.Header closeButton onHide={ () => setShowCancelModal(false)}>
-          <Modal.Title>Cancel an Escrow</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleClose}>
-            <Form.Group className="mb-3" controlId="cancelForm">
-              <Form.Label>Receiver Address</Form.Label>
-              <Form.Control
-                name="recAddr"
-                placeholder="Address"
-                autoFocus
-              />
-              <br></br>
-              <Row>
-                <Col>
-                  <Form.Label>TxOutRef</Form.Label>
-                  <Form.Control
-                    name="txOutRef"
-                    type="text"
-                    placeholder="TxOutRef"
-                  />
-                </Col>
-              </Row>
-              <br></br>
-              <Row>
-                <Col></Col>
-                <Col>
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    style={{margin: "10px"}}
-                  >
-                    Cancel Escrow
-                  </Button>
-                </Col>
-                <Col></Col>
-              </Row>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-      </Modal>
-    </>
-  )
+      <Modal.Header closeButton onHide={ () => setShowCancelModal(false)}>
+        <Modal.Title>Cancel an Escrow</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form onSubmit={handleClose}>
+          <Form.Group className="mb-3" controlId="cancelForm">
+            <Form.Label>Receiver Address</Form.Label>
+            <Form.Control
+              name="recAddr"
+              placeholder="Address"
+              autoFocus
+            />
+            <br></br>
+            <Row>
+              <Col>
+                <Form.Label>TxOutRef</Form.Label>
+                <Form.Control
+                  name="txOutRef"
+                  type="text"
+                  placeholder="TxOutRef"
+                />
+              </Col>
+            </Row>
+            <br></br>
+            <Row>
+              <Col></Col>
+              <Col>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  style={{margin: "10px"}}
+                >
+                  Cancel Escrow
+                </Button>
+              </Col>
+              <Col></Col>
+            </Row>
+          </Form.Group>
+        </Form>
+      </Modal.Body>
+    </Modal>
+  );
 }
 
 type ResolveProps = {
@@ -352,47 +382,48 @@ const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
     />
   )
 }
+
 type ContractInformationProps = {
   currentContractState: ObsState
-  contractEndpoints: EscrowEndpoints
+  contractEndpoints: EscrowEndpoints | undefined
 }
+
 // Component that displays the started escrows in a table.
 const ContractInformation = ({ currentContractState, contractEndpoints }: ContractInformationProps) => {
   return (
-    <div
-      style={{
-        textAlign: "center"
-      }}
-    >
-    {<Table striped bordered hover className="align-middle">
-      <thead>
-        <tr>
-          <th>Sender Address</th>
-          <th>Send Amount</th>
-          <th>Send Asset</th>
-          <th>Receive Amount</th>
-          <th>Receive Asset</th>
-          <th>Resolve</th>
-        </tr>
-      </thead>
-      <tbody>
-        {currentContractState.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
-          return <tr key={i}>
-            <td> {escrowInfo.sender.paymentPubKeyHash} </td>
-            <td> {escrowPayment[1]} </td>
-            <td> {escrowPayment[0].tokenName} </td>
-            <td> {escrowInfo.rAmount} </td>
-            <td> {escrowInfo.rAssetClass.tokenName} </td>
-            <td>
-              <Resolve
-                txOutRefToResolve={escrowUtxo}
-                contractEndpoints={contractEndpoints}
-              />
-            </td>
+    <div style={{ textAlign: "center" }}>
+      {<Table striped bordered hover className="align-middle">
+        <thead>
+          <tr>
+            <th>Sender Address</th>
+            <th>Send Amount</th>
+            <th>Send Asset</th>
+            <th>Receive Amount</th>
+            <th>Receive Asset</th>
+            <th>Resolve</th>
           </tr>
-        })}
-      </tbody>
-    </Table>}
+        </thead>
+        <tbody>
+          {currentContractState.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
+            if (!contractEndpoints) {
+              throw new Error("contractEndpoints not defined!");
+            }
+            return <tr key={i}>
+              <td> {escrowInfo.sender.paymentPubKeyHash} </td>
+              <td> {escrowPayment[1]} </td>
+              <td> {escrowPayment[0].tokenName} </td>
+              <td> {escrowInfo.rAmount} </td>
+              <td> {escrowInfo.rAssetClass.tokenName} </td>
+              <td>
+                <Resolve
+                  txOutRefToResolve={escrowUtxo}
+                  contractEndpoints={contractEndpoints}
+                />
+              </td>
+            </tr>
+          })}
+        </tbody>
+      </Table>}
     </div>
   )
 }
@@ -403,7 +434,7 @@ type ButtonWithSpinnerProps = {
   text: string
 }
 
-const ButtonWithSpinner = ({onClick, isDisabled, text}: ButtonWithSpinnerProps) => {
+const ButtonWithSpinner = ({ onClick, isDisabled, text }: ButtonWithSpinnerProps) => {
   const [isSpinning, setIsSpinning] = useState(false);
   return (
     <Button
@@ -415,22 +446,21 @@ const ButtonWithSpinner = ({onClick, isDisabled, text}: ButtonWithSpinnerProps) 
         setIsSpinning(true)
         await onClick()
         setIsSpinning(false)
-        }
-      }
+      }}
     >
-      { isSpinning ?
-          <Spinner
+      {isSpinning
+        ? <Spinner
             as="span"
             animation="border"
             size="sm"
             role="status"
             aria-hidden="true"
             className="mx-2"
-          /> :
-          <div>{text}</div>
-          }
+          />
+        : <div>{text}</div>
+      }
     </Button>
   )
 }
 
-export default EscrowUI
+export default EscrowUI;
