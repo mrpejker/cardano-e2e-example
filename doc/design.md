@@ -74,8 +74,10 @@ The token minting policy is parametrized by the contract address and has the fol
 **Minting:**
 
 - Only one token with the correct token name is minted
-- The sender’s address is signing the transaction
 - The token is paid to the contract address
+- The sender’s address is signing the transaction
+- The token being minted is the correct control token
+- The amount of tokens that the receiver wants to offer is more than 0
 
 **Burning:**
 

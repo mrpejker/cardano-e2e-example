@@ -2,7 +2,7 @@
 
 {-|
 Module      : Escrow.OnChain
-Description : OnChain validator for the Escrow contract.
+Description : OnChain validator for the Escrow dApp.
 Copyright   : (c) 2022 IDYIA LLC dba Plank
 Maintainer  : opensource@joinplank.com
 Stability   : develop
@@ -19,14 +19,14 @@ where
 
 -- IOG imports
 import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
-                              , PubKeyHash
+                              , PubKeyHash, TokenName
                               )
-import Plutus.V1.Ledger.Value ( CurrencySymbol, TokenName, Value
+import Plutus.V1.Ledger.Value ( CurrencySymbol, Value
                               , assetClass, assetClassValueOf, flattenValue
                               , leq
                               )
 import PlutusTx.Prelude       ( Integer, Bool
-                              , ($), (&&), (||), (==)
+                              , ($), (&&), (||), (==), (>), (<>)
                               , traceIfFalse
                               )
 
@@ -69,16 +69,17 @@ mkEscrowValidator raddr EscrowDatum{..} r ctx =
     traceIfFalse "controlToken was not burned"
                  (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
-    signer :: PubKeyHash
-    signer = getSingleton $ txInfoSignatories info
-
     mintedCS :: CurrencySymbol
     mintedTN :: TokenName
     (mintedCS, mintedTN, mintedA) = getSingleton $
                                     flattenValue $ txInfoMint info
+
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
 
 {- | Checks:
  - The address that is trying to cancel the escrow is the same as the Sender’s
@@ -113,13 +114,15 @@ resolveValidator info ei raddr signer =
 
 {- | Escrow Control Token minting policy
 
-The token minting policy is parametrized by the contract address and has the
+The token minting policy is parametrized by the script address and has the
 following checks:
 
 On minting:
- - Only one token with the correct token name is minted.
- - The sender’s address is signing the transaction.
- - The token is paid to the contract address.
+- Only one token with the correct token name is minted
+- The token is paid to the script address
+- The sender’s address is signing the transaction
+- The token being minted is the correct control token
+- The amount of tokens that the receiver wants to offer is more than 0
 
 On Burning:
  - One token is being burned.
@@ -127,24 +130,21 @@ On Burning:
 {-# INLINABLE mkControlTokenMintingPolicy #-}
 mkControlTokenMintingPolicy :: ScriptAddress -> () -> ScriptContext -> Bool
 mkControlTokenMintingPolicy addr _ ctx =
-    traceIfFalse "Burning less or more than one control token" (mintedA == -1)
+    traceIfFalse "Burning less or more than one token" (mintedA == -1)
     ||
-    (   traceIfFalse "Minting more than one control token"
+    (   traceIfFalse "Minting more than one token"
                      (mintedA == 1)
-     && traceIfFalse "The control token was not paid to the contract address"
+     && traceIfFalse "The control token was not paid to the script address"
                      controlTokenPaid
-     && traceIfFalse "The signer is not the sender on the escrow"
-                     correctSigner
+     && traceIfFalse "Wrong information in Datum"
+                     correctDatum
     )
   where
-    info :: TxInfo
-    info = scriptContextTxInfo ctx
-
-    signer :: PubKeyHash
-    signer = getSingleton $ txInfoSignatories info
-
-    correctSigner :: Bool
-    correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+    mintedCS :: CurrencySymbol
+    mintedTN :: TokenName
+    mintedA :: Integer
+    (mintedCS, mintedTN, mintedA) = getSingleton $
+                                    flattenValue $ txInfoMint info
 
     controlTokenPaid :: Bool
     controlTokenPaid =
@@ -152,14 +152,37 @@ mkControlTokenMintingPolicy addr _ ctx =
         ==
         mintedA
 
+    correctDatum :: Bool
+    correctDatum =
+        traceIfFalse
+          "Sender address in Datum doesn't coincide with transaction signer"
+          correctSigner
+     && traceIfFalse
+          ("Control token Asset Class in Datum doesn't coincide with the" <>
+          "minted token")
+          correctControlAssetClass
+     && traceIfFalse
+          "Amount of tokens to pay to Receiver in Datum is less than 0"
+          correctAmount
+
+    correctSigner :: Bool
+    correctSigner = signerIsSender signer (sender $ eInfo escrowDatum)
+
+    correctControlAssetClass :: Bool
+    correctControlAssetClass =
+      eAssetClass escrowDatum == assetClass mintedCS mintedTN
+
+    correctAmount :: Bool
+    correctAmount = rAmount (eInfo escrowDatum) > 0
+
     escrowUtxo :: TxOut
     escrowUtxo = getSingleton $ outputsAt addr info
 
     escrowDatum :: EscrowDatum
     escrowDatum = fromJust $ getTxOutDatum escrowUtxo info
 
-    mintedCS :: CurrencySymbol
-    mintedTN :: TokenName
-    mintedA :: Integer
-    (mintedCS, mintedTN, mintedA) = getSingleton $
-                                    flattenValue $ txInfoMint info
+    signer :: PubKeyHash
+    signer = getSingleton $ txInfoSignatories info
+
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
