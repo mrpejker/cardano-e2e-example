@@ -20,7 +20,7 @@ It's important to note that this tutorial doesn't pretend to cover
 how to design complex solutions on the eUTxO model. The example is very simple and some
 design decisions are related to the specific purpose of including common features of
 any interesting dApp: parameterized validators, minting policies, how to read and write
-datums, among others. 
+datums, among others.
 
 It's assumed that the reader is familiar with the eUTxO model, Haskell
 programming language and Plutus validators (for example, they already completed
@@ -34,24 +34,18 @@ of the Haskell implementation, introducing the proposed modules design, going th
 each component, and explaining the main implementation aspects.
 Finally, we review the *Client side* by introducing the PAB Client library and how to use it.
 
-
-
-Preliminaries
-==============
-
 .. toctree::
    :maxdepth: 2
+   :caption: Preliminaries
    :numbered:
 
    preliminaries/the_example.rst
    preliminaries/dapp_architecture.rst
    preliminaries/setup_and_run.rst
 
-Server side
-===========
-
 .. toctree::
    :maxdepth: 2
+   :caption: Server Side
    :numbered:
 
    server_side/modules_design.rst
@@ -61,10 +55,9 @@ Server side
    server_side/pab.rst
    server_side/testing.rst
 
-Client side
-===========
 .. toctree::
    :maxdepth: 2
+   :caption: Client Side
    :numbered:
 
    client_side/1_modules_design.rst
