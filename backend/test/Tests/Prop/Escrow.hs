@@ -231,8 +231,8 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
-    monitoring _ (Start _ _ (ac,_) _) =
-        tabulate "Starting escrow" [show ac]
+    monitoring _ (Start sw _ _ _) =
+        tabulate "Starting escrow" [show sw]
     monitoring _ (Resolve rw _) =
         tabulate "Reslving escrow" [show rw]
     monitoring _ (Cancel rw _) =
