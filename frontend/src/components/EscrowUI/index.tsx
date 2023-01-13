@@ -2,14 +2,14 @@ import React, { useState } from "react"
 import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner } from "react-bootstrap";
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { UserEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
+import { EscrowEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
 import { mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
 import type { TxOutRef } from "cardano-pab-client";
 
 // Main component for the EscrowUI. It includes all the other components.
 function EscrowUI() {
   const [currentContractState, setCurrentContractState] = useState<ObsState>([])
-  const [contractEndpoints, setContractEndpoints] = useState<UserEndpoints>(new UserEndpoints([]));
+  const [contractEndpoints, setContractEndpoints] = useState<EscrowEndpoints>(new EscrowEndpoints([]));
   const [isConnected, setIsConnected] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -77,9 +77,9 @@ function EscrowUI() {
 
 type ConnectProps = {
   setCurrentContractState: React.Dispatch<React.SetStateAction<ObsState>>
-  contractEndpoints: UserEndpoints
+  contractEndpoints: EscrowEndpoints
   setIsConnected: React.Dispatch<React.SetStateAction<boolean>>
-  setContractEndpoints: React.Dispatch<React.SetStateAction<UserEndpoints>>
+  setContractEndpoints: React.Dispatch<React.SetStateAction<EscrowEndpoints>>
 };
 // Connect component that handles the wallet and endpoint connection.
 const Connect = ({ setCurrentContractState, contractEndpoints, setIsConnected, setContractEndpoints }: ConnectProps) => {
@@ -137,7 +137,7 @@ const Reload = ({contractEndpoints, isConnected, setCurrentContractState}) => {
 type StartProps = {
   showStartModal: boolean
   setShowStartModal: React.Dispatch<React.SetStateAction<boolean>>
-  contractEndpoints: UserEndpoints
+  contractEndpoints: EscrowEndpoints
 };
 // Component that displays the form for starting a new Escrow.
 const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartProps) => {
@@ -269,7 +269,7 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
 type CancelProps = {
   showCancelModal: boolean
   setShowCancelModal: React.Dispatch<React.SetStateAction<boolean>>
-  contractEndpoints: UserEndpoints
+  contractEndpoints: EscrowEndpoints
 };
 
 // Component that displays the form for canceling started escrows.
@@ -334,7 +334,7 @@ const Cancel = ({showCancelModal, setShowCancelModal, contractEndpoints}: Cancel
 
 type ResolveProps = {
   txOutRefToResolve: TxOutRef
-  contractEndpoints: UserEndpoints
+  contractEndpoints: EscrowEndpoints
 }
 
 // Component that handles the resolving of started escrows.
@@ -354,7 +354,7 @@ const Resolve = ({ txOutRefToResolve, contractEndpoints }: ResolveProps) => {
 }
 type ContractInformationProps = {
   currentContractState: ObsState
-  contractEndpoints: UserEndpoints
+  contractEndpoints: EscrowEndpoints
 }
 // Component that displays the started escrows in a table.
 const ContractInformation = ({ currentContractState, contractEndpoints }: ContractInformationProps) => {
