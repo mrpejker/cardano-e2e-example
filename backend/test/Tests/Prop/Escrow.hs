@@ -73,40 +73,6 @@ import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
 import Tests.Utils                ( wallets, mockWAddress )
 
-mkTokenName :: String -> TokenName
-mkTokenName = tokenName . fromString
-
--- | Builds a CurrencySymbol if it takes only 4 characters on Hexa
-mkCurrencySymbol :: String -> CurrencySymbol
-mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
-                 . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
-
--- | List of AssetClass for emulator configuration
-allAssetClasses :: [AssetClass]
-allAssetClasses = [ assetClass
-            (mkCurrencySymbol $ replicate 4 hex )
-            (mkTokenName $ replicate n hex)
-         | hex <- ['a'..'z']
-         , n <- [1..4]
-         ]
-
-walletsWithValue :: [(Wallet,Value)]
-walletsWithValue = [(w, v <>  mconcat
-                    (map (`assetClassValue` 1_000_000) allAssetClasses))
-                   | w <- wallets
-                   ]
-  where
-    v :: Value
-    v = lovelaceValueOf 100_000_000
-
--- | emulator configuration
-emConfig :: EmulatorConfig
-emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
-
--- | Config the checkOptions to use the emulator config from the Offchain traces
-options :: CheckOptions
-options = defaultCheckOptions & emulatorConfig .~ emConfig
-
 {- | The representation of the EscrowInfo plus the Value contained in script
      Utxo.
 -}
@@ -125,6 +91,12 @@ newtype EscrowModel = EscrowModel
     deriving (Show, Eq, Data)
 
 makeLenses 'EscrowModel
+
+propEscrow :: Actions EscrowModel -> Property
+propEscrow = propRunActionsWithOptions
+             (options & increaseMaxCollateral)
+             defaultCoverageOptions
+             (\ _ -> pure True)
 
 shrinkWallet :: Wallet -> [Wallet]
 shrinkWallet w = [w' | w' <- wallets, w' < w]
@@ -259,8 +231,8 @@ instance ContractModel EscrowModel where
     shrinkAction _ (Cancel w ti) =
            [Cancel w' ti | w' <- shrinkWallet w]
 
-    monitoring _ (Start _ _ (ac,_) _) =
-        tabulate "Starting escrow" [show ac]
+    monitoring _ (Start sw _ _ _) =
+        tabulate "Starting escrow" [show sw]
     monitoring _ (Resolve rw _) =
         tabulate "Reslving escrow" [show rw]
     monitoring _ (Cancel rw _) =
@@ -279,12 +251,6 @@ findEscrowUtxo TransferInfo{..} =
 
     sendA :: UtxoEscrowInfo -> Integer
     sendA = snd . escrowPayment
-
-propEscrow :: Actions EscrowModel -> Property
-propEscrow = propRunActionsWithOptions
-             (options & increaseMaxCollateral)
-             defaultCoverageOptions
-             (\ _ -> pure True)
 
 {- increasing max amount of collateral inputs,
    otherwise property tests fail due to tooManyCollateralInputs
@@ -316,3 +282,37 @@ gen2Tokens = do
     p1 <- genPayment
     p2 <- genPayment
     return ((ac1, p1), (ac2, p2))
+
+mkTokenName :: String -> TokenName
+mkTokenName = tokenName . fromString
+
+-- | Builds a CurrencySymbol if it takes only 4 characters on Hexa
+mkCurrencySymbol :: String -> CurrencySymbol
+mkCurrencySymbol = currencySymbol . fromJust . decodeHex . pack
+                 . ("246ea4f1fd944bc8b0957050a31ab0487016be233725c9f931b1" ++)
+
+-- | List of AssetClass for emulator configuration
+allAssetClasses :: [AssetClass]
+allAssetClasses = [ assetClass
+            (mkCurrencySymbol $ replicate 4 hex )
+            (mkTokenName $ replicate n hex)
+         | hex <- ['a'..'f']
+         , n <- [1..4]
+         ]
+
+walletsWithValue :: [(Wallet,Value)]
+walletsWithValue = [(w, v <>  mconcat
+                    (map (`assetClassValue` 1_000_000) allAssetClasses))
+                   | w <- wallets
+                   ]
+  where
+    v :: Value
+    v = lovelaceValueOf 100_000_000
+
+-- | emulator configuration
+emConfig :: EmulatorConfig
+emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
+
+-- | Config the checkOptions to use the emulator config from the Offchain traces
+options :: CheckOptions
+options = defaultCheckOptions & emulatorConfig .~ emConfig
