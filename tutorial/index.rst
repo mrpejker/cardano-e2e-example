@@ -34,22 +34,18 @@ of the Haskell implementation, introducing the proposed modules design, going th
 each component, and explaining the main implementation aspects.
 Finally, we review the *Client side* by introducing the PAB Client library and how to use it.
 
-Preliminaries
-==============
-
 .. toctree::
    :maxdepth: 2
+   :caption: Preliminaries
    :numbered:
 
    preliminaries/the_example.rst
    preliminaries/dapp_architecture.rst
    preliminaries/setup_and_run.rst
 
-Server side
-===========
-
 .. toctree::
    :maxdepth: 2
+   :caption: Server Side
    :numbered:
 
    server_side/modules_design.rst
@@ -59,10 +55,9 @@ Server side
    server_side/pab.rst
    server_side/testing.rst
 
-Client side
-===========
 .. toctree::
    :maxdepth: 2
+   :caption: Client Side
    :numbered:
 
    client_side/1_modules_design.rst
