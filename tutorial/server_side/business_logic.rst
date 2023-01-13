@@ -91,8 +91,6 @@ logic is implemented in the Business module. Nevertheless, even simple, this exa
 has some pieces of code which are critical and can be shared for building and validating
 the transactions. 
 
-.. _business_logic-types:
-
 Types
 -----
 
