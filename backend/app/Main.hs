@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
-
 {-|
 Module      : Main
 Description : Main function to run the PAB.

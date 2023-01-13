@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE DerivingStrategies  #-}
-
 {-|
 Module      : Handlers
 Description : Handlers for PAB connection.
