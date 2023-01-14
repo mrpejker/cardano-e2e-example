@@ -1,0 +1,14 @@
+# git
+.git
+.gitignore
+.github
+
+# docker
+Dockerfile
+.dockerignore
+
+# cabal
+dist-newstyle
+
+# project
+test
