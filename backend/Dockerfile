@@ -30,3 +30,19 @@ COPY . /build
 RUN nix-shell --run "cd /build && cabal build --dependencies-only escrow-pab"
 
 RUN nix-shell --run "cd /build && cabal build escrow-pab"
+
+RUN mkdir -p /build/artifacts
+
+RUN nix-shell --run "cd /build && cabal list-bin escrow-pab | xargs cp -t /build/artifacts/"
+
+WORKDIR /app
+
+EXPOSE 9080
+
+RUN cp /build/artifacts/escrow-pab /app/escrow-pab
+
+COPY /config /app/config
+
+RUN /app/escrow-pab --config ./config/pab-config-preprod.yaml migrate
+
+CMD ["./escrow-pab", "--config", "./config/pab-config-preprod.yaml", "webserver"]
