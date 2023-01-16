@@ -105,8 +105,6 @@ of token `B` to Alice.
 
 ## Other considerations
 
-- The Simple Escrow dApp will accept any non-ADA cardano native tokens. ADA will
-be excluded.
 - When a user starts an escrow, a min amount of ADA (min-ADA) is paid to the script.
 That amount of ADA is paid back when the escrow is canceled.
 When the escrow is resolved, the receiver will get the sender’s payment plus
