@@ -38,7 +38,8 @@ In this transaction, a user locks the tokens they want to exchange and specifies
 
 ![startEscrow diagram](img/startEscrow.png)
 
-- If the token A is **ADA**, the initial amount of Ada will be `N + K1`.
+- If the token A is **ADA**, the initial amount of **ADA** of the Sender's input value will be `N + K1`. <br>
+The Script's output will have `minAda + k1` amount of **ADA**
 
 ### **Cancel**
 
@@ -46,7 +47,8 @@ The user can cancel the escrow and receive the locked tokens back. The control T
 
 ![cancelEscrow diagram](img/cancelEscrow.png)
 
-- Similar to the start operation, if the token A is **ADA**, the amount of Ada in the Sender's Wallet input will be `N + K1` and in the output will be: `N + minAda + K1 + k1` **ADA**.
+- If the token A is **ADA**, the amount of Ada in the Sender's Wallet input will be `N + K1` and in the output will be `N + minAda + K1 + k1` **ADA**. <br>
+The amount of **ADA** blocked in the Script's input is `minAda + K1`
 
 ### **Resolve**
 
@@ -54,8 +56,10 @@ The other user pays `k2` Token `B`, closing the script and burning the control t
 
 ![resolveEscrow diagram](img/resolveEscrow.png)
 
-- If the token A is **ADA**, the script input's value will be `minAda + k1` **ADA** and the amount of **ADA** on the Receiver output's value will be `N + K1 + k1`
-- In case of the token B is **ADA**, the initial amount of Adas in the Receiver's input will be `N + K2` and the output's value of the Sender's Wallet will be `minAda + k2` **ADA**. The output's value of the Receiver's Wallet will be `N + K2 - k2` **ADA**.
+- If the token A is **ADA**, the Script's input value will be `minAda + k1` **ADA**<br>
+The Receiver's input value will have `N + K1` **ADA** and the amount of **ADA** on the Receiver's output value will be `N + K1 + k1`. <br>
+- In case of the token B is **ADA**, the initial amount of **ADA** in the Receiver's input will be `N + K2` and the output value of the Receiver's Wallet will be `N + K2 - k2` **ADA**. <br>
+The output value of the Sender's Wallet will have `minAda + k2` **ADA**.
 
 ## Validator Scripts
 
