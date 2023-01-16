@@ -23,7 +23,7 @@ export type EscrowInfo = {
 export type UtxoEscrowInfo = {
   escrowUtxo: TxOutRef
   escrowInfo: EscrowInfo
-  escrowPayment: [AssetClass, Number]
+  escrowPayment: [AssetClass, number]
 }
 
 export type ObsState = UtxoEscrowInfo[]
@@ -95,7 +95,7 @@ export class EscrowEndpoints {
     return new EscrowEndpoints(PABClient, endpoints, wallet, txBudgetApi, balancer);
   }
 
-  public async start(sp: StartParams) {
+  public async start(sp: StartParams): Promise<void | undefined> {
     const { failed, setMetadataMessage } = this.PABClient;
     // Try to get unbalanced transaction from PAB
     const pabResponse = await this.endpoints.doOperation(
@@ -154,7 +154,7 @@ export class EscrowEndpoints {
     return observableState;
   }
 
-  public async cancel(cp: CancelParams) {
+  public async cancel(cp: CancelParams): Promise<void> {
     const { failed, setMetadataMessage } = this.PABClient;
 
     const pabResponse = await this.endpoints.doOperation(
@@ -197,7 +197,7 @@ export class EscrowEndpoints {
     alert(`Cancel suceeded. Tx hash: ${txHash}`);
   }
 
-  public async resolve(rp: ResolveParams) {
+  public async resolve(rp: ResolveParams): Promise<void | undefined> {
     const { failed, setMetadataMessage } = this.PABClient;
 
     const pabResponse = await this.endpoints.doOperation(
@@ -241,7 +241,7 @@ export class EscrowEndpoints {
 
 type PABObservableState = Array<{
   escrowUtxo: Plutus.TxOutRef,
-  escrowPayment: [Plutus.AssetClass, Number],
+  escrowPayment: [Plutus.AssetClass, number],
   escrowInfo: {
     sender: WalletAddress;
     rAssetClass: Plutus.AssetClass;

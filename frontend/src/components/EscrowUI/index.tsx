@@ -1,12 +1,10 @@
 import React, { useState } from "react"
-import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner } from "react-bootstrap";
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+import { Container, Navbar, Nav, Button, Modal, Form, Table, Spinner, Row, Col } from "react-bootstrap";
+import type { TxOutRef } from "cardano-pab-client";
 import { EscrowEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints/escrow";
 import { mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
-import type { TxOutRef } from "cardano-pab-client";
 
-function EscrowUI() {
+function EscrowUI(): JSX.Element {
   const [currentContractState, setCurrentContractState] = useState<ObsState>([])
   const [contractEndpoints, setContractEndpoints] = useState<EscrowEndpoints | undefined>();
   const [isConnected, setIsConnected] = useState(false);
@@ -100,16 +98,16 @@ const Connect = ({ setCurrentContractState, setIsConnected, setContractEndpoints
               console.log("Connecting")
               const ce = await EscrowEndpoints.connect(selectedWallet)
               if (!ce) {
-                console.log(`Connect failed.`);
-                alert(`Connect failed.`);
+                console.log("Connect failed.");
+                alert("Connect failed.");
               } else {
                 console.log("Connected")
                 setContractEndpoints(ce);
                 setIsConnected(true);
                 const obsState = await ce.reload();
                 if (!obsState) {
-                  console.log(`Reload failed.`);
-                  alert(`Reload failed.`);
+                  console.log("Reload failed.");
+                  alert("Reload failed.");
                 } else {
                   setCurrentContractState(obsState);
                 }
@@ -140,8 +138,8 @@ const Reload = ({ contractEndpoints, isConnected, setCurrentContractState }: Rel
         console.log("Reloading")
         const obsState = await contractEndpoints.reload()
         if (!obsState) {
-          console.log(`Reload failed.`);
-          alert(`Reload failed.`);
+          console.log("Reload failed.");
+          alert("Reload failed.");
         } else {
           setCurrentContractState(obsState);
         }
@@ -160,7 +158,7 @@ type StartProps = {
 
 // Component that displays the form for starting a new Escrow.
 const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartProps) => {
-  const handleClose = async (e: any) => {
+  const handleClose = async (e: React.BaseSyntheticEvent): Promise<void> => {
     if (!contractEndpoints) {
       throw new Error("contractEndpoints not defined!");
     }
@@ -206,18 +204,18 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
               <div className="position-relative">
                 <Row>
                   <Col>
-                    <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
-                      <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                    <div className="d-flex align-items-center" style={{ border: "1px solid black", borderRadius: "1rem" }}>
+                      <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: "1rem", paddingRight: "1rem" }}>
                         Send Asset Class
                       </div>
-                      <Col className='mx-2 my-4'>
+                      <Col className="mx-2 my-4">
                         <Form.Control
                           name="sendCurrency"
                           type="text"
                           placeholder="Currency Symbol"
                         />
                       </Col>
-                      <Col className='mx-2 my-4'>
+                      <Col className="mx-2 my-4">
                         <Form.Control
                           name="sendTokenName"
                           type="text"
@@ -235,7 +233,7 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
                       name="sendAmount"
                       type="number"
                       placeholder="Amount"
-                      className='my-4'
+                      className="my-4"
                     />
                   </Col>
                 </Row>
@@ -244,17 +242,17 @@ const Start = ({ showStartModal, setShowStartModal, contractEndpoints }: StartPr
               <div className="position-relative">
               <Row>
                 <Col>
-                  <div className='d-flex align-items-center' style={{ border: '1px solid black', borderRadius: '1rem' }}>
-                    <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: '1rem', paddingRight: '1rem' }}>
+                  <div className="d-flex align-items-center" style={{ border: "1px solid black", borderRadius: "1rem" }}>
+                    <div className="position-absolute z-index-1 bg-white mx-2" style={{ left: 0, top: -10, paddingLeft: "1rem", paddingRight: "1rem" }}>
                       Receive Asset Class
                     </div>
-                    <Col className='mx-2 my-4'>
+                    <Col className="mx-2 my-4">
                       <Form.Control
                         name="recCurrency"
                         placeholder="Currency Symbol"
                       />
                     </Col>
-                    <Col className='mx-2 my-4'>
+                    <Col className="mx-2 my-4">
                       <Form.Control
                         name="recTokenName"
                         placeholder="Token name"
@@ -303,7 +301,7 @@ type CancelProps = {
 
 // Component that displays the form for canceling started escrows.
 const Cancel = ({ showCancelModal, setShowCancelModal, contractEndpoints }: CancelProps) => {
-  const handleClose = async (e: any) => {
+  const handleClose = async (e: React.BaseSyntheticEvent) => {
     if (!contractEndpoints) {
       throw new Error("contractEndpoints not defined!");
     }
@@ -316,6 +314,7 @@ const Cancel = ({ showCancelModal, setShowCancelModal, contractEndpoints }: Canc
     const cancelParams = await mkCancelParams(recAddr, txOutRef);
     await contractEndpoints.cancel(cancelParams);
   }
+
   return (
     <Modal show={showCancelModal}>
       <Modal.Header closeButton onHide={ () => setShowCancelModal(false)}>
@@ -436,17 +435,20 @@ type ButtonWithSpinnerProps = {
 
 const ButtonWithSpinner = ({ onClick, isDisabled, text }: ButtonWithSpinnerProps) => {
   const [isSpinning, setIsSpinning] = useState(false);
+
+  const handleOnClick = async () => {
+    setIsSpinning(true)
+    await onClick()
+    setIsSpinning(false)
+  }
+
   return (
     <Button
       style={{ marginRight: "16px" }}
       variant="success"
       size="sm"
       disabled={isDisabled}
-      onClick={async e => {
-        setIsSpinning(true)
-        await onClick()
-        setIsSpinning(false)
-      }}
+      onClick={handleOnClick}
     >
       {isSpinning
         ? <Spinner
@@ -460,7 +462,7 @@ const ButtonWithSpinner = ({ onClick, isDisabled, text }: ButtonWithSpinnerProps
         : <div>{text}</div>
       }
     </Button>
-  )
+  );
 }
 
 export default EscrowUI;
