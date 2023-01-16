@@ -34,22 +34,23 @@ The script is parameterized by the receiver address. So that each user can find 
 
 ### **Start**
 
-In this transaction, a user locks the tokens they want to exchange and specifies the tokens they want to receive and from whom. The control Token is minted. <br>
+In this transaction, a user locks the tokens they want to exchange and specifies the tokens they want to receive and from whom. The control Token is minted.
 
 ![startEscrow diagram](img/startEscrow.png)
 
 - If the token A is **ADA**, the initial amount of Ada will be `N + K1`.
+
 ### **Cancel**
 
-The user can cancel the escrow and receive the locked tokens back. The control Token is burned. <br>
+The user can cancel the escrow and receive the locked tokens back. The control Token is burned.
 
 ![cancelEscrow diagram](img/cancelEscrow.png)
 
-- Similar to the start operation, if the token A is **ADA**, the amount of Ada in the Sender's Wallet input will be `N + K1` and in the output will be: `N + minAda + K1 + k1` **ADA**
+- Similar to the start operation, if the token A is **ADA**, the amount of Ada in the Sender's Wallet input will be `N + K1` and in the output will be: `N + minAda + K1 + k1` **ADA**.
 
 ### **Resolve**
 
-The other user pays `k2` Token `B`, closing the script and burning the control token. Each user gets the corresponding tokens. <br>
+The other user pays `k2` Token `B`, closing the script and burning the control token. Each user gets the corresponding tokens.
 
 ![resolveEscrow diagram](img/resolveEscrow.png)
 
