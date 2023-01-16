@@ -83,7 +83,7 @@ to the script-utxo in function :code:`controlTokenPaid`
       
 
 As we mentioned before, we ensure that only one token is being minted, and it's implemented
-by calling :code:`getSingleton` from the Utils, which takes a list and fails (by :code:`traceError`)
+by calling :code:`getSingleton` from the Utils, which takes a list and fails (calling :code:`traceError`)
 if the list doesn't contain exactly one element. It's also used for getting the unique
 output utxo belonging to the script.
 
