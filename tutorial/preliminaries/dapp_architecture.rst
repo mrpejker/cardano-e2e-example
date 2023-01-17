@@ -120,7 +120,7 @@ the dApp state and unbalanced transactions to be submitted.
 **CIP30Wallet Wrapper** provides an API for easily connecting with CIP30 wallets and
 obtaining utxos information, signing and submitting transactions.
 Balancing algorithm is implemented on **Balancer** module. Both CIP30Wallet Wrapper
-and Balancer depends on the external **Serialization Library**. 
+and Balancer depends on the **Serialization Library**. 
 Finally, **Budget API** provides an API for connecting to the Budget service.
 
 
