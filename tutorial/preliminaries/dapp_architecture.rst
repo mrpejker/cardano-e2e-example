@@ -23,10 +23,26 @@ transactions.
 On the Server side, we have three services: the Plutus Application Backend (**PAB**),
 an **Indexer** service, and a **Budget** service. 
 The PAB is in charge of running the dApp off-chain code for building an
-unbalanced transaction. The Indexer service is used by the PAB for querying the
+*unbalanced transaction*. The Indexer service is used by the PAB for querying the
 blockchain. Finally, the Budget service provides the evaluation of Plutus scripts,
 obtaining memory and CPU execution units that a validator consumes, which is
 needed for completing transactions' balance.
+
+Let's briefly clarify what we mean with *unbalanced transaction*:
+
+- The inputs only include those utxos that are strictly necessary for the logic
+  of the dApp (usually only script utxos or no inputs at all).
+  Wallet inputs covering the payments that the signer must do are not included
+  (with the only exception being wallet utxos that want to be consumed for NFT minting).
+
+- The fee, and the expected memory and CPU units for all the redeemers are not set (set to 0 actually).
+
+- No collateral is specified.
+
+- No signature is included.
+
+- Some other low-level transaction information is missing (e.g. the script data hash).
+
 
 The following diagram shows the complete flow for performing a dApp operation:
 
