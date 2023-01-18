@@ -15,6 +15,11 @@ module Escrow.OffChain.Operations
       EscrowSchema
     -- * Endpoints
     , endpoints
+    -- * Operations
+    , startOp
+    , cancelOp
+    , resolveOp
+    , reloadOp
     )
 where
 
