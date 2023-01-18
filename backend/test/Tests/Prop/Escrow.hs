@@ -150,7 +150,7 @@ instance ContractModel EscrowModel where
 
     startInstances _ (Start sw _ _ _) = [ StartContract (UserH sw) () ]
     startInstances _ (Resolve rw _)   = [ StartContract (UserH rw) () ]
-    startInstances _ (Cancel rw ti)   = [ StartContract (LookupH sw) ()
+    startInstances _ (Cancel _ ti)    = [ StartContract (LookupH sw) ()
                                         , StartContract (UserH sw) ()
                                         ]
       where
@@ -250,6 +250,8 @@ instance ContractModel EscrowModel where
     monitoring _ (Cancel rw _) =
         tabulate "Cancelling escrow" [show rw]
 
+-- | LookupSchema to let the sender wallet call the reload endpoint
+--   and find the escrow utxo.
 type LookupSchema = Endpoint "lookup" WalletAddress
 
 lookupEndpoint
@@ -259,6 +261,8 @@ lookupEndpoint = forever $ handleError logError $ awaitPromise lookupEp
     lookupEp :: Promise (Last [UtxoEscrowInfo]) LookupSchema Text ()
     lookupEp = endpoint @"lookup" $ reloadOp
 
+-- | Main Strategy to return all the funds locked by the contract
+--  at any reachable state
 finishingMainStrategy :: DL EscrowModel ()
 finishingMainStrategy = do
     resolveMap <- viewContractState toResolve
@@ -268,6 +272,8 @@ finishingMainStrategy = do
               , tInfo <- fromJust $ Map.lookup w resolveMap
               ]
 
+-- | Strategy for the wallets to recover all their funds as
+--   if the main strategy was not performed
 finishingWalletStrategy :: Wallet -> DL EscrowModel ()
 finishingWalletStrategy w = do
     resolveMap <- viewContractState toResolve
