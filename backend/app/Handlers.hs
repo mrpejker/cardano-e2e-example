@@ -45,7 +45,7 @@ newtype Escrow = Connect WalletAddress
      function, that will forever wait operation calls.
 -}
 getEscrowContract :: Escrow -> SomeBuiltin
-getEscrowContract (Connect e) = SomeBuiltin $ endpoints e
+getEscrowContract (Connect wa) = SomeBuiltin $ endpoints wa
 
 instance HasDefinitions Escrow where
     getDefinitions = []
