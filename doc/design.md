@@ -38,17 +38,11 @@ In this transaction, a user locks the tokens they want to exchange and specifies
 
 ![startEscrow diagram](img/startEscrow.png)
 
-- If the token A is **ADA**, the initial amount of **ADA** of the Sender's input value will be `N + K1`. <br>
-The Script's output will have `minAda + k1` amount of **ADA**
-
 ### **Cancel**
 
 The user can cancel the escrow and receive the locked tokens back. The control Token is burned.
 
 ![cancelEscrow diagram](img/cancelEscrow.png)
-
-- If the token A is **ADA**, the amount of Ada in the Sender's Wallet input will be `N + K1` and in the output will be `N + minAda + K1 + k1` **ADA**. <br>
-The amount of **ADA** blocked in the Script's input is `minAda + K1`
 
 ### **Resolve**
 
@@ -56,10 +50,8 @@ The other user pays `k2` Token `B`, closing the script and burning the control t
 
 ![resolveEscrow diagram](img/resolveEscrow.png)
 
-- If the token A is **ADA**, the Script's input value will be `minAda + k1` **ADA**<br>
-The Receiver's input value will have `N + K1` **ADA** and the amount of **ADA** on the Receiver's output value will be `N + K1 + k1`. <br>
-- In case of the token B is **ADA**, the initial amount of **ADA** in the Receiver's input will be `N + K2` and the output value of the Receiver's Wallet will be `N + K2 - k2` **ADA**. <br>
-The output value of the Sender's Wallet will have `minAda + k2` **ADA**.
+An **important aclaration** for the transactions is what happen when one of the token A or token B is ADA. Considering that the smallest unit of **ADA** is **Lovelace**, the Wallet funds or the Script locked value change in the following way: <br>
+Every time we have **N** **ADAs** and **k1** **Token A** and A is **Lovelace**, then the total amount of **ADAs** will be **(N * 1_000_000) + k1 Lovelace**
 
 ## Validator Scripts
 
