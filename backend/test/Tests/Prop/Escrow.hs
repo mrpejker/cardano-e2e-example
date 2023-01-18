@@ -18,7 +18,9 @@ of every run fits with some specification of the contract.
 module Tests.Prop.Escrow where
 
 -- Non-IOG imports
+import Control.Monad
 import Control.Lens    ( (^.), (.~), (&), makeLenses, over )
+import Control.Arrow   ( second )
 import Data.Data       ( Data )
 import Data.Default    ( def )
 import Data.List       ( delete, find )
@@ -26,7 +28,7 @@ import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text , pack )
 import Data.Map as Map ( (!), Map, empty, lookup, member
-                       , insertWith, adjust, fromList
+                       , insertWith, adjust, fromList, toList
                        )
 import Data.ByteString.UTF8 ( fromString )
 import Text.Hex        ( decodeHex)
@@ -37,16 +39,19 @@ import Test.QuickCheck ( Gen, Property
                        )
 
 -- IOG imports
+import Plutus.Contract
 import Plutus.Contract.Test               ( CheckOptions, Wallet
                                           , defaultCheckOptions, emulatorConfig
                                           )
-import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey
+import Plutus.Contract.Test.ContractModel ( ($~), ContractInstanceKey, DL
                                           , StartContract(..), ContractModel(..)
-                                          , Action, Actions
-                                          , contractState
-                                          , defaultCoverageOptions, delay
-                                          , deposit, propRunActionsWithOptions
-                                          , wait, withdraw
+                                          , Action, Actions, NoLockedFundsProof(..)
+                                          , action, contractState, defaultNLFP
+                                          , checkNoLockedFundsProofWithOptions
+                                          , defaultCoverageOptions
+                                          , delay, deposit
+                                          , propRunActionsWithOptions
+                                          , viewContractState, wait, withdraw
                                           )
 import Plutus.Trace.Emulator              ( EmulatorConfig (EmulatorConfig)
                                           , callEndpoint, observableState
@@ -69,8 +74,9 @@ import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
                                   , mkResolveParams, mkStartParams
                                   , mkCancelParams
                                   )
-import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
+import Escrow.OffChain.Operations ( EscrowSchema, endpoints, reloadOp )
 import Utils.OnChain              ( minAda )
+import Utils.WalletAddress
 import Tests.Utils                ( wallets, mockWAddress )
 
 {- | The representation of the EscrowInfo plus the Value contained in script
@@ -134,6 +140,9 @@ instance ContractModel EscrowModel where
         UserH :: Wallet
               -> ContractInstanceKey EscrowModel (Last [UtxoEscrowInfo])
                                         EscrowSchema Text ()
+        LookupH :: Wallet
+                -> ContractInstanceKey EscrowModel (Last [UtxoEscrowInfo])
+                                       LookupSchema Text ()
 
     initialInstances = []
 
@@ -141,15 +150,17 @@ instance ContractModel EscrowModel where
 
     startInstances _ (Start sw _ _ _) = [ StartContract (UserH sw) () ]
     startInstances _ (Resolve rw _)   = [ StartContract (UserH rw) () ]
-    startInstances _ (Cancel rw ti)   = [ StartContract (UserH rw) ()
+    startInstances _ (Cancel _ ti)    = [ StartContract (LookupH sw) ()
                                         , StartContract (UserH sw) ()
                                         ]
       where
         sw = tiSenderWallet ti
 
     instanceWallet (UserH w) = w
+    instanceWallet (LookupH w) = w
 
     instanceContract _ (UserH w) _ = endpoints $ mockWAddress w
+    instanceContract _ (LookupH _) _ = lookupEndpoint
 
     arbitraryAction s = do
         connWallet <- genWallet
@@ -214,11 +225,12 @@ instance ContractModel EscrowModel where
             mkResolveParams (escrowUtxo utxoEscrowInfo)
         delay 2
     perform h _ _ (Cancel resW ti) = do
-        callEndpoint @"reload" (h $ UserH resW) ()
+        let sendW = tiSenderWallet ti
+        callEndpoint @"lookup" (h $ LookupH sendW) (mockWAddress resW)
         delay 5
-        Last obsState <- observableState $ h $ UserH resW
+        Last obsState <- observableState $ h $ LookupH sendW
         let utxoEscrowInfo = fromJust $ findEscrowUtxo ti (fromJust obsState)
-        callEndpoint @"cancel" (h $ UserH (tiSenderWallet ti)) $
+        callEndpoint @"cancel" (h $ UserH sendW) $
             mkCancelParams (escrowUtxo utxoEscrowInfo)
                            (mkReceiverAddress $ mockWAddress resW)
         delay 2
@@ -237,6 +249,50 @@ instance ContractModel EscrowModel where
         tabulate "Reslving escrow" [show rw]
     monitoring _ (Cancel rw _) =
         tabulate "Cancelling escrow" [show rw]
+
+-- | LookupSchema to let the sender wallet call the reload endpoint
+--   and find the escrow utxo.
+type LookupSchema = Endpoint "lookup" WalletAddress
+
+lookupEndpoint
+    :: Contract (Last [UtxoEscrowInfo]) LookupSchema Text ()
+lookupEndpoint = forever $ handleError logError $ awaitPromise lookupEp
+  where
+    lookupEp :: Promise (Last [UtxoEscrowInfo]) LookupSchema Text ()
+    lookupEp = endpoint @"lookup" $ reloadOp
+
+-- | Main Strategy to return all the funds locked by the contract
+--  at any reachable state
+finishingMainStrategy :: DL EscrowModel ()
+finishingMainStrategy = do
+    resolveMap <- viewContractState toResolve
+    sequence_ [action (Cancel w tInfo)
+              | w <- wallets
+              , w `Map.member` resolveMap
+              , tInfo <- fromJust $ Map.lookup w resolveMap
+              ]
+
+-- | Strategy for the wallets to recover all their funds as
+--   if the main strategy was not performed
+finishingWalletStrategy :: Wallet -> DL EscrowModel ()
+finishingWalletStrategy w = do
+    resolveMap <- viewContractState toResolve
+    sequence_ [action (Cancel resW tInfo)
+              | (resW, tInfos) <-
+                    map (second (filter ((w==) . tiSenderWallet)))
+                           (Map.toList resolveMap)
+              , tInfo <- tInfos
+              ]
+
+noLockProof :: NoLockedFundsProof EscrowModel
+noLockProof = defaultNLFP
+  { nlfpMainStrategy   = finishingMainStrategy
+  , nlfpWalletStrategy = finishingWalletStrategy
+  }
+
+prop_NoLockedFunds :: Property
+prop_NoLockedFunds = checkNoLockedFundsProofWithOptions
+                    (options & increaseMaxCollateral) noLockProof
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
 findEscrowUtxo :: TransferInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo

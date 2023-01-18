@@ -21,6 +21,7 @@ import Tests.OffChain.Trace3 qualified
 main :: IO ()
 main = do
     quickCheck propEscrow
+    quickCheck prop_NoLockedFunds
     defaultMain tests
 
 tests :: TestTree
