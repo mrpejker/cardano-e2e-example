@@ -50,6 +50,9 @@ The other user pays `k2` Token `B`, closing the script and burning the control t
 
 ![resolveEscrow diagram](img/resolveEscrow.png)
 
+An **important clarification** for the transactions is what happen when one of the token A or token B is ADA. Considering that the smallest unit of **ADA** is **Lovelace**, the Wallet funds or the Script locked value change in the following way: <br>
+Every time we have **N** **ADAs** and **k1** **Token A** and A is **Lovelace**, then the total amount of **ADAs** will be **(N * 1_000_000) + k1 Lovelace**
+
 ## Validator Scripts
 
 ### **Script Validator**
