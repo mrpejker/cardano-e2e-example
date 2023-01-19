@@ -1,37 +1,45 @@
 Plutus Application Backend
 ==========================
 
-Now we have all the important pieces related to the server ready, we need to
-plug the off-chain code into the PAB, so we can build the executable that will
-be the complete *PAB service*.
+Now we reviewed the core pieces of the server implementation, it's turn to
+take a look to the web service. It's implemented using the PAB module
+from plutus-apps libraries.
 
-The PAB, as we mentioned, allows us to execute off-chain operations through API
-calls. The typical flow for doing these calls is by first *activating* an *instance*
-(or *session*). Potentially could be different kinds of activations, one of the
-interesting design patterns for us is that each activation will expose different
-*schemas*, and every schema will define a set of endpoints. Performing an activation
-will give us an *instance-id*, that we must use every time we want to call an off-chain
-operation through one of the endpoints available on the schema. Lastly, when we don't
-want to interact anymore with the PAB we *stop* the session.
+As we mentioned before, in our approach we use some features of the plutus-apps
+libraries, and discard others. The PAB library allows to implement a web
+service providing the API for interacting with the off-chain code of the dApp.
+We just need a subset of that API containing the operations **activate**,
+**endpoint**, **status** and **stop**.
+
+For interacting with the PAB service it's necessary to get an *instance id*
+by calling *activate*. The activation provides an interface through
+dApp *endpoints*, defined in a schema. Different schemas will offer
+different interfaces, which are chosen at activation.
+In our case we have only one, but other complex dApps could provide
+more.
+The activation could require some parameters which are instantiated and
+will persist while the instance is alive. In the Escrow example,
+the client connects with the PAB by activating
+an instance providing a wallet address. After that, the four endpoints
+defined in the schema are accessible for performing the operations.
+Finally, an instance can be deleted by calling *stop*. 
+
 
 Endpoints Specification
 -----------------------
 
-Let's review how this typical flow we just described works for our particular
-escrow example. One of the key points of design is the schema or endpoint's set.
-We saw how to define this on the off-chain section, now is time to see how from
-this definition we can interact through the PAB. The complete `endpoints specification <https://github.com/joinplank/cardano-e2e-example/blob/main/doc/endpoints-spec.md>`_
-can be found on the design document folder.
+Let's review how this flow we described above works for the
+Escrow example. One of the key points of design is the schema or endpoint's set.
+We saw how to define this on the off-chain section, now is time to see how
+this is related with the PAB service. Let's consider an example where
+the sender wants to exchange 10 tokens ``A`` by 20 tokens ``B``.
 
-On the following we will introduce the flow with an example where the sender wallet
-wants to exchange 10 tokens ``A`` by 20 tokens ``B`` with a receiver wallet.
-
-In this dApp there is only one kind of activation, that we will call *connect*
+We have only one kind of activation, that we will call *connect*,
 and will let us interact with the endpoints defined on the ``EscrowSchema``. This
 connect accion will need the ``WalletAddress`` of the user.
 
-Activating an instance is perform by the ``api/contract/activate`` fixed endpoint
-of the PAB, and in the body we give the information about the kind of activation.
+Activating an instance is performed by the ``api/contract/activate`` PAB endpoint,
+requiring the following information in the body
 
 .. code::
 
@@ -49,18 +57,22 @@ of the PAB, and in the body we give the information about the kind of activation
       }
    }
 
-On this particular case, because we only have one kind of activation we just give
-the wallet address through ``caID``. Besides that, the activate endpoint needs a
-wallet id to work, but the good news is that for our approach can be any.
+This JSON has two main fields: ``caID`` and ``caWallet``. The latter is necessary
+if the PAB is used with cardano-wallet, so we set any number (given that we
+don't use that functionality).
+The important information goes inside ``caID``, where basically we specify the
+kind of activation we are doing and the corresponding parameters. In our case
+we have only one kind of activation and the parameter is a wallet address, specified
+by payment key hash (``waPayment``) and staking key hash (``waStaking``).
 
-Once the activation is done, the response of the call will be an instance id, that
-we must use for calling the off-chain operations. This is done using another
-PAB endpoint that depends on the schema exposed on the activation:
+The response of the activation call is an instance id, that is necessary for calling
+the off-chain operations. The PAB endpoint for calling them depends on the schema
+exposed in the activation:
 ``api/contract/instance/[instance-id]/endpoint/[off-chain operation]``.
 
-For instance, if we want to do an ``start`` for creating a escrow we must call
-``api/contract/instance/[instance-id]/endpoint/start`` and in the body we must
-pass the ``StartParams`` information on JSON format.
+For instance, if we want to perform an ``start`` for creating a escrow, we must call
+``api/contract/instance/[instance-id]/endpoint/start`` specifying in the body
+the ``StartParams`` information on JSON format.
 
 .. code::
 
@@ -97,7 +109,11 @@ pass the ``StartParams`` information on JSON format.
       "receiveAmount":20
    }
 
-Finally we can end our session on the PAB, by calling ``api/contract/instance/[instance-id]/stop``.
+
+Notice that we don't need to pass again the wallet address of the user performing the operation,
+because it is set at activation and it persists until the instance is stopped. For doing that,
+the PAB endpoint stop is called: ``api/contract/instance/[instance-id]/stop``.
+
 
 Implementation
 --------------
