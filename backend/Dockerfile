@@ -43,6 +43,5 @@ RUN cp /build/artifacts/escrow-pab /app/escrow-pab
 
 COPY /config /app/config
 
-RUN /app/escrow-pab --config ./config/pab-config-preprod.yaml migrate
-
-CMD ["./escrow-pab", "--config", "./config/pab-config-preprod.yaml", "webserver"]
+CMD escrow-pab --config ./config/pab-config-preprod.yaml migrate && \
+    escrow-pab --config ./config/pab-config-preprod.yaml webserver
