@@ -2,10 +2,10 @@ sqliteDB:
   dbConfigFile: "pab"
   dbConfigPoolSize: 20
 
-#postgresDB:
-#  dbConfigUser: "MY_USER"
-#  dbConfigPass: "MY_PASS"
-#  dbConfigHost: "localhost"
+# postgresDB:
+#  dbConfigUser: postgres
+#  dbConfigPass: pass
+#  dbConfigHost: localhost
 #  dbConfigPort: 5432
 #  dbConfigDatabase: "pab"
 #  dbConfigPoolSize: 20
