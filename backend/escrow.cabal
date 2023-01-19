@@ -128,6 +128,9 @@ test-suite escrow-tests
   other-modules:
     Tests.Utils
     Tests.Prop.Escrow
+    Tests.Prop.EscrowModel
+    Tests.Prop.Extra
+    Tests.Prop.Gen
     Tests.OffChain.Trace0
     Tests.OffChain.Trace1
     Tests.OffChain.Trace2
@@ -149,6 +152,7 @@ test-suite escrow-tests
     LambdaCase
     MultiParamTypeClasses
     NumericUnderscores
+    NamedFieldPuns
     OverloadedStrings
     RecordWildCards
     ScopedTypeVariables

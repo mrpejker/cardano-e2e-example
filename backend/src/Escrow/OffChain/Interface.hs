@@ -126,7 +126,7 @@ mkUtxoEscrowInfo
     -> EscrowInfo
     -> UtxoEscrowInfo
 mkUtxoEscrowInfo utxoRef pay ei = UtxoEscrowInfo
-                                    { escrowUtxo    = utxoRef
-                                    , escrowInfo    = ei
-                                    , escrowPayment = pay
-                                    }
+                                  { escrowUtxo    = utxoRef
+                                  , escrowInfo    = ei
+                                  , escrowPayment = pay
+                                  }
