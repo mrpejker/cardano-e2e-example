@@ -39,9 +39,9 @@ WORKDIR /app
 
 EXPOSE 9080
 
-RUN cp /build/artifacts/escrow-pab /app/escrow-pab
+RUN cp /build/artifacts/escrow-pab ./escrow-pab
 
-COPY /config /app/config
+COPY /config ./config
 
-CMD escrow-pab --config ./config/pab-config-preprod.yaml migrate && \
-    escrow-pab --config ./config/pab-config-preprod.yaml webserver
+CMD ./escrow-pab --config ./config/pab-config-preprod.yaml migrate && \
+    ./escrow-pab --config ./config/pab-config-preprod.yaml webserver

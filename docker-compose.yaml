@@ -24,6 +24,7 @@ services:
     image: postgres:alpine
     user: postgres
     environment:
+      POSTGRES_DB: pab
       POSTGRES_PASSWORD: pass
     restart: always
     healthcheck:
