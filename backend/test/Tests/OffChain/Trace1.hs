@@ -7,9 +7,11 @@ Stability   : develop
 
 In this trace, the Sender starts the contract locking the payment in the script
 and then cancels it getting back it funds.
-1. The sender (Wallet 1) starts the escrow and deposits the payment, blocking it
-   inside the script
-2. The sender cancels the escrow, recovering the locked payment
+
+Trace execution description:
+  1. The sender (Wallet 1) starts the escrow and deposits the payment, blocking
+     it inside the script
+  2. The sender cancels the escrow, recovering the locked payment
 -}
 
 module Tests.OffChain.Trace1 where
@@ -31,30 +33,39 @@ import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
                              )
 
 -- Escrow imports
-import Escrow
-import Tests.Utils
+import Escrow        ( mkStartParams, mkCancelParams
+                     , mkReceiverAddress, endpoints, escrowUtxo
+                     )
+import Tests.Utils   ( emConfig, senderWallet, receiverWallet
+                     , receiverAddr, senderAddr
+                     , tokenACurrencySymbol, tokenAName
+                     , tokenBCurrencySymbol, tokenBName
+                     , getObservableState
+                     )
 
 testMsg :: String
 testMsg = "Starting and cancelling the escrow"
 
 test :: TestTree
 test = checkPredicateOptions
-        (defaultCheckOptions & emulatorConfig .~ emConfig)
-        testMsg
-        (walletFundsChange senderWallet mempty
-        .&&. walletFundsChange receiverWallet mempty)
-        trace
+       (defaultCheckOptions & emulatorConfig .~ emConfig)
+       testMsg
+       (walletFundsChange senderWallet mempty
+        .&&.
+        walletFundsChange receiverWallet mempty
+       )
+       trace
 
 trace :: EmulatorTrace ()
-trace =
+trace = do
     let recAddr = mkReceiverAddress receiverAddr
         startParams = mkStartParams
-                        recAddr
-                        100
-                        (assetClass tokenACurrencySymbol tokenA)
-                        100
-                        (assetClass tokenBCurrencySymbol tokenB)
-    in do
+                      recAddr
+                      100
+                      (assetClass tokenACurrencySymbol tokenAName)
+                      100
+                      (assetClass tokenBCurrencySymbol tokenBName)
+
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10

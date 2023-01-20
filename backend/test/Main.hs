@@ -10,7 +10,7 @@ module Main ( main ) where
 
 -- Non-IOG imports
 import Test.Tasty
-import Test.QuickCheck
+import Test.Tasty.QuickCheck
 
 import Tests.Prop.Escrow
 import Tests.OffChain.Trace0 qualified
@@ -19,17 +19,14 @@ import Tests.OffChain.Trace2 qualified
 import Tests.OffChain.Trace3 qualified
 
 main :: IO ()
-main = do
-    putStrLn "\n# Basic property testing.\n"
-    quickCheck propEscrow
-    putStrLn "\n# No locked funds property testing.\n"
-    quickCheck propNoLockedFunds
-    putStrLn "\n# Basic traces.\n"
-    defaultMain tests
+main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Project tests"
-         [ offChainTests ]
+        [ offChainTests
+        , testProperty "Basic property testing" propEscrow
+        , testProperty "No locked funds property testing" propNoLockedFunds
+        ]
 
 offChainTests :: TestTree
 offChainTests = testGroup "OffChain Tests"
