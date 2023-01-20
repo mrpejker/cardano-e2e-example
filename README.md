@@ -23,7 +23,16 @@ The following is a brief guide for getting everything running. It's recommended
 for developers with some experience with Cardano. For a much more detailed explanation,
 the `tutorial/preliminaries/setup_and_run` documentation is advised.
 
-## Environment installation
+## Docker
+For building the docker images of the PAB and the frontend, and run them as containers you can just do
+```shell
+docker-compose up
+```
+that will run the frontend at http://localhost:3000/, which communicates with the PAB at http://localhost:9080/. Also, the compose runs a postgres database needed by the PAB.
+
+As a last thing, the frontend also needs to communicate with a [budget service](https://github.com/joinplank/plutus-budget-service) through the `REACT_APP_BUDGET_URL` [.env variable](frontend/.env) to be ready to go.
+
+## Local
 
 ### Haskell environment
 We use `Nix` for building and running the server services, this means that the
