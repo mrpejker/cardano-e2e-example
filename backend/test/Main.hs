@@ -20,8 +20,11 @@ import Tests.OffChain.Trace3 qualified
 
 main :: IO ()
 main = do
+    putStrLn "\n# Basic property testing.\n"
     quickCheck propEscrow
-    quickCheck prop_NoLockedFunds
+    putStrLn "\n# No locked funds property testing.\n"
+    quickCheck propNoLockedFunds
+    putStrLn "\n# Basic traces.\n"
     defaultMain tests
 
 tests :: TestTree
