@@ -1,4 +1,4 @@
-FROM nixos/nix:2.7.0 as builder
+FROM nixos/nix:2.7.0
 
 WORKDIR /build
 
@@ -45,5 +45,5 @@ RUN cp /build/artifacts/escrow-pab ./escrow-pab
 
 COPY /config ./config
 
-CMD ./escrow-pab --config ./config/pab-config-preprod.yaml migrate && \
-    ./escrow-pab --config ./config/pab-config-preprod.yaml webserver
+CMD ./escrow-pab --config ./config/pab-config-docker-preprod.yaml migrate && \
+    ./escrow-pab --config ./config/pab-config-docker-preprod.yaml webserver
