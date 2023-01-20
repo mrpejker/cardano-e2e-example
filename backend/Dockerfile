@@ -1,4 +1,4 @@
-FROM nixos/nix:2.7.0 as builder
+FROM nixos/nix:2.7.0
 
 WORKDIR /build
 
@@ -24,7 +24,9 @@ COPY *.cabal cabal.project /build/
 # Build only dependencies so they can be cached. Can't use escrow-pab here as escrow is a dependecy of escrow-pab
 RUN nix-shell --run "cd /build && cabal build --dependencies-only escrow"
 
-COPY . /build
+# needed escrow-pab source files to compile
+COPY ./app /build/app
+COPY ./src /build/src
 
 # Build dependencies of escrow-pab. This can probably be skipped, as any changes to the escrow will invalidate the cache anyways
 RUN nix-shell --run "cd /build && cabal build --dependencies-only escrow-pab"
@@ -39,10 +41,9 @@ WORKDIR /app
 
 EXPOSE 9080
 
-RUN cp /build/artifacts/escrow-pab /app/escrow-pab
+RUN cp /build/artifacts/escrow-pab ./escrow-pab
 
-COPY /config /app/config
+COPY /config ./config
 
-RUN /app/escrow-pab --config ./config/pab-config-preprod.yaml migrate
-
-CMD ["./escrow-pab", "--config", "./config/pab-config-preprod.yaml", "webserver"]
+CMD ./escrow-pab --config ./config/pab-config-docker-preprod.yaml migrate && \
+    ./escrow-pab --config ./config/pab-config-docker-preprod.yaml webserver

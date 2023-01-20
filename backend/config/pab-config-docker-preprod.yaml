@@ -1,15 +1,11 @@
-sqliteDB:
-  dbConfigFile: "pab"
+postgresDB:
+  dbConfigUser: postgres
+  dbConfigPass: pass
+  dbConfigHost: backend-db
+  dbConfigPort: 5432
+  dbConfigDatabase: "pab"
   dbConfigPoolSize: 20
-
-# postgresDB:
-#  dbConfigUser: postgres
-#  dbConfigPass: pass
-#  dbConfigHost: localhost
-#  dbConfigPort: 5432
-#  dbConfigDatabase: "pab"
-#  dbConfigPoolSize: 20
-#  dbConfigMarconiFile: "./marconi.sqlite"
+  dbConfigMarconiFile: "./marconi.sqlite"
 
 walletServerConfig:
   tag: RemoteWalletConfig
