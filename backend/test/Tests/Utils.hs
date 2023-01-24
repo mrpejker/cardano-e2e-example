@@ -42,7 +42,7 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
 
 -- Escrow imports
 import Escrow ( EscrowSchema, UtxoEscrowInfo )
-import Utils.WalletAddress ( WalletAddress, toWalletAddress )
+import Utils.WalletAddress ( WalletAddress, fromAddress )
 
 walletsWithValue :: [(Wallet,Value)]
 walletsWithValue = [(w, v <> paymentA 1_000_000 <> paymentB 1_000_000)
@@ -63,7 +63,7 @@ mockAddress :: Wallet -> Address
 mockAddress = flip pubKeyHashAddress Nothing . mockPKH
 
 mockWAddress :: Wallet -> WalletAddress
-mockWAddress =  fromJust . toWalletAddress . mockAddress
+mockWAddress =  fromJust . fromAddress . mockAddress
 
 tokenA, tokenB :: TokenName
 tokenA = "A"
@@ -84,8 +84,8 @@ senderWallet   = w1
 receiverWallet = w2
 
 senderAddr, receiverAddr :: WalletAddress
-senderAddr   = fromJust $ toWalletAddress $ mockWalletAddress senderWallet
-receiverAddr = fromJust $ toWalletAddress $ mockWalletAddress receiverWallet
+senderAddr   = fromJust $ fromAddress $ mockWalletAddress senderWallet
+receiverAddr = fromJust $ fromAddress $ mockWalletAddress receiverWallet
 
 senderPpk, receiverPpk :: PaymentPubKey
 senderPpk   = mockWalletPaymentPubKey senderWallet

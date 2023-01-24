@@ -45,7 +45,7 @@ import Plutus.V1.Ledger.Value ( Value, assetClassValue )
 
 -- Escrow imports
 import Utils.OnChain ( pubKeyHashInAddress )
-import Utils.WalletAddress ( WalletAddress, fromWalletAddress )
+import Utils.WalletAddress ( WalletAddress, toAddress )
 
 {- | EscrowInfo
 
@@ -92,7 +92,7 @@ mkReceiverAddress addr = ReceiverAddress { rAddr = addr }
 -- | Gets the sender address from the EscrowInfo.
 {-# INLINABLE eInfoSenderAddr #-}
 eInfoSenderAddr :: EscrowInfo -> Address
-eInfoSenderAddr = fromWalletAddress . sAddr . sender
+eInfoSenderAddr = toAddress . sAddr . sender
 
 -- | Gets the sender WalletAddress from the EscrowInfo.
 {-# INLINABLE eInfoSenderWallAddr #-}
@@ -108,13 +108,13 @@ valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
 {-# INLINABLE signerIsSender #-}
 signerIsSender :: PubKeyHash -> SenderAddress -> Bool
 signerIsSender pkh SenderAddress{..} =
-    pubKeyHashInAddress pkh (fromWalletAddress sAddr)
+    pubKeyHashInAddress pkh (toAddress sAddr)
 
 -- | Checks is the given pubkeyhash is part of the ReceiverAddress.
 {-# INLINABLE signerIsReceiver #-}
 signerIsReceiver :: PubKeyHash -> ReceiverAddress -> Bool
 signerIsReceiver pkh ReceiverAddress{..} =
-    pubKeyHashInAddress pkh (fromWalletAddress rAddr)
+    pubKeyHashInAddress pkh (toAddress rAddr)
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''ReceiverAddress

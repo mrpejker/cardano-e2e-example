@@ -15,8 +15,8 @@ module Utils.WalletAddress
     -- * Smart Constructors
     , mkWalletAddress
     -- * Translation functions
-    , toWalletAddress
-    , fromWalletAddress
+    , fromAddress
+    , toAddress
     -- * Getters
     , waPaymentPubKeyHash
     -- * Constraints
@@ -69,18 +69,18 @@ mkWalletAddress pkh stk = WalletAddress { waPayment = pkh
                                         }
 
 -- | Translate a wallet address to the corresponding ledge address.
-{-# INLINABLE fromWalletAddress #-}
-fromWalletAddress :: WalletAddress -> Address
-fromWalletAddress walletAddress =
+{-# INLINABLE toAddress #-}
+toAddress :: WalletAddress -> Address
+toAddress walletAddress =
     Address
     { addressCredential = PubKeyCredential $ waPayment walletAddress
     , addressStakingCredential = toStakingCredential <$> waStaking walletAddress
     }
 
 -- | Translate, if possible, a ledger address to the corresponding wallet address.
-{-# INLINABLE toWalletAddress #-}
-toWalletAddress :: Address -> Maybe WalletAddress
-toWalletAddress address =
+{-# INLINABLE fromAddress #-}
+fromAddress :: Address -> Maybe WalletAddress
+fromAddress address =
     (`mkWalletAddress` stkPubKeyHash) <$> toPubKeyHash address
   where
     stkPubKeyHash :: Maybe PubKeyHash
@@ -101,7 +101,7 @@ mustPayToWalletAddress :: forall i o
                        .  WalletAddress
                        -> Value
                        -> TxConstraints i o
-mustPayToWalletAddress wa = mustPayToAddress (fromWalletAddress wa)
+mustPayToWalletAddress wa = mustPayToAddress (toAddress wa)
 
 -- | Boilerplate for deriving the FromData and ToData instances.
 makeLift ''WalletAddress
