@@ -26,14 +26,14 @@ where
 -- Non-IOG imports
 import Control.Lens    ( (^.) )
 import Control.Monad   ( forever, unless )
-import Data.Map ( singleton, toList )
+import Data.Map        ( singleton )
 import Data.Text       ( Text )
 import Data.Monoid     ( Last(..) )
 
 -- IOG imports
 import Ledger             ( DecoratedTxOut, TxOutRef, AssetClass, Value
-                          , decoratedTxOutValue, decoratedTxOutAddress
-                          , getDatum, unPaymentPubKeyHash
+                          , decoratedTxOutValue, getDatum
+                          , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
                           , mustMintValue
@@ -46,7 +46,7 @@ import Ledger.Value       ( assetClass, assetClassValue, flattenValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , select, tell, throwError
-                          , utxosAt, yieldUnbalancedTx
+                          , yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
 import PlutusTx.Numeric qualified as PN ( (-) )
@@ -229,9 +229,11 @@ reloadOp
     -> Contract (Last [UtxoEscrowInfo]) s Text ()
 reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
 
-    utxos      <- utxosAt contractAddress
-    utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut $ toList utxos
+    utxos      <- lookupScriptUtxos contractAddress cTokenAsset
+    utxosEInfo <- mapM (mkUtxoEscrowInfoFromTxOut cTokenAsset) utxos
 
     tell $ Last $ Just utxosEInfo
 
@@ -249,15 +251,12 @@ getEscrowInfo txOut = getDatumWithError txOut >>=
 -- | Off-chain function for getting an UtxoEscrowInfo from a DecoratedTxOut.
 mkUtxoEscrowInfoFromTxOut
     :: forall w s
-    .  (TxOutRef, DecoratedTxOut)
+    .  AssetClass
+    -> (TxOutRef, DecoratedTxOut)
     -> Contract w s Text UtxoEscrowInfo
-mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) =
-    let contractAddress = dtxout ^. decoratedTxOutAddress
-        value           = dtxout ^. decoratedTxOutValue
-
-        cTokenCurrency = controlTokenCurrency contractAddress
-        cTokenAsset    = assetClass cTokenCurrency cTokenName
-        cTokenVal      = assetClassValue cTokenAsset 1
+mkUtxoEscrowInfoFromTxOut cTokenAsset (utxoRef, dtxout) =
+    let value      = dtxout ^. decoratedTxOutValue
+        cTokenVal  = assetClassValue cTokenAsset 1
 
         paymentVal = value PN.- cTokenVal PN.- minAda
     in
