@@ -26,7 +26,7 @@ where
 -- Non-IOG imports
 import Control.Lens    ( (^.) )
 import Control.Monad   ( forever, unless )
-import Data.Map ( singleton, toList )
+import Data.Map        ( singleton )
 import Data.Text       ( Text )
 import Data.Monoid     ( Last(..) )
 
@@ -46,7 +46,7 @@ import Ledger.Value       ( assetClass, assetClassValue, flattenValue )
 import Plutus.Contract    ( Contract, Promise, awaitPromise, endpoint
                           , handleError, logError, logInfo, mkTxConstraints
                           , select, tell, throwError
-                          , utxosAt, yieldUnbalancedTx
+                          , yieldUnbalancedTx
                           )
 import PlutusTx           ( fromBuiltinData )
 import PlutusTx.Numeric qualified as PN ( (-) )
@@ -229,9 +229,11 @@ reloadOp
     -> Contract (Last [UtxoEscrowInfo]) s Text ()
 reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
+        cCurrenySymbol  = controlTokenCurrency contractAddress
+        cAssetClass     = assetClass cCurrenySymbol cTokenName
 
-    utxos      <- utxosAt contractAddress
-    utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut $ toList utxos
+    utxos      <- lookupScriptUtxos contractAddress cAssetClass
+    utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut utxos
 
     tell $ Last $ Just utxosEInfo
 
