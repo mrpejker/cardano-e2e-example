@@ -2,7 +2,8 @@
 
 ## **Activation**
 
-We only have one kind of activation. The activation allows the Wallet to interact with the endpoints defined in the [**EscrowSchema**](https://github.com/joinplank/cardano-e2e-example/blob/95a0dbbdfb812971c466516a3e525d95432b0b63/backend/src/Escrow/OffChain/Interface.hs#L41-L44). On this particular case, because we only have one kind of activation we just give the wallet address through caID. Besides that, the activate endpoint needs a wallet id to work, but the good news is that for our approach can be any. <br>
+We only have one kind of activation. The activation allows the Wallet to interact with the endpoints defined in the [**EscrowSchema**](https://github.com/joinplank/cardano-e2e-example/blob/95a0dbbdfb812971c466516a3e525d95432b0b63/backend/src/Escrow/OffChain/Interface.hs#L41-L44). On this particular case, because we only have one kind of activation we just give the wallet address through caID. Besides that, the activate endpoint needs a wallet id to work, but the good news is that for our approach can be any.
+
 In the body we give the following information:
 
  ```
@@ -13,21 +14,19 @@ In the body we give the following information:
    }
 }
  ```
-A WalletAddress needs a `PubKeyHash` for the Payment PubKeyHash, and the StakingHash that    can be `undefined`. All the WalletAddress are defined as:
+A WalletAddress needs a `PubKeyHash` for the Payment PubKeyHash, and the StakingHash that may not be present. All the WalletAddress are defined as:
  ```
   {
     "waPayment": { "getPubKeyHash": string },
     "waStaking": { "getPubKeyHash": string }
   }
  ```
-<br>
 
 ## **Operations**
-<br>
 
 ### **Start**
 
-The <code>start</code> endpoint creates a new escrow from the information given on the body of the call, with the following format. The <code>StartParams</code> JSON should be:
+The `start` endpoint creates a new escrow from the information given on the body of the call, with the following format. The `StartParams` JSON should be:
 
  ```
 {
@@ -51,7 +50,7 @@ The **AssetClasses** have a `TokenName` and a `CurrencySymbol`. It uses the deri
 
 ### **Cancel**
 
-The <code>cancel</code> endpoint cancel an existing escrow with the parameters needed to find the escrow. That is the transaction reference where the escrow was started and the Receiver Address. The <code>CancelParams</code> JSON in the body should be:
+The `cancel` endpoint cancels an existing escrow with the parameters needed to find the escrow. That is the transaction utxo reference of the escrow to cancel and the Receiver Address. The `CancelParams` JSON in the body should be:
 
  ```
 {
@@ -70,20 +69,17 @@ A **TxOutRef** takes a `TxId` and a number.
 
 ### **Resolve**
 
-The <code>resolve</code> endpoint resolves an existing escrow. As the signer of this endpoint call in the OffChain code is the receiver, it is not necessary to give the Receiver Address as argument to find the escrow.
-The <code>ResolveParams</code> in the body is a JSON should be:
+The `resolve` endpoint resolves an existing escrow. As the signer of this endpoint call in the OffChain code is the receiver, it is not necessary to give the Receiver Address as argument to find the escrow. The `ResolveParams` in the body is a JSON should be:
 
  ```
 {
     rpTxOutRef :: TxOutRef
 }
  ```
-<br>
 
 ## **Observable State**
-<br>
 
-The **Observable State** can be loaded with the <code>reload</code> endpoint. The type of response from calling <code>status</code> is **UtxoEscrowInfo**:
+The **Observable State** can be loaded with the `reload` endpoint. The type of response from calling `status` is **UtxoEscrowInfo**:
 
  ```
 {
