@@ -64,8 +64,8 @@ if the PAB is used with cardano-wallet, so we set any number (given that we
 don't use that functionality).
 The important information goes inside ``caID``, where basically we specify the
 kind of activation we are doing and the corresponding parameters. In our case
-we have only one kind of activation and the parameter is a wallet address, specified
-by payment key hash (``waPayment``) and staking key hash (``waStaking``).
+we have only one kind of activation, whose parameter is a wallet address, specified
+by payment pub key hash (``waPayment``) and staking pub key hash (``waStaking``).
 
 The response of the activation call is an instance id, that is necessary for calling
 the off-chain operations. The PAB endpoint for calling them depends on the schema
