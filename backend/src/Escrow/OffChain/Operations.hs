@@ -32,8 +32,8 @@ import Data.Monoid     ( Last(..) )
 
 -- IOG imports
 import Ledger             ( DecoratedTxOut, TxOutRef, AssetClass, Value
-                          , decoratedTxOutValue, decoratedTxOutAddress
-                          , getDatum, unPaymentPubKeyHash
+                          , decoratedTxOutValue, getDatum
+                          , unPaymentPubKeyHash
                           )
 import Ledger.Constraints ( plutusV1MintingPolicy, mustBeSignedBy
                           , mustMintValue
@@ -229,11 +229,11 @@ reloadOp
     -> Contract (Last [UtxoEscrowInfo]) s Text ()
 reloadOp addr = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
-        cCurrenySymbol  = controlTokenCurrency contractAddress
-        cAssetClass     = assetClass cCurrenySymbol cTokenName
+        cTokenCurrency  = controlTokenCurrency contractAddress
+        cTokenAsset     = assetClass cTokenCurrency cTokenName
 
-    utxos      <- lookupScriptUtxos contractAddress cAssetClass
-    utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut utxos
+    utxos      <- lookupScriptUtxos contractAddress cTokenAsset
+    utxosEInfo <- mapM (mkUtxoEscrowInfoFromTxOut cTokenAsset) utxos
 
     tell $ Last $ Just utxosEInfo
 
@@ -251,15 +251,12 @@ getEscrowInfo txOut = getDatumWithError txOut >>=
 -- | Off-chain function for getting an UtxoEscrowInfo from a DecoratedTxOut.
 mkUtxoEscrowInfoFromTxOut
     :: forall w s
-    .  (TxOutRef, DecoratedTxOut)
+    .  AssetClass
+    -> (TxOutRef, DecoratedTxOut)
     -> Contract w s Text UtxoEscrowInfo
-mkUtxoEscrowInfoFromTxOut (utxoRef, dtxout) =
-    let contractAddress = dtxout ^. decoratedTxOutAddress
-        value           = dtxout ^. decoratedTxOutValue
-
-        cTokenCurrency = controlTokenCurrency contractAddress
-        cTokenAsset    = assetClass cTokenCurrency cTokenName
-        cTokenVal      = assetClassValue cTokenAsset 1
+mkUtxoEscrowInfoFromTxOut cTokenAsset (utxoRef, dtxout) =
+    let value      = dtxout ^. decoratedTxOutValue
+        cTokenVal  = assetClassValue cTokenAsset 1
 
         paymentVal = value PN.- cTokenVal PN.- minAda
     in
