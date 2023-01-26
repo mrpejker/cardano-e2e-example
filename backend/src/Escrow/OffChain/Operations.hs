@@ -202,6 +202,8 @@ resolveOp addr ResolveParams{..} = do
 
     let senderWallAddr = eInfoSenderWallAddr eInfo
         senderPayment  = valueToSender eInfo <> minAda
+        escrowVal      = utxo ^. decoratedTxOutValue
+        receivePayment = escrowVal <> cTokenVal
 
         lkp = mconcat
             [ plutusV1OtherScript validator
@@ -213,6 +215,7 @@ resolveOp addr ResolveParams{..} = do
             , mustMintValue cTokenVal
             , mustBeSignedBy receiverPpkh
             , mustPayToWalletAddress senderWallAddr senderPayment
+            , mustPayToWalletAddress addr receivePayment
             ]
 
     mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
