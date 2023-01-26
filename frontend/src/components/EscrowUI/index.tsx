@@ -407,7 +407,7 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
           {currentContractState.escrowsInfo.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
             // if networkId is 0 (networkId for testnet),
             // assumes that preprod testnet is used
-            const network = currentContractState.networkId == 0 ? "preprod" : "mainnet";
+            const cardanoScanUrlPrefix = currentContractState.networkId == 0 ? "preprod." : "";
             const sendAsset = escrowPayment[0].currencySymbol
                             + Buffer.from(escrowPayment[0].tokenName).toString("hex");
             const receiveAsset = escrowInfo.rAssetClass.currencySymbol
@@ -418,23 +418,23 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             }
             return <tr key={i}>
               <td>
-                <a href={`https://${network}.cardanoscan.io/transaction/${txHash}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/transaction/${txHash}`}>
                   {`${txHash.substring(0,8)}...${txHash.substring(txHash.length - 8)}`}
                 </a>
               </td>
               <td>
-                <a href={`https://${network}.cardanoscan.io/address/${escrowInfo.sender}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/address/${escrowInfo.sender}`}>
                   {`${escrowInfo.sender.substring(0,8)}...${escrowInfo.sender.substring(escrowInfo.sender.length - 8)}`}
                 </a></td>
               <td> {escrowPayment[1]} </td>
               <td>
-                <a href={`https://${network}.cardanoscan.io/token/${sendAsset}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${sendAsset}`}>
                 {escrowPayment[0].tokenName}
                 </a>
               </td>
               <td> {escrowInfo.rAmount} </td>
               <td>
-                <a href={`https://${network}.cardanoscan.io/token/${receiveAsset}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${receiveAsset}`}>
                   {escrowInfo.rAssetClass.tokenName}
                 </a>
               </td>
