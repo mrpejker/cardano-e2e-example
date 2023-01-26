@@ -405,6 +405,8 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
         </thead>
         <tbody>
           {currentContractState.escrowsInfo.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
+            // if networkId is 0 (networkId for testnet),
+            // assumes that preprod testnet is used
             const network = currentContractState.networkId == 0 ? "preprod" : "mainnet";
             const sendAsset = escrowPayment[0].currencySymbol
                             + Buffer.from(escrowPayment[0].tokenName).toString("hex");
@@ -416,12 +418,12 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             }
             return <tr key={i}>
               <td>
-                <a href={`https://${network}.cexplorer.io/tx/${txHash}`}>
+                <a href={`https://${network}.cardanoscan.io/transaction/${txHash}`}>
                   {`${txHash.substring(0,8)}...${txHash.substring(txHash.length - 8)}`}
                 </a>
               </td>
               <td>
-                <a href={`https://${network}.cexplorer.io/address/${escrowInfo.sender}`}>
+                <a href={`https://${network}.cardanoscan.io/address/${escrowInfo.sender}`}>
                   {`${escrowInfo.sender.substring(0,8)}...${escrowInfo.sender.substring(escrowInfo.sender.length - 8)}`}
                 </a></td>
               <td> {escrowPayment[1]} </td>
