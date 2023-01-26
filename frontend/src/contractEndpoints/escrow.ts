@@ -7,7 +7,6 @@ import type {
   TxOutRef,
   WalletAddress,
   Plutus,
-  Address
 } from "cardano-pab-client";
 import { CancelParams, ResolveParams, StartParams } from "./parameters";
 
@@ -15,7 +14,7 @@ import { CancelParams, ResolveParams, StartParams } from "./parameters";
  * The representation of the contract Utxo state
  */
 export type EscrowInfo = {
-  sender: Address;
+  sender: string;
   rAssetClass: AssetClass;
   rAmount: number;
 }
@@ -144,12 +143,13 @@ export class EscrowEndpoints {
   public async reload(): Promise<ObsState | null> {
     const { failed } = this.PABClient;
     const response = await this.endpoints.reload({ tag: "reload", contents: [] })
+    const network = await this.wallet.getNetworkId()
     if (failed(response)) {
       return null;
     }
     const escrows = response.value as PABObservableState;
     console.log(escrows)
-    const observableState = parsePABObservableState(escrows);
+    const observableState = parsePABObservableState(escrows, network as 0 | 1);
     console.log("Finishing Reload");
     return observableState;
   }
@@ -249,20 +249,20 @@ type PABObservableState = Array<{
   }
 }>;
 
-async function parsePABObservableState(escrows: PABObservableState): Promise<ObsState> {
+async function parsePABObservableState(escrows: PABObservableState, network: 0 | 1): Promise<ObsState> {
   const { AssetClass, TxOutRef, Address } = await import("cardano-pab-client");
-  return escrows.map(
-    ({ escrowUtxo, escrowPayment, escrowInfo }) => ({
-      // parse all the PAB structures
+  const escrows_ = escrows.map(
+    async ({escrowUtxo,escrowPayment,escrowInfo}) => ({
       escrowUtxo: TxOutRef.fromPlutusTxOutRef(escrowUtxo),
       escrowPayment: [AssetClass.fromPlutusAssetClass(escrowPayment[0]), escrowPayment[1]],
       escrowInfo: {
-        sender: Address.fromWalletAddress(escrowInfo.sender),
+        sender: await Address.fromWalletAddress(escrowInfo.sender).toBech32(network),
         rAssetClass: AssetClass.fromPlutusAssetClass(escrowInfo.rAssetClass),
-        rAmount: escrowInfo.rAmount,
-      },
+        rAmount: escrowInfo.rAmount
+      }
     })
   )
+  return Promise.all(escrows_).then()
 }
 
 /**

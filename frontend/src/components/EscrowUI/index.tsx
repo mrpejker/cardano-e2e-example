@@ -394,6 +394,7 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
       {<Table striped bordered hover className="align-middle">
         <thead>
           <tr>
+            <th> Transaction Hash</th>
             <th>Sender Address</th>
             <th>Send Amount</th>
             <th>Send Asset</th>
@@ -404,15 +405,38 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
         </thead>
         <tbody>
           {currentContractState.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
+            const sendAsset = escrowPayment[0].currencySymbol
+                            + Buffer.from(escrowPayment[0].tokenName).toString("hex");
+            const receiveAsset = escrowInfo.rAssetClass.currencySymbol
+                               + Buffer.from(escrowInfo.rAssetClass.tokenName).toString("hex");
+            const txHash = escrowUtxo.ref.txId
             if (!contractEndpoints) {
               throw new Error("contractEndpoints not defined!");
             }
             return <tr key={i}>
-              <td> {escrowInfo.sender.paymentPubKeyHash} </td>
+              <td>
+                <a href={`https://preprod.cexplorer.io/tx/${txHash}`}>
+                  {`${txHash.substring(0,10)}...
+                    ${txHash.substring(48)}`}
+                </a>
+              </td>
+              <td>
+                <a href={`https://preprod.cexplorer.io/address/${escrowInfo.sender}`}>
+                  {`${escrowInfo.sender.substring(0,16)}...
+                    ${escrowInfo.sender.substring(100)}`}
+                </a></td>
               <td> {escrowPayment[1]} </td>
-              <td> {escrowPayment[0].tokenName} </td>
+              <td>
+                <a href={`https://preprod.cardanoscan.io/token/${sendAsset}`}>
+                {escrowPayment[0].tokenName}
+                </a>
+              </td>
               <td> {escrowInfo.rAmount} </td>
-              <td> {escrowInfo.rAssetClass.tokenName} </td>
+              <td>
+                <a href={`https://preprod.cardanoscan.io/token/${receiveAsset}`}>
+                  {escrowInfo.rAssetClass.tokenName}
+                </a>
+              </td>
               <td>
                 <Resolve
                   txOutRefToResolve={escrowUtxo}
