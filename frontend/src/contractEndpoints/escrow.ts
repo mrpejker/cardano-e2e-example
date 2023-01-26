@@ -25,7 +25,10 @@ export type UtxoEscrowInfo = {
   escrowPayment: [AssetClass, number]
 }
 
-export type ObsState = UtxoEscrowInfo[]
+export type ObsState = {
+  escrowsInfo: UtxoEscrowInfo[],
+  networkId : 0 | 1
+}
 
 export class EscrowEndpoints {
   PABClient: typeof import("cardano-pab-client");
@@ -251,10 +254,10 @@ type PABObservableState = Array<{
 
 async function parsePABObservableState(escrows: PABObservableState, network: 0 | 1): Promise<ObsState> {
   const { AssetClass, TxOutRef, Address } = await import("cardano-pab-client");
-  const escrows_ = escrows.map(
+  const escrowsMap = escrows.map(
     async ({escrowUtxo,escrowPayment,escrowInfo}) => ({
       escrowUtxo: TxOutRef.fromPlutusTxOutRef(escrowUtxo),
-      escrowPayment: [AssetClass.fromPlutusAssetClass(escrowPayment[0]), escrowPayment[1]],
+      escrowPayment: [AssetClass.fromPlutusAssetClass(escrowPayment[0]), escrowPayment[1]] as [AssetClass, number],
       escrowInfo: {
         sender: await Address.fromWalletAddress(escrowInfo.sender).toBech32(network),
         rAssetClass: AssetClass.fromPlutusAssetClass(escrowInfo.rAssetClass),
@@ -262,7 +265,8 @@ async function parsePABObservableState(escrows: PABObservableState, network: 0 |
       }
     })
   )
-  return Promise.all(escrows_).then()
+  const utxosEscrows = Promise.all(escrowsMap).then()
+  return { escrowsInfo: await utxosEscrows , networkId: network}
 }
 
 /**

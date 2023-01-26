@@ -5,7 +5,7 @@ import { EscrowEndpoints, ObsState, UtxoEscrowInfo } from "src/contractEndpoints
 import { mkStartParams, mkCancelParams, mkResolveParams } from "src/contractEndpoints/parameters";
 
 function EscrowUI(): JSX.Element {
-  const [currentContractState, setCurrentContractState] = useState<ObsState>([])
+  const [currentContractState, setCurrentContractState] = useState<ObsState>({escrowsInfo: [], networkId: 0})
   const [contractEndpoints, setContractEndpoints] = useState<EscrowEndpoints | undefined>();
   const [isConnected, setIsConnected] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
@@ -404,7 +404,8 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
           </tr>
         </thead>
         <tbody>
-          {currentContractState.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
+          {currentContractState.escrowsInfo.map(({ escrowInfo, escrowUtxo, escrowPayment }: UtxoEscrowInfo, i) => {
+            const network = currentContractState.networkId == 0 ? "preprod" : "mainnet";
             const sendAsset = escrowPayment[0].currencySymbol
                             + Buffer.from(escrowPayment[0].tokenName).toString("hex");
             const receiveAsset = escrowInfo.rAssetClass.currencySymbol
@@ -415,23 +416,23 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             }
             return <tr key={i}>
               <td>
-                <a href={`https://preprod.cexplorer.io/tx/${txHash}`}>
+                <a href={`https://${network}.cexplorer.io/tx/${txHash}`}>
                   {`${txHash.substring(0,8)}...${txHash.substring(txHash.length - 8)}`}
                 </a>
               </td>
               <td>
-                <a href={`https://preprod.cexplorer.io/address/${escrowInfo.sender}`}>
+                <a href={`https://${network}.cexplorer.io/address/${escrowInfo.sender}`}>
                   {`${escrowInfo.sender.substring(0,8)}...${escrowInfo.sender.substring(escrowInfo.sender.length - 8)}`}
                 </a></td>
               <td> {escrowPayment[1]} </td>
               <td>
-                <a href={`https://preprod.cardanoscan.io/token/${sendAsset}`}>
+                <a href={`https://${network}.cardanoscan.io/token/${sendAsset}`}>
                 {escrowPayment[0].tokenName}
                 </a>
               </td>
               <td> {escrowInfo.rAmount} </td>
               <td>
-                <a href={`https://preprod.cardanoscan.io/token/${receiveAsset}`}>
+                <a href={`https://${network}.cardanoscan.io/token/${receiveAsset}`}>
                   {escrowInfo.rAssetClass.tokenName}
                 </a>
               </td>
