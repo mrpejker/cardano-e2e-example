@@ -416,14 +416,12 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             return <tr key={i}>
               <td>
                 <a href={`https://preprod.cexplorer.io/tx/${txHash}`}>
-                  {`${txHash.substring(0,10)}...
-                    ${txHash.substring(48)}`}
+                  {`${txHash.substring(0,8)}...${txHash.substring(txHash.length - 8)}`}
                 </a>
               </td>
               <td>
                 <a href={`https://preprod.cexplorer.io/address/${escrowInfo.sender}`}>
-                  {`${escrowInfo.sender.substring(0,16)}...
-                    ${escrowInfo.sender.substring(100)}`}
+                  {`${escrowInfo.sender.substring(0,8)}...${escrowInfo.sender.substring(escrowInfo.sender.length - 8)}`}
                 </a></td>
               <td> {escrowPayment[1]} </td>
               <td>
