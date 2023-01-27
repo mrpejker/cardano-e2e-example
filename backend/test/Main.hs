@@ -24,7 +24,7 @@ main = defaultMain tests
 tests :: TestTree
 tests = testGroup "Project tests"
         [ offChainTests
-        , testProperty "Basic property testing" propEscrow
+        , testProperty "Basic property testing" propBasic
         , testProperty "No locked funds property testing" propNoLockedFunds
         ]
 
