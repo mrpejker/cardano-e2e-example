@@ -51,11 +51,15 @@ Resolve redeemers.
 Cancel:
  - The address that is trying to cancel the escrow is the same as the Sender’s
    address.
+ - There is only one script input UTxO
  - The control token is burned after the transaction.
 
 Resolve:
  - The address that is trying to resolve is the same as the Receiver’s address.
  - The Sender’s address receives the tokens specified on the datum.
+ - The Receiver's address receives the tokens held on the value of the script UTxO
+   (without the control token)
+ - There is only one script input UTxO
  - The control token is burned after the transaction.
 -}
 {-# INLINABLE mkEscrowValidator #-}
@@ -106,6 +110,8 @@ cancelValidator EscrowInfo{..} signer =
 {- | Checks:
  - The address that is trying to resolve is the same as the Receiver’s address.
  - The Sender’s address receives the tokens specified on the datum.
+ - The Receiver's address receives the tokens held on the value of the script UTxO
+   (without the control token)
 -}
 {-# INLINABLE resolveValidator #-}
 resolveValidator
