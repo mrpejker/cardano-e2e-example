@@ -100,9 +100,7 @@ export class EscrowEndpoints {
   public async start(sp: StartParams): Promise<void | undefined> {
     const { failed, setMetadataMessage } = this.PABClient;
     // Try to get unbalanced transaction from PAB
-    const pabResponse = await this.endpoints.doOperation(
-      { tag: "start", contents: sp }
-    );
+    const pabResponse = await this.endpoints.doOperation("start", sp);
     if (failed(pabResponse)) {
       console.log(`Didn't get the unbalanced transaction from the PAB. Error: ${pabResponse.error}`);
       alert(`Didn't get the unbalanced transaction from the PAB. Error: ${pabResponse.error}`);
@@ -145,7 +143,7 @@ export class EscrowEndpoints {
 
   public async reload(): Promise<ObsState | null> {
     const { failed } = this.PABClient;
-    const response = await this.endpoints.reload({ tag: "reload", contents: [] })
+    const response = await this.endpoints.reload()
     const network = await this.wallet.getNetworkId()
     if (failed(response)) {
       return null;
@@ -160,9 +158,7 @@ export class EscrowEndpoints {
   public async cancel(cp: CancelParams): Promise<void> {
     const { failed, setMetadataMessage } = this.PABClient;
 
-    const pabResponse = await this.endpoints.doOperation(
-      { tag: "cancel", contents: cp }
-    );
+    const pabResponse = await this.endpoints.doOperation("cancel", cp);
     console.log(pabResponse)
     if (failed(pabResponse)) {
       console.log(`Didn't get the unbalanced transaction from the PAB. Error: ${pabResponse.error}`);
@@ -203,9 +199,7 @@ export class EscrowEndpoints {
   public async resolve(rp: ResolveParams): Promise<void | undefined> {
     const { failed, setMetadataMessage } = this.PABClient;
 
-    const pabResponse = await this.endpoints.doOperation(
-      { tag: "resolve", contents: rp }
-    );
+    const pabResponse = await this.endpoints.doOperation("resolve", rp);
     if (failed(pabResponse)) {
       console.log(`Didn't get the unbalanced transaction from the PAB. Error: ${pabResponse.error}`);
       alert(`Didn't get the unbalanced transaction from the PAB. Error: ${pabResponse.error}`);
