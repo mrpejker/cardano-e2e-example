@@ -16,12 +16,14 @@ module Escrow.OffChain.Interface
     , CancelParams(..)
     , ResolveParams(..)
     -- * Observable state information
+    , ObservableState(..)
     , UtxoEscrowInfo(..)
     -- * Smart constructors
     , mkStartParams
     , mkCancelParams
     , mkResolveParams
     , mkUtxoEscrowInfo
+    , mkObservableState
     )
 where
 
@@ -41,7 +43,7 @@ import Escrow.Types ( EscrowInfo, ReceiverAddress )
 type EscrowSchema = Endpoint "start"   StartParams
                 .\/ Endpoint "cancel"  CancelParams
                 .\/ Endpoint "resolve" ResolveParams
-                .\/ Endpoint "reload"  ()
+                .\/ Endpoint "reload"  Integer
 
 {-| The start parameter includes the Address of the receiver, that
     will be used to get the contract address and validator.
@@ -105,6 +107,24 @@ mkCancelParams ref rAddr = CancelParams
 -- | Smart constructor for the resolve param.
 mkResolveParams :: TxOutRef -> ResolveParams
 mkResolveParams ref = ResolveParams { rpTxOutRef = ref }
+
+{- | The observable state encapsulates the information we want to retrieve with
+     the reload operation and the flag number expected by the operation to
+     identify when the state changed.
+-}
+data ObservableState = ObservableState
+                       { info       :: [UtxoEscrowInfo]
+                       , reloadFlag :: Integer
+                       }
+    deriving (Show, Generic)
+    deriving anyclass (FromJSON, ToJSON)
+
+-- | Smart constructor for the observable state.
+mkObservableState :: Integer -> [UtxoEscrowInfo] -> ObservableState
+mkObservableState rFlag escrowInfo = ObservableState
+                                     { info       = escrowInfo
+                                     , reloadFlag = rFlag
+                                     }
 
 {- | Enclose the complete information about a particular escrow instance:
      - The utxo reference for resolving or canceling.

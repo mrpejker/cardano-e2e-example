@@ -43,13 +43,13 @@ import Ledger                             ( AssetClass )
 
 -- Escrow imports
 import Escrow.Business            ( mkReceiverAddress )
-import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..)
+import Escrow.OffChain.Interface  ( ObservableState(info), UtxoEscrowInfo(..)
                                   , mkResolveParams, mkStartParams
                                   , mkCancelParams
                                   )
 import Escrow.OffChain.Operations ( EscrowSchema, endpoints )
 import Utils.OnChain              ( minAda )
-import Tests.Utils                ( wallets, mockWAddress )
+import Tests.Utils                ( wallets, mockReloadFlag, mockWAddress )
 import Tests.Prop.Gen             ( genWallet, gen2Tokens )
 import Tests.Prop.Extra           ( ExchangeInfo(..)
                                   , LookupSchema, lookupEndpoint, findEscrowUtxo
@@ -95,10 +95,10 @@ instance ContractModel EscrowModel where
     -}
     data ContractInstanceKey EscrowModel w s e params where
         UserH :: Wallet
-              -> ContractInstanceKey EscrowModel (Last [UtxoEscrowInfo])
+              -> ContractInstanceKey EscrowModel (Last ObservableState)
                                      EscrowSchema Text ()
         LookupH :: Wallet
-                -> ContractInstanceKey EscrowModel (Last [UtxoEscrowInfo])
+                -> ContractInstanceKey EscrowModel (Last ObservableState)
                                        LookupSchema Text ()
 
     initialInstances = []
@@ -216,10 +216,11 @@ escrowSemantics h _ _ Start{sWallet,rWallet,sPay,rPay} = do
         mkStartParams (mkReceiverAddress $ mockWAddress rWallet) aA acA aB acB
     delay 2
 escrowSemantics h _ _ Resolve{rWallet, eInfo} = do
-    callEndpoint @"reload" (h $ UserH rWallet) ()
+    callEndpoint @"reload" (h $ UserH rWallet) mockReloadFlag
     delay 5
     Last obsState <- observableState $ h $ UserH rWallet
-    let utxoEscrowInfo = fromJust $ findEscrowUtxo eInfo (fromJust obsState)
+    let utxoEscrowInfo = fromJust $
+                         findEscrowUtxo eInfo (info $ fromJust obsState)
 
     callEndpoint @"resolve" (h $ UserH rWallet) $
         mkResolveParams (escrowUtxo utxoEscrowInfo)
@@ -230,7 +231,8 @@ escrowSemantics h _ _ Cancel{rWallet, eInfo} = do
     callEndpoint @"lookup" (h $ LookupH sendW) (mockWAddress rWallet)
     delay 5
     Last obsState <- observableState $ h $ LookupH sendW
-    let utxoEscrowInfo = fromJust $ findEscrowUtxo eInfo (fromJust obsState)
+    let utxoEscrowInfo = fromJust $
+                         findEscrowUtxo eInfo (info $ fromJust obsState)
 
     callEndpoint @"cancel" (h $ UserH sendW) $
         mkCancelParams (escrowUtxo utxoEscrowInfo)
