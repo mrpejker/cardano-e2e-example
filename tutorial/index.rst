@@ -60,7 +60,7 @@ Finally, we review the *Client side* by introducing the PAB Client library and h
    :caption: Client Side
    :numbered:
 
-   client_side/1_modules_design.rst
+   client_side/1_introduction.rst
    client_side/2_pab_api.rst
    client_side/3_contract_endpoints.rst
    client_side/4_balancer.rst
