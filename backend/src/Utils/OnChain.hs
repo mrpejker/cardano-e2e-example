@@ -51,11 +51,6 @@ outputsAt addr info = mapMaybe flt (txInfoOutputs info)
 valueOutputsAt :: Address -> TxInfo -> [Value]
 valueOutputsAt addr = map txOutValue . outputsAt addr
 
--- | Get the values of the inputs of a transaction
-{-# INLINABLE inputsValue #-}
-inputsValue :: TxInfo -> [Value]
-inputsValue info = map (txOutValue . txInInfoResolved) (txInfoInputs info)
-
 -- | Get the total value paid to a public key address by a pending transaction.
 {-# INLINABLE valuePaidTo #-}
 valuePaidTo :: Address -> TxInfo -> Value
