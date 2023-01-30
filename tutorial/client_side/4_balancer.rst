@@ -1,5 +1,5 @@
-The Balancer
-============
+Balancer
+========
 
 This module is a key part of the PAB Client library.
 Unbalanced transactions requires several modifications until they can be signed and submitted to the blockchain, and the balancer module takes care of this.

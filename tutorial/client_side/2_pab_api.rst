@@ -1,5 +1,5 @@
-The PAB API
-===========
+PAB API
+=======
 
 This module provides functionality for connecting to a PAB running at the
 server side. It is basically a thin wrapper for doing HTTP requests to the PAB.

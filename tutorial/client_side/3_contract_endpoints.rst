@@ -1,12 +1,12 @@
 .. _contract_endpoints:
 
 
-The Contract Endpoints module
-=============================
+Contract Endpoints
+==================
 
-This module provides a more abstract way to connect to the PAB, following
-design patterns we find generally useful for dApps. It is built on top of the
-PAB API module.
+The ``ContractEndpoints`` module provides a more abstract way to connect to the
+PAB, following design patterns we find generally useful for dApps. It is built
+on top of the PAB API module.
 
 To be able to use this module, the off-chain code must also follow the design
 patterns.
