@@ -11,18 +11,32 @@ Stability   : develop
 module Utils.OnChain where
 
 -- IOG imports
-import Ledger     ( Address, Value, PubKeyHash
+import Ledger     ( Address(..), Value, PubKeyHash
                   , getDatum, minAdaTxOut, toPubKeyHash
                   )
 import Ledger.Ada ( toValue )
 import PlutusTx   ( FromData(..) )
 import PlutusTx.Prelude ( Maybe(..), Bool(..)
-                        , (.), (>>=), (==)
+                        , (.), (>>=), (==), ($)
                         , mapMaybe, map, mconcat
-                        , traceError
+                        , traceError, filter
                         )
-import Plutus.V1.Ledger.Contexts ( TxInfo(..), findDatum )
+import Plutus.V1.Ledger.Contexts ( ScriptContext(..), TxInfo(..), TxInInfo(..)
+                                 , findDatum
+                                 )
 import Plutus.V1.Ledger.Tx       ( TxOut(..), txOutDatum )
+import Plutus.V1.Ledger.Credential ( Credential(..))
+
+-- | Get all the script inputs from the context
+{-# INLINABLE getScriptInputs #-}
+getScriptInputs :: ScriptContext -> [TxOut]
+getScriptInputs ctx = filter
+                            (isScript . txOutAddress)
+                            (map txInInfoResolved
+                                 (txInfoInputs $ scriptContextTxInfo ctx))
+  where
+    isScript (Address (ScriptCredential _) _) = True
+    isScript _ = False
 
 -- | Get the UTxOs of given address.
 {-# INLINABLE outputsAt #-}
@@ -36,6 +50,11 @@ outputsAt addr info = mapMaybe flt (txInfoOutputs info)
 {-# INLINABLE valueOutputsAt #-}
 valueOutputsAt :: Address -> TxInfo -> [Value]
 valueOutputsAt addr = map txOutValue . outputsAt addr
+
+-- | Get the values of the inputs of a transaction
+{-# INLINABLE inputsValue #-}
+inputsValue :: TxInfo -> [Value]
+inputsValue info = map (txOutValue . txInInfoResolved) (txInfoInputs info)
 
 -- | Get the total value paid to a public key address by a pending transaction.
 {-# INLINABLE valuePaidTo #-}

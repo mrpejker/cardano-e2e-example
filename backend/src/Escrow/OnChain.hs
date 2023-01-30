@@ -22,23 +22,26 @@ import Plutus.V1.Ledger.Api   ( ScriptContext(..), TxInfo(..), TxOut(..)
                               , PubKeyHash, TokenName
                               )
 import Plutus.V1.Ledger.Value ( CurrencySymbol, Value
-                              , assetClass, assetClassValueOf, flattenValue
-                              , leq
+                              , assetClass, assetClassValueOf, assetClassValue
+                              , flattenValue, leq
                               )
 import PlutusTx.Prelude       ( Integer, Bool
                               , ($), (&&), (||), (==), (>), (<>)
-                              , traceIfFalse
+                              , length, traceIfFalse
                               )
 
 -- Escrow imports
-import Escrow.Business ( ReceiverAddress, EscrowInfo(..)
-                       , signerIsSender, signerIsReceiver, eInfoSenderAddr
-                       , valueToSender
-                       )
-import Escrow.Types    ( EscrowDatum(..), EscrowRedeemer(..), ScriptAddress )
-import Utils.OnChain   ( fromJust, getSingleton
-                       , valuePaidTo, outputsAt, getTxOutDatum
-                       )
+import Escrow.Business     ( ReceiverAddress(..), EscrowInfo(..)
+                           , signerIsSender, signerIsReceiver, eInfoSenderAddr
+                           , valueToSender
+                           )
+import Escrow.Types        ( EscrowDatum(..), EscrowRedeemer(..)
+                           , ScriptAddress
+                           )
+import Utils.OnChain       ( fromJust, getSingleton, getScriptInputs
+                           , valuePaidTo, outputsAt, getTxOutDatum
+                           )
+import Utils.WalletAddress ( toAddress )
 
 {- | Escrow Validator
 
@@ -64,7 +67,10 @@ mkEscrowValidator :: ReceiverAddress
 mkEscrowValidator raddr EscrowDatum{..} r ctx =
     case r of
         CancelEscrow  -> cancelValidator eInfo signer
-        ResolveEscrow -> resolveValidator info eInfo raddr signer
+        ResolveEscrow -> resolveValidator info eInfo raddr signer scriptValue
+    &&
+    traceIfFalse "more than one script input utxo"
+                 (length sUtxos == 1)
     &&
     traceIfFalse "controlToken was not burned"
                  (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
@@ -80,6 +86,12 @@ mkEscrowValidator raddr EscrowDatum{..} r ctx =
     info :: TxInfo
     info = scriptContextTxInfo ctx
 
+    sUtxos :: [TxOut]
+    sUtxos = getScriptInputs ctx
+
+    scriptValue :: Value
+    scriptValue = txOutValue (getSingleton sUtxos)
+                <> assetClassValue eAssetClass (-1)
 
 {- | Checks:
  - The address that is trying to cancel the escrow is the same as the Sender’s
@@ -101,16 +113,23 @@ resolveValidator
     -> EscrowInfo
     -> ReceiverAddress
     -> PubKeyHash
+    -> Value
     -> Bool
-resolveValidator info ei raddr signer =
+resolveValidator info ei raddr@ReceiverAddress{..} signer scriptValue =
     traceIfFalse "resolveValidator: Wrong receiver signature"
                  (signerIsReceiver signer raddr)
     &&
     traceIfFalse "resolveValidator: Wrong sender's payment"
                  (valueToSender ei `leq` senderV)
+    &&
+    traceIfFalse "resolveValidator: Wrong receiver's payment"
+                 (scriptValue `leq` receiverV)
   where
     senderV :: Value
     senderV = valuePaidTo (eInfoSenderAddr ei) info
+
+    receiverV :: Value
+    receiverV = valuePaidTo (toAddress rAddr) info
 
 {- | Escrow Control Token minting policy
 

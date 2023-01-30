@@ -16,7 +16,7 @@ the plutus prelude, instead of the haskell prelude.
 module Escrow.Business
     ( -- * Types
       SenderAddress
-    , ReceiverAddress
+    , ReceiverAddress(..)
     , EscrowInfo (..)
     -- * Smart Constructors
     , mkSenderAddress
