@@ -1,3 +1,5 @@
+.. _pab_api:
+
 PAB API
 =======
 
