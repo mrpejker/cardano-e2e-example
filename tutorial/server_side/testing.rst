@@ -142,76 +142,53 @@ Writing properties
 
 There are many interesting properties we can implement following this approach.
 New ones defined by us or simply complete "holes" on some of the properties the
-plutus-apps library has. As we briefly mentioned on this module we implement
-a ``Basic`` strategy that will check the specification and the semantics we give
-for the ``EscrowModel`` coincides with respect of wallet's balances. Together
-with another more intersting property, called ``NoLockedFunds``, for checking we
-always can retrive the funds locked on any escrow script utxo.
+plutus-apps library has to obtain known desirable properties. As we briefly mentioned
+on the ``Escrow`` module we implement a ``Basic`` strategy that will check the specification
+and the semantics we give for the ``EscrowModel`` coincides with respect of wallet's
+balances. Together with another more intersting property, called ``NoLockedFunds``,
+for checking we always can retrive the funds locked on any escrow script utxo.
 
 .. code:: Haskell
 
-   -- | Basic property testing.
    propBasic :: Actions EscrowModel -> Property
    propBasic = propRunActionsWithOptions
                (options & increaseMaxCollateral)
                defaultCoverageOptions
                (const $ pure True)
 
-The basic property comes al
+The basic property comes almost for free from the ``ContractModel`` instance of
+the ``EscrowModel`` type, we just use ``propRunActionsWithOptions`` with default
+options. That is enough to check the wallets’ balance correspondence between the
+specification and the semantics. As we mentioned, a more interesting property can
+be performed. We check that it is impossible to `block` funds forever in the script
+utxo. The method for ensuring this is by implementing two strategies that will be a
+kind of `proofs` we always can claim the locked funds. A proof will be a general
+recipe for building a sequence of actions that will retrieve all the locked funds
+for any initial sequence of actions.
 
 .. code:: Haskell
 
-   -- | No locked funds property testing.
    propNoLockedFunds :: Property
    propNoLockedFunds = checkNoLockedFundsProofWithOptions
-                       (options & increaseMaxCollateral) noLockProof
+                       (options & increaseMaxCollateral)
+		       noLockProof
 
-   -- | No locked funds proofs.
    noLockProof :: NoLockedFundsProof EscrowModel
    noLockProof = defaultNLFP
                  { nlfpMainStrategy   = finishingMainStrategy
                  , nlfpWalletStrategy = finishingWalletStrategy
                  }
 
-####
+To implement this property, we use ``checkNoLockedFundsProofWithOptions``, and
+besides some default options, we need to provide a ``NoLockedFundsProof`` that
+will implement the two strategies: ``finishingMainStrategy`` and ``finishingWalletStrategy``.
+These are the "holes" we mentioned before we need to complete.
 
-, and also a `semantic`
-
-Completing the `ContractModel` instance implies implementing the
-`arbitraryAction` for given the rules for generating valid traces
-because in general not every combination of actions of a contract is a
-valid trace. For instance, if the contract wasn't “started”, then any
-action doesn’t make sense. Lastly, we need to complete some
-“bureaucratic” implementation, so the `ContractModel` instances know
-how to manage the emulator handlers, the connection with the off-chain
-code, contract starts, etc.
-
-
-- set of actions related to the operations
-- specification
-- semantics
-
-that will specify which operations are available on the dApp backend,
-and for those operations, we need to do two main things: (1) implement what we call the `specification`
-of the operations, and (2) implement the `semantics` of each one of these operations
-using the emulator.
-Later for a particular action trace, we can be sure that the expected result of
-the emulator coincides with the specification.
-
-
-Concretely we need to implement the contract actions as an `Action`
-type. For these, we define the “semantics” by implementing the
-`perform` function, and for defining the “specification” we need to
-implement the `nextState` function. In general, the specification will
-be written stating how the wallet balances evolve (together with other
-information) and also how the particular state of the contract
-change. Clearly, we give “local” definitions for each action on the
-`nextState` implementation so we can write `preconditions` for
-ensuring the correct initial state.
-
-
-#######################
-
+The implementation of ``finishingMainStrategy`` is proof that we can always
+claim the locked funds from the script utxo using any wallet. Given the escrow
+has a ``cancel`` operation, then for any unresolved escrow, we can always claim
+the locked funds using this operation. Thus, the sequence of actions for retrieving
+all the locked funds will be a sequence of ``cancels`` for all the created escrows.
 
 Contract Model Instance
 ~~~~~~~~~~~~~~~~~~~~~~~
