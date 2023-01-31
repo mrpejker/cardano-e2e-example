@@ -21,12 +21,17 @@ The framework we use for it is based on the ``EmulatorTrace``, included in plutu
 We implement first some basic traces, covering the different use cases of our Escrow example.
 Then we explore a much more powerful approach, based on the `QuickCheck <https://www.cse.chalmers.se/~rjmh/QuickCheck>`_
 Haskell library, which allows to automaticaly generate complex traces and ensure good properties.
+The implementation is located at ``backend/test``.
 
 
 Emulator Trace
 --------------
 
-The first group of tests are implemented in module 
+
+
+In the Emulator Trace we can simulate wallets performing operations by calling endpoints
+provided by the corresponding schemas
+
 
 
 Property Based Testing
