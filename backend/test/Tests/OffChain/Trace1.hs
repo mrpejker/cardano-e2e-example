@@ -60,8 +60,8 @@ trace =
     void $ waitNSlots 10
 
     h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
-    callEndpoint @"reload" h2 ()
-    utxos <- getObservableState h2
+    callEndpoint @"reload" h2 mockReloadFlag
+    utxos <- getEscrowInfoList h2
 
     let cancelParams = mkCancelParams (escrowUtxo $ head utxos) recAddr
     callEndpoint @"cancel" h1 cancelParams

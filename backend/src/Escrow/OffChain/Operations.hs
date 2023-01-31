@@ -55,7 +55,9 @@ import PlutusTx.Numeric qualified as PN ( (-) )
 import Escrow.OffChain.Interface ( StartParams(..), CancelParams(..)
                                  , ResolveParams(..), UtxoEscrowInfo
                                  , EscrowSchema
+                                 , ObservableState
                                  , mkUtxoEscrowInfo
+                                 , mkObservableState
                                  )
 import Escrow.Business  ( EscrowInfo(..)
                         , mkSenderAddress, mkReceiverAddress
@@ -77,21 +79,21 @@ import Utils.WalletAddress ( WalletAddress
 
 endpoints
     :: WalletAddress
-    -> Contract (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+    -> Contract (Last ObservableState) EscrowSchema Text ()
 endpoints raddr = forever $ handleError logError $ awaitPromise $
                   startEp `select` cancelEp `select` resolveEp `select` reloadEp
   where
-    startEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+    startEp :: Promise (Last ObservableState) EscrowSchema Text ()
     startEp = endpoint @"start" $ startOp raddr
 
-    cancelEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+    cancelEp :: Promise (Last ObservableState) EscrowSchema Text ()
     cancelEp = endpoint @"cancel" $ cancelOp raddr
 
-    resolveEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
+    resolveEp :: Promise (Last ObservableState) EscrowSchema Text ()
     resolveEp = endpoint @"resolve" $ resolveOp raddr
 
-    reloadEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
-    reloadEp = endpoint @"reload" $ const $ reloadOp raddr
+    reloadEp :: Promise (Last ObservableState) EscrowSchema Text ()
+    reloadEp = endpoint @"reload" $ reloadOp raddr
 
 {- | A user, using its `addr`, locks the tokens they want to exchange and
      specifies the tokens they want to receive and from whom, all these
@@ -229,8 +231,9 @@ resolveOp addr ResolveParams{..} = do
 reloadOp
     :: forall s
     .  WalletAddress
-    -> Contract (Last [UtxoEscrowInfo]) s Text ()
-reloadOp addr = do
+    -> Integer
+    -> Contract (Last ObservableState) s Text ()
+reloadOp addr rFlag = do
     let contractAddress = escrowAddress $ mkReceiverAddress addr
         cTokenCurrency  = controlTokenCurrency contractAddress
         cTokenAsset     = assetClass cTokenCurrency cTokenName
@@ -238,7 +241,7 @@ reloadOp addr = do
     utxos      <- lookupScriptUtxos contractAddress cTokenAsset
     utxosEInfo <- mapM (mkUtxoEscrowInfoFromTxOut cTokenAsset) utxos
 
-    tell $ Last $ Just utxosEInfo
+    tell $ Last $ Just $ mkObservableState rFlag utxosEInfo
 
 {- | Off-chain function for getting the Typed Datum (EscrowInfo) from a
      DecoratedTxOut.

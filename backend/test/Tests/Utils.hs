@@ -41,7 +41,7 @@ import Wallet.Emulator.Wallet     ( mockWalletAddress
                                   )
 
 -- Escrow imports
-import Escrow ( EscrowSchema, UtxoEscrowInfo )
+import Escrow ( EscrowSchema, UtxoEscrowInfo, ObservableState(info) )
 import Utils.WalletAddress ( WalletAddress, fromAddress )
 
 walletsWithValue :: [(Wallet,Value)]
@@ -94,10 +94,20 @@ receiverPpk = mockWalletPaymentPubKey receiverWallet
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
 
--- | Polls the Emulator until it finds an ObservableState
+mockReloadFlag :: Integer
+mockReloadFlag = 0
+
+{- | Polls the Emulator until it finds an ObservableState and return the info
+     field.
+-}
+getEscrowInfoList :: ContractHandle (Last ObservableState) EscrowSchema Text
+                  -> EmulatorTrace [UtxoEscrowInfo]
+getEscrowInfoList h = info <$> getObservableState h
+
+-- | Polls the Emulator until it finds an ObservableState.
 getObservableState
-    :: ContractHandle (Last [UtxoEscrowInfo]) EscrowSchema Text
-    -> EmulatorTrace [UtxoEscrowInfo]
+    :: ContractHandle (Last ObservableState) EscrowSchema Text
+    -> EmulatorTrace ObservableState
 getObservableState h = do
     void $ waitNSlots 1
     l <- observableState h

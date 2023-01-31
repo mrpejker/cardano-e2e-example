@@ -30,10 +30,10 @@ import Ledger               ( AssetClass )
 import Escrow.Business            ( EscrowInfo
                                   , mkEscrowInfo, mkSenderAddress
                                   )
-import Escrow.OffChain.Interface  ( UtxoEscrowInfo(..) )
+import Escrow.OffChain.Interface  ( ObservableState, UtxoEscrowInfo(..) )
 import Escrow.OffChain.Operations ( reloadOp )
 import Utils.WalletAddress        ( WalletAddress )
-import Tests.Utils                ( mockWAddress )
+import Tests.Utils                ( mockReloadFlag, mockWAddress )
 
 {- | The representation of the EscrowInfo plus the Value contained in script
      Utxo.
@@ -54,11 +54,11 @@ type LookupSchema = Endpoint "lookup" WalletAddress
 
 -- | Lookup endpoint to call the reload operation.
 lookupEndpoint
-    :: Contract (Last [UtxoEscrowInfo]) LookupSchema Text ()
+    :: Contract (Last ObservableState) LookupSchema Text ()
 lookupEndpoint = forever $ handleError logError $ awaitPromise lookupEp
   where
-    lookupEp :: Promise (Last [UtxoEscrowInfo]) LookupSchema Text ()
-    lookupEp = endpoint @"lookup" $ reloadOp
+    lookupEp :: Promise (Last ObservableState) LookupSchema Text ()
+    lookupEp = endpoint @"lookup" $ flip reloadOp mockReloadFlag
 
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
 findEscrowUtxo :: ExchangeInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo
