@@ -71,8 +71,9 @@ Example: An escrow resolve
 
 In the escrow example, the resolve operation creates a transaction that
 consumes a script UTxO that corresponds to an escrow started by a sender. To
-resolve it, the transactions pays to the receiver the tokens locked in the UTxO
-to the sender the tokens he expects,
+resolve it, the transaction has two outputs: An output that pays to the sender
+the tokens he expects, as indicated by the escrow datum, and another output
+that pays to the receiver the tokens locked in the escrow by the sender.
 
 The following diagram illustrates the unbalanced transaction provided by the
 PAB after a call to the resolve endpoint:
