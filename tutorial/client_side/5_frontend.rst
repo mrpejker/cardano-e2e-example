@@ -17,8 +17,8 @@ document. It looks as follows:
 .. figure:: /img/user_interface.png
 
 All the UI components interact with the modules contained in the
-``contractEndpoints`` folder, where the main class and the necessary datatypes
-are defined.
+``contractEndpoints`` folder, where the main class and necessary datatypes are
+defined.
 
 
 Main class
