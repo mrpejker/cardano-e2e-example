@@ -2,13 +2,13 @@ Off-Chain
 ==========
 
 The off-chain side of the server implementation is in charge of defining the interface
-for interacting from a client, and performing the necessary actions of each operation
+for interacting with the client, and performing the necessary actions of each operation
 that basically consist of querying the blockchain and building transactions.
 We divide the :code:`OffChain` module in two: :code:`Interface` and :code:`Operations`.
 
 Inside :code:`Interface` we define the necessary types for specifying the
 endpoints that the PAB service will provide to the client, and a type for
-storing blockchain information that we want to communicate to the client. 
+storing blockchain information that we want to communicate to the client.
 In `plutus-apps jargon` it corresponds to the `Schema` and the
 `Observable State`.
 
@@ -17,23 +17,25 @@ PAB service module for providing the endpoints, and functions corresponding to e
 that can query the blockchain and build transactions.
 
 
+.. _offchain_interface:
+
 Interface
 ----------
 
 First thing we define is the Schema, which basically specifies the API that the
-PAB service will provide. 
+PAB service will provide.
 
 .. code:: Haskell
 	  
   type EscrowSchema = Endpoint "start"   StartParams
                   .\/ Endpoint "cancel"  CancelParams
                   .\/ Endpoint "resolve" ResolveParams
-                  .\/ Endpoint "reload"  ()
+                  .\/ Endpoint "reload"  Integer
 
-We define an endpoínt for each operation: `start`, `cancel` and `resolve`. Each one has
+We define an endpoint for each operation: `start`, `cancel` and `resolve`. Each one has
 some parameters with the necessary input information.
 In addition to them, we define a `reload` operation, which is used for
-getting some state from the dApp that we need in the client side.
+getting some blockchain information from the dApp that we need in the client side.
 
 
 As we'll see later, when an end-user connects to the PAB service, the corresponding wallet
@@ -93,7 +95,6 @@ For each escrow we include the utxo reference, the Escrow Info (containing the s
 and the asset class and amount to be paid for resolving), and the asset class and amount paid
 by the sender.
 
-
 .. code:: Haskell
 
   data UtxoEscrowInfo = UtxoEscrowInfo
@@ -104,8 +105,20 @@ by the sender.
       deriving (Show, Generic)
       deriving anyclass (FromJSON, ToJSON)
 
+When the ``reload`` endpoint is called, the off-chain code obtains a list of
+``UtxoEscrowInfo`` belonging to the wallet triggering the operation.
+In addition to the escrow info, the Observable State includes a special integer ``reloadFlag``.
+The "reload" endpoint takes an integer as a parameter and sets it as the value of the ``reloadFlag``.
+This way, the caller is able to tell when the Observable State shown in the status is updated.
 
-The Observable State will be a list of :code:`UtxoEscrowInfo`.
+.. code:: Haskell
+
+  data ObservableState = ObservableState
+                         { info       :: [UtxoEscrowInfo]
+                         , reloadFlag :: Integer
+                         }
+      deriving (Show, Generic)
+      deriving anyclass (FromJSON, ToJSON)
 
 The types defined here are the interface for communicating the client with the PAB service.
 The client will send the endpoints parameters as JSON objects, that are converted to the Haskell
@@ -304,18 +317,24 @@ the information of every escrow waiting to be resolved by the corresponding user
   reloadOp
       :: forall s
       .  WalletAddress
-      -> Contract (Last [UtxoEscrowInfo]) s Text ()
-  reloadOp addr = do
+      -> Integer
+      -> Contract (Last ObservableState) s Text ()
+  reloadOp addr rFlag = do
       let contractAddress = escrowAddress $ mkReceiverAddress addr
+          cTokenCurrency  = controlTokenCurrency contractAddress
+          cTokenAsset     = assetClass cTokenCurrency cTokenName
 
-      utxos      <- utxosAt contractAddress
-      utxosEInfo <- mapM mkUtxoEscrowInfoFromTxOut $ toList utxos
+      utxos      <- lookupScriptUtxos contractAddress cTokenAsset
+      utxosEInfo <- mapM (mkUtxoEscrowInfoFromTxOut cTokenAsset) utxos
 
-      tell $ Last $ Just utxosEInfo
+      tell $ Last $ Just $ mkObservableState rFlag utxosEInfo
 
-Given that we are parameterizing the validator on the receiver address, getting the
-corresponding list of escrow info is straightforward. We just need to get the utxos
-belonging to the validator address (using :code:`utxosAt`), read the datum inside each
-utxo (calling :code:`mkUtxoEscrowInfoFromTxOut`) and then write the updated observable state
-(by calling :code:`tell`).
+For updating the observable state we need to look for the list of utxos belonging
+to the script address (which is parameterized on the receiver address). Function
+``lookupScriptUtxos`` is used for that, which looks for utxos of the given address
+and containing the given token, in our case the control token.
+Then we have to read the datum inside each utxo, using the auxiliary function
+``mkUtxoEscrowInfoFromTxOut``. Finally, we write the updated
+observable state by calling the monadic function ``tell``.
+
 
