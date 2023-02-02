@@ -226,6 +226,8 @@ triggering the operation and the reference of the utxo generated at start.
 
 We have to build a transaction that spends the script utxo, pays to the sender
 the tokens specified in the Escrow Info, and burns the control token.
+We also have to specify that the receiver gets the payment in the corresponding
+address.
 First, we get the utxo and extract from there the Escrow Info.
 
 .. code:: Haskell
@@ -240,17 +242,23 @@ utxos from a given address and containing a token of a given Asset Class.
 of utxos. Finally :code:`getEscrowInfo` reads the datum of a given utxo and returns
 the Escrow Info inside it.
 
-For defining the transaction, we need to specify the payment that goes to the sender.
+For defining the transaction, we need to specify the payment that goes to the sender and
+the one that goes to the receiver.
 
 .. code:: Haskell
 
-      let senderWallAddr = eInfoSenderWallAddr eInfo
+      let cTokenVal      = assetClassValue cTokenAsset (-1)
+          senderWallAddr = eInfoSenderWallAddr eInfo
           senderPayment  = valueToSender eInfo <> minAda
+          escrowVal      = utxo ^. decoratedTxOutValue
+          receivePayment = escrowVal <> cTokenVal
 
 The sender address is defined in the Escrow Info, and for defining the payment
 we use the function :code:`senderPayment`, implemented in the Business logic module.
 This function will be used too in the on-chain validator for checking that the payment received by
 the sender is correct.
+Regarding the receiver's payment, it's basically the entire value contained in the script utxo,
+without the control token, which must be burned. 
 
 Now we define the lookups and constraints.
 
@@ -266,14 +274,15 @@ Now we define the lookups and constraints.
               , mustMintValue cTokenVal
               , mustBeSignedBy receiverPpkh
               , mustPayToWalletAddress senderWallAddr senderPayment
+              , mustPayToWalletAddress addr receivePayment
               ]
 
 In addition to the validator and control token minting policy, we include
 in the lookups the utxo that is spent in this transaction.
 The constraints specify that we spend the script-utxo using the redeemer
 :code:`resolveRedeemer`, we burn the control token, the transaction must be
-signed by the receiver, and pays to the sender the corresponding tokens specified
-in the Escrow Info.
+signed by the receiver, pays to the sender the corresponding tokens specified
+in the Escrow Info, and pays to the receiver the corresponding value.
 
 .. code:: Haskell
 

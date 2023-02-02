@@ -120,7 +120,8 @@ this issue by including in the datum the control token asset class, as we showed
 
 The validator will run when the script-uxto is spent, and it corresponds to `Cancel` and
 `Resolve` operations, which are the only two constructors of :code:`EscrowRedeemer` type. In both
-cases we have to check that the control token is burned.
+cases we have to check that the control token is burned and only one script utxo is spent.
+The latter check is important for preventing `double satisfaction attacks <https://plutus.readthedocs.io/en/latest/reference/writing-scripts/common-weaknesses/double-satisfaction.html>`_. 
 
 .. code:: haskell
 
@@ -133,16 +134,23 @@ cases we have to check that the control token is burned.
    mkEscrowValidator raddr EscrowDatum{..} r ctx =
        case r of
            CancelEscrow  -> cancelValidator eInfo signer
-           ResolveEscrow -> resolveValidator info eInfo raddr signer
-       &&
-       traceIfFalse "controlToken was not burned"
-                    (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
+           ResolveEscrow -> resolveValidator info eInfo raddr signer scriptValue
+      &&
+      traceIfFalse "more than one script input utxo"
+                   (length sUtxos == 1)
+      &&
+      traceIfFalse "controlToken was not burned"
+                   (eAssetClass == assetClass mintedCS mintedTN && mintedA == -1)
      where
        info :: TxInfo
        info = scriptContextTxInfo ctx
 
        signer :: PubKeyHash
        signer = getSingleton $ txInfoSignatories info
+
+       scriptValue :: Value
+       scriptValue = txOutValue (getSingleton sUtxos)
+                   <> assetClassValue eAssetClass (-1)
 
        .....
 
@@ -151,8 +159,10 @@ We modularize the validator implementing functions for each case:
 :code:`cancelValidator` and :code:`resolveValidator`. For implementing the
 first one we need the Escrow Info (which is inside the datum) and the signer
 (which is extracted from the Script Context). For implementing the second one
-we also pass the entire Script Context info and the validator parameter (the
-receiver address).
+we also pass the entire Script Context info, the validator parameter (the
+receiver address), and the value contained inside the script utxo that
+must be paid to the receiver address (it's the whole value less the control token,
+which is burned).
 
       
 Validating a cancel operation is simple: we have to check that the escrow sender
@@ -170,33 +180,40 @@ The sender address is stored in the datum at start, so at canceling we check tha
 the information in the datum coincides with the transaction signer.
 
 A more interesting validation is required for resolving an escrow. We check that
-the signer is the receiver, and
-the corresonding payment goes to the sender.
+the signer is the receiver, and payments to sender and receiver addresses are
+correct.
 
 
 .. code:: haskell
 
-   {-# INLINABLE resolveValidator #-}
-   resolveValidator
-       :: TxInfo
-       -> EscrowInfo
-       -> ReceiverAddress
-       -> PubKeyHash
-       -> Bool
-   resolveValidator info ei raddr signer =
-       traceIfFalse "resolveValidator: Wrong receiver signature"
-                    (signerIsReceiver signer raddr)
-       &&
-       traceIfFalse "resolveValidator: Wrong sender's payment"
-                    (valueToSender ei `leq` senderV)
-     where
-       senderV :: Value
-       senderV = valuePaidTo (eInfoSenderAddr ei) info
+  {-# INLINABLE resolveValidator #-}
+  resolveValidator
+      :: TxInfo
+      -> EscrowInfo
+      -> ReceiverAddress
+      -> PubKeyHash
+      -> Value
+      -> Bool
+  resolveValidator info ei raddr@ReceiverAddress{..} signer scriptValue =
+      traceIfFalse "resolveValidator: Wrong receiver signature"
+                   (signerIsReceiver signer raddr)
+      &&
+      traceIfFalse "resolveValidator: Wrong sender's payment"
+                   (valueToSender ei `leq` senderV)
+      &&
+      traceIfFalse "resolveValidator: Wrong receiver's payment"
+                   (scriptValue `leq` receiverV)
+    where
+      senderV :: Value
+      senderV = valuePaidTo (eInfoSenderAddr ei) info
+
+      receiverV :: Value
+      receiverV = valuePaidTo (toAddress rAddr) info
 
 We need the Script Context info for reading the value that is being paid in
 this transaction, and the validator parameter for knowing the receiver address.
 Notice that we use the `business logic` function :code:`valueToSender` for
-computing the (minimum) value that should be paid.
+computing the (minimum) value that should be paid to the sender.
 
 Validator Module
 ----------------
