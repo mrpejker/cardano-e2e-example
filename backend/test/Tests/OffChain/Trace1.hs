@@ -40,7 +40,7 @@ import Tests.Utils   ( emConfig, senderWallet, receiverWallet
                      , receiverAddr, senderAddr
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
-                     , getObservableState
+                     , getEscrowInfoList, mockReloadFlag
                      )
 
 testMsg :: String

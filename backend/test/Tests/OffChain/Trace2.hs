@@ -43,7 +43,7 @@ import Tests.Utils   ( emConfig, senderWallet, receiverWallet
                      , paymentA, paymentB
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
-                     , getObservableState
+                     , getEscrowInfoList, mockReloadFlag
                      )
 
 testMsg :: String

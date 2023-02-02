@@ -48,7 +48,7 @@ import Tests.Utils   ( emConfig, senderWallet, receiverWallet
                      , paymentA, paymentB
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
-                     , getObservableState, mockWAddress
+                     , getEscrowInfoList, mockWAddress, mockReloadFlag
                      )
 
 testMsg :: String
