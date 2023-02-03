@@ -45,24 +45,16 @@ import Tests.Prop.Extra       ( tiSenderWallet )
 import Tests.Utils            ( wallets )
 
 -- | Basic property testing.
-propEscrow :: Actions EscrowModel -> Property
-propEscrow = propRunActionsWithOptions
-             (options & increaseMaxCollateral)
-             defaultCoverageOptions
-             (\ _ -> pure True)
+propBasic :: Actions EscrowModel -> Property
+propBasic = propRunActionsWithOptions
+            (options & increaseMaxCollateral)
+            defaultCoverageOptions
+            (const $ pure True)
 
 -- | No locked funds property testing.
 propNoLockedFunds :: Property
 propNoLockedFunds = checkNoLockedFundsProofWithOptions
                     (options & increaseMaxCollateral) noLockProof
-
--- | Emulator configuration.
-emConfig :: EmulatorConfig
-emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
-
--- | Config the checkOptions to use the emulator config from the Offchain traces.
-options :: CheckOptions
-options = defaultCheckOptions & emulatorConfig .~ emConfig
 
 -- | No locked funds proofs.
 noLockProof :: NoLockedFundsProof EscrowModel
@@ -93,6 +85,14 @@ finishingWalletStrategy w = do
                           (Map.toList resolveMap)
               , tInfo <- tInfos
               ]
+
+-- | Emulator configuration.
+emConfig :: EmulatorConfig
+emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
+
+-- | Config the checkOptions to use the emulator config from the Offchain traces.
+options :: CheckOptions
+options = defaultCheckOptions & emulatorConfig .~ emConfig
 
 {- Increasing max amount of collateral inputs, otherwise property tests fail due
    to tooManyCollateralInputs error.

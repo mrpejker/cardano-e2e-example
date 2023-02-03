@@ -65,9 +65,9 @@ mockAddress = flip pubKeyHashAddress Nothing . mockPKH
 mockWAddress :: Wallet -> WalletAddress
 mockWAddress =  fromJust . fromAddress . mockAddress
 
-tokenA, tokenB :: TokenName
-tokenA = "A"
-tokenB = "B"
+tokenAName, tokenBName :: TokenName
+tokenAName = "A"
+tokenBName = "B"
 
 tokenACurrencySymbol, tokenBCurrencySymbol :: CurrencySymbol
 tokenACurrencySymbol =
@@ -76,8 +76,8 @@ tokenBCurrencySymbol =
     "0b1e203c7e13914e095bf462441205c1b377e978718fcb93fd44bbbb"
 
 paymentA, paymentB :: Integer -> Value
-paymentA = singleton tokenACurrencySymbol tokenA
-paymentB = singleton tokenBCurrencySymbol tokenB
+paymentA = singleton tokenACurrencySymbol tokenAName
+paymentB = singleton tokenBCurrencySymbol tokenBName
 
 senderWallet, receiverWallet :: Wallet
 senderWallet   = w1

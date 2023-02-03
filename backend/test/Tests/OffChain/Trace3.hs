@@ -9,15 +9,16 @@ Stability   : develop
 In this trace, multiple Senders start escrows with the same wallet as
 the Receiver.
 Then the Receiver resolves all of them, receiving the agreed amount.
+
 Trace execution description:
-1. Wallet 1 starts an escrow with Wallet 2 as the receiver
-, depositing the payment
-2. Wallet 3 starts an escrow with Wallet 2 as the receiver
-3. Wallet 4 starts an escrow with Wallet 2 as the receiver
-4. The Receiver (Wallet 2) resolves the first escrow, paying their part and
-receiving the agreed amount
-5. The Receiver (Wallet 2) resolves the second escrow
-6. The Receiver (Wallet 2) resolves the third escrow
+  1. Wallet 1 starts an escrow with Wallet 2 as the receiver, depositing the
+     payment
+  2. Wallet 3 starts an escrow with Wallet 2 as the receiver
+  3. Wallet 4 starts an escrow with Wallet 2 as the receiver
+  4. The Receiver (Wallet 2) resolves the first escrow, paying their part and
+     receiving the agreed amount
+  5. The Receiver (Wallet 2) resolves the second escrow
+  6. The Receiver (Wallet 2) resolves the third escrow
 -}
 
 module Tests.OffChain.Trace3 where
@@ -39,8 +40,16 @@ import Plutus.Contract.Test   ( (.&&.)
                               )
 
 -- Escrow imports
-import Escrow
-import Tests.Utils
+import Escrow        ( mkStartParams, mkResolveParams
+                     , mkReceiverAddress, endpoints, escrowUtxo
+                     )
+import Tests.Utils   ( emConfig, senderWallet, receiverWallet
+                     , receiverAddr, senderAddr
+                     , paymentA, paymentB
+                     , tokenACurrencySymbol, tokenAName
+                     , tokenBCurrencySymbol, tokenBName
+                     , getEscrowInfoList, mockWAddress, mockReloadFlag
+                     )
 
 testMsg :: String
 testMsg = "Starting and resolving 3 escrows with same receiver"
@@ -56,14 +65,14 @@ test = checkPredicateOptions
         trace
 
 trace :: EmulatorTrace ()
-trace =
+trace = do
     let startParams = mkStartParams
                         (mkReceiverAddress receiverAddr)
                         100
-                        (assetClass tokenACurrencySymbol tokenA)
+                        (assetClass tokenACurrencySymbol tokenAName)
                         10
-                        (assetClass tokenBCurrencySymbol tokenB)
-    in do
+                        (assetClass tokenBCurrencySymbol tokenBName)
+
     h1 <- activateContractWallet senderWallet $ endpoints senderAddr
     h2 <- activateContractWallet w3 $ endpoints $ mockWAddress w3
     h3 <- activateContractWallet w4 $ endpoints $ mockWAddress w4
@@ -73,6 +82,7 @@ trace =
     void $ waitNSlots 10
     callEndpoint @"start" h3 startParams
     void $ waitNSlots 10
+
     h4 <- activateContractWallet receiverWallet $ endpoints receiverAddr
     callEndpoint @"reload" h4 mockReloadFlag
     utxos <- getEscrowInfoList h4

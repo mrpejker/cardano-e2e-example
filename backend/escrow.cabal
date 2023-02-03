@@ -171,7 +171,7 @@ test-suite escrow-tests
     -Wincomplete-uni-patterns -Wincomplete-record-updates
     -Wredundant-constraints -Widentities -fno-strictness -fobject-code
     -fno-spec-constr -fno-specialise -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
+    -fno-omit-interface-pragmas -threaded
 
   --------------------
   -- IOG dependencies
@@ -199,3 +199,4 @@ test-suite escrow-tests
     , lens <= 4.19.2
     , tasty
     , text
+    , tasty-quickcheck

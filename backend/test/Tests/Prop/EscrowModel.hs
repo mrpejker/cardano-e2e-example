@@ -22,7 +22,7 @@ import Data.Maybe      ( fromJust, isJust )
 import Data.Monoid     ( Last (..) )
 import Data.Text       ( Text )
 import Data.Map as Map ( (!), Map, empty, lookup, member
-                       , insertWith, adjust
+                       , adjust, insertWith
                        )
 import Test.QuickCheck ( Property, Gen, oneof, elements, tabulate )
 
@@ -183,18 +183,18 @@ escrowSpecification Start{sWallet,rWallet,sPay,rPay} = do
     wait 2
 escrowSpecification Resolve{rWallet, eInfo} = do
     let ExchangeInfo{..} = eInfo
-        rVal = assetClassValue tiReceiveAssetClass tiReceiveAmount
-        sVal = assetClassValue tiSendAssetClass tiSendAmount
+        rVal = assetClassValue tiReceiverAssetClass tiReceiverAmount
+        sVal = assetClassValue tiSenderAssetClass tiSenderAmount
 
+    withdraw rWallet rVal
     deposit rWallet sVal
     deposit tiSenderWallet (minAda <> rVal)
-    withdraw rWallet rVal
 
     toResolve $~ adjust (delete eInfo) rWallet
     wait 8
 escrowSpecification Cancel{rWallet, eInfo} = do
     let ExchangeInfo{..} = eInfo
-        sVal = assetClassValue tiSendAssetClass tiSendAmount
+        sVal = assetClassValue tiSenderAssetClass tiSenderAmount
 
     deposit tiSenderWallet (minAda <> sVal)
 

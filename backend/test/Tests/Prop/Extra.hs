@@ -38,13 +38,20 @@ import Tests.Utils                ( mockReloadFlag, mockWAddress )
 {- | The representation of the EscrowInfo plus the Value contained in script
      Utxo.
 -}
-data ExchangeInfo = ExchangeInfo
-                    { tiSenderWallet      :: Wallet
-                    , tiSendAmount        :: Integer
-                    , tiSendAssetClass    :: AssetClass
-                    , tiReceiveAmount     :: Integer
-                    , tiReceiveAssetClass :: AssetClass
-                    }
+data ExchangeInfo =
+    ExchangeInfo
+    { tiSenderWallet      :: Wallet
+    -- ^ The wallet that starts the escrow.
+    , tiSenderAmount        :: Integer
+    -- ^ The amount of tokens the sender locks in the script utxo.
+    , tiSenderAssetClass    :: AssetClass
+    -- ^ The asset class of the tokens the sender locks in the script utxo.
+    , tiReceiverAmount     :: Integer
+    -- ^ The amount of tokens the receiver must send to resolve the escrow.
+    , tiReceiverAssetClass :: AssetClass
+    {- ^ The asset class of the tokens the receiver must send to resolve the
+         escrow. -}
+    }
     deriving (Show, Eq, Data)
 
 {- | LookupSchema to let the sender wallet call the reload operation to find the
@@ -63,12 +70,12 @@ lookupEndpoint = forever $ handleError logError $ awaitPromise lookupEp
 -- | Finds an specific UtxoEscrowInfo from a list using the TransferInfo
 findEscrowUtxo :: ExchangeInfo -> [UtxoEscrowInfo] -> Maybe UtxoEscrowInfo
 findEscrowUtxo ExchangeInfo{..} = find $
-    \utxoInfo -> escrowInfo utxoInfo == eInfo && sendA utxoInfo == tiSendAmount
+    \utxoInfo -> escrowInfo utxoInfo == eInfo && sendA utxoInfo == tiSenderAmount
   where
     eInfo :: EscrowInfo
     eInfo = mkEscrowInfo (mkSenderAddress $ mockWAddress tiSenderWallet)
-                         tiReceiveAmount
-                         tiReceiveAssetClass
+                         tiReceiverAmount
+                         tiReceiverAssetClass
 
     sendA :: UtxoEscrowInfo -> Integer
     sendA = snd . escrowPayment
