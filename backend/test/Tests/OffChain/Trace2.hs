@@ -38,14 +38,14 @@ import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
 import Escrow        ( mkStartParams, mkResolveParams
                      , mkReceiverAddress, endpoints, escrowUtxo
                      )
-import Tests.Utils   ( emConfig, senderWallet, receiverWallet
-                     , receiverAddr, senderAddr
-                     , paymentA, paymentB
+import Tests.Utils   ( emConfig
+                     , wallet1, wallet2
+                     , wallet1Addr, wallet2Addr
+                     , valueA, valueB
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
                      , getEscrowInfoList, mockReloadFlag
                      )
-
 testMsg :: String
 testMsg = "Starting and resolving the escrow"
 
@@ -53,26 +53,24 @@ test :: TestTree
 test = checkPredicateOptions
        (defaultCheckOptions & emulatorConfig .~ emConfig)
        testMsg
-       (walletFundsChange senderWallet (paymentA (-50) <> paymentB 100)
-        .&&.
-        walletFundsChange receiverWallet (paymentB (-100) <> paymentA 50)
+       (    walletFundsChange wallet1 (valueA (-50) <> valueB 100)
+       .&&. walletFundsChange wallet2 (valueB (-100) <> valueA 50)
        )
        trace
 
 trace :: EmulatorTrace ()
 trace = do
     let startParams = mkStartParams
-                      (mkReceiverAddress receiverAddr)
+                      (mkReceiverAddress wallet2Addr)
                       50
                       (assetClass tokenACurrencySymbol tokenAName)
                       100
                       (assetClass tokenBCurrencySymbol tokenBName)
 
-    h1 <- activateContractWallet senderWallet $ endpoints senderAddr
+    h1 <- activateContractWallet wallet1 $ endpoints wallet1Addr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
-
-    h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
+    h2 <- activateContractWallet wallet2 $ endpoints wallet2Addr
     callEndpoint @"reload" h2 mockReloadFlag
     utxos <- getEscrowInfoList h2
 

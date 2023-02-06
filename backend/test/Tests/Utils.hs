@@ -45,16 +45,22 @@ import Escrow ( EscrowSchema, UtxoEscrowInfo, ObservableState(info) )
 import Utils.WalletAddress ( WalletAddress, fromAddress )
 
 walletsWithValue :: [(Wallet,Value)]
-walletsWithValue = [(w, v <> paymentA 1_000_000 <> paymentB 1_000_000)
-                   | w <- [senderWallet,receiverWallet,w3,w4]
+walletsWithValue = [ (w, v <> valueA 1_000_000 <> valueB 1_000_000)
+                   | w <- wallets
                    ]
   where
     v :: Value
     v = lovelaceValueOf 100_000_000
 
+wallet1, wallet2, wallet3, wallet4 :: Wallet
+wallet1 = w1
+wallet2 = w2
+wallet3 = w3
+wallet4 = w4
+
 -- | Wallets that will be used to test the endpoints
 wallets :: [Wallet]
-wallets = [w1, w2, w3, w4]
+wallets = [wallet1, wallet2, wallet3, wallet4]
 
 mockPKH :: Wallet -> PaymentPubKeyHash
 mockPKH = mockWalletPaymentPubKeyHash
@@ -75,21 +81,21 @@ tokenACurrencySymbol =
 tokenBCurrencySymbol =
     "0b1e203c7e13914e095bf462441205c1b377e978718fcb93fd44bbbb"
 
-paymentA, paymentB :: Integer -> Value
-paymentA = singleton tokenACurrencySymbol tokenAName
-paymentB = singleton tokenBCurrencySymbol tokenBName
+valueA, valueB :: Integer -> Value
+valueA = singleton tokenACurrencySymbol tokenAName
+valueB = singleton tokenBCurrencySymbol tokenBName
 
-senderWallet, receiverWallet :: Wallet
-senderWallet   = w1
-receiverWallet = w2
+wallet1Addr, wallet2Addr, wallet3Addr, wallet4Addr :: WalletAddress
+wallet1Addr = fromJust $ fromAddress $ mockWalletAddress wallet1
+wallet2Addr = fromJust $ fromAddress $ mockWalletAddress wallet2
+wallet3Addr = fromJust $ fromAddress $ mockWalletAddress wallet3
+wallet4Addr = fromJust $ fromAddress $ mockWalletAddress wallet4
 
-senderAddr, receiverAddr :: WalletAddress
-senderAddr   = fromJust $ fromAddress $ mockWalletAddress senderWallet
-receiverAddr = fromJust $ fromAddress $ mockWalletAddress receiverWallet
-
-senderPpk, receiverPpk :: PaymentPubKey
-senderPpk   = mockWalletPaymentPubKey senderWallet
-receiverPpk = mockWalletPaymentPubKey receiverWallet
+wallet1Ppk, wallet2Ppk, wallet3Ppk, wallet4Ppk :: PaymentPubKey
+wallet1Ppk = mockWalletPaymentPubKey wallet1
+wallet2Ppk = mockWalletPaymentPubKey wallet2
+wallet3Ppk = mockWalletPaymentPubKey wallet3
+wallet4Ppk = mockWalletPaymentPubKey wallet4
 
 emConfig :: EmulatorConfig
 emConfig = EmulatorConfig (Left $ fromList walletsWithValue) def
