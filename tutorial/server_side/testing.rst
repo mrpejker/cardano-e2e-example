@@ -89,12 +89,12 @@ After running this trace, we can test that the wallets' balances change properly
   test = checkPredicateOptions
           (defaultCheckOptions & emulatorConfig .~ emConfig)
           testMsg
-          (walletFundsChange wallet1 (paymentA (-50) <> paymentB 100)
-          .&&. walletFundsChange wallet2 (paymentB (-100) <> paymentA 50))
+          (walletFundsChange wallet1 (valueA (-50) <> valueB 100)
+          .&&. walletFundsChange wallet2 (valueB (-100) <> valueA 50))
           trace
 
-As before, we use some utilities for making easier the code reading. ``paymentA`` and
-``paymentB`` are functions for creating a ``Value`` of ``tokenA`` and ``tokenB`` respectively.
+As before, we use some utilities for making easier the code reading. ``valueA`` and
+``valueB`` are functions for creating a ``Value`` of ``tokenA`` and ``tokenB`` respectively.
 
 We include more traces covering other use cases. It's important to note that in this example
 we are testing our dApp behavior when our off-chain code is used. Another group of tests that

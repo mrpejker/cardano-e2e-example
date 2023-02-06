@@ -35,36 +35,34 @@ import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
 -- Escrow imports
 import Escrow        ( mkStartParams, mkReceiverAddress, endpoints )
 import Utils.OnChain ( minAda )
-import Tests.Utils   ( emConfig, senderWallet, receiverWallet
-                     , receiverAddr, senderAddr
-                     , paymentA
+import Tests.Utils   ( emConfig
+                     , wallet1, wallet2
+                     , wallet1Addr, wallet2Addr
+                     , valueA
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
                      )
-
 testMsg :: String
 testMsg = "Only starting the escrow"
 
 test :: TestTree
 test = checkPredicateOptions
-       (defaultCheckOptions & emulatorConfig .~ emConfig)
-       testMsg
-       (walletFundsChange senderWallet (paymentA (-100) PNum.- minAda)
-        .&&.
-        walletFundsChange receiverWallet mempty
-       )
-       trace
+        (defaultCheckOptions & emulatorConfig .~ emConfig)
+        testMsg
+        (walletFundsChange wallet1 (valueA (-100) PNum.- minAda)
+        .&&. walletFundsChange wallet2 mempty)
+        trace
 
 trace :: EmulatorTrace ()
 trace = do
     let startParams = mkStartParams
-                      (mkReceiverAddress receiverAddr)
+                      (mkReceiverAddress wallet2Addr)
                       100
                       (assetClass tokenACurrencySymbol tokenAName)
                       100
                       (assetClass tokenBCurrencySymbol tokenBName)
 
-    h1 <- activateContractWallet senderWallet $ endpoints senderAddr
+    h1 <- activateContractWallet wallet1 $ endpoints wallet1Addr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
 

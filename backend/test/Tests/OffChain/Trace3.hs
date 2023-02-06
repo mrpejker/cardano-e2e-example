@@ -36,19 +36,20 @@ import Plutus.Trace.Emulator  ( activateContractWallet, callEndpoint
                               )
 import Plutus.Contract.Test   ( (.&&.)
                               , checkPredicateOptions, defaultCheckOptions
-                              , emulatorConfig, walletFundsChange, w3, w4
+                              , emulatorConfig, walletFundsChange
                               )
 
 -- Escrow imports
 import Escrow        ( mkStartParams, mkResolveParams
                      , mkReceiverAddress, endpoints, escrowUtxo
                      )
-import Tests.Utils   ( emConfig, senderWallet, receiverWallet
-                     , receiverAddr, senderAddr
-                     , paymentA, paymentB
+import Tests.Utils   ( emConfig
+                     , wallet1, wallet2, wallet3, wallet4
+                     , wallet1Addr, wallet2Addr, wallet3Addr, wallet4Addr
+                     , valueA, valueB
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
-                     , getEscrowInfoList, mockWAddress, mockReloadFlag
+                     , getEscrowInfoList, mockReloadFlag
                      )
 
 testMsg :: String
@@ -58,24 +59,26 @@ test :: TestTree
 test = checkPredicateOptions
         (defaultCheckOptions & emulatorConfig .~ emConfig)
         testMsg
-        (walletFundsChange receiverWallet   (paymentA 300    <> paymentB (-30))
-        .&&. walletFundsChange senderWallet (paymentA (-100) <> paymentB 10)
-        .&&. walletFundsChange w3           (paymentA (-100) <> paymentB 10)
-        .&&. walletFundsChange w4           (paymentA (-100) <> paymentB 10))
+        (    walletFundsChange wallet1 (valueA (-100) <> valueB 10)
+        .&&. walletFundsChange wallet2 (valueA 300    <> valueB (-30))
+        .&&. walletFundsChange wallet3 (valueA (-100) <> valueB 10)
+        .&&. walletFundsChange wallet4 (valueA (-100) <> valueB 10)
+        )
         trace
 
 trace :: EmulatorTrace ()
 trace = do
     let startParams = mkStartParams
-                        (mkReceiverAddress receiverAddr)
-                        100
-                        (assetClass tokenACurrencySymbol tokenAName)
-                        10
-                        (assetClass tokenBCurrencySymbol tokenBName)
+                      (mkReceiverAddress wallet2Addr)
+                      100
+                      (assetClass tokenACurrencySymbol tokenAName)
+                      10
+                      (assetClass tokenBCurrencySymbol tokenBName)
 
-    h1 <- activateContractWallet senderWallet $ endpoints senderAddr
-    h2 <- activateContractWallet w3 $ endpoints $ mockWAddress w3
-    h3 <- activateContractWallet w4 $ endpoints $ mockWAddress w4
+    h1 <- activateContractWallet wallet1 $ endpoints wallet1Addr
+    h2 <- activateContractWallet wallet3 $ endpoints wallet3Addr
+    h3 <- activateContractWallet wallet4 $ endpoints wallet4Addr
+
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
     callEndpoint @"start" h2 startParams
@@ -83,7 +86,8 @@ trace = do
     callEndpoint @"start" h3 startParams
     void $ waitNSlots 10
 
-    h4 <- activateContractWallet receiverWallet $ endpoints receiverAddr
+    h4 <- activateContractWallet wallet2 $ endpoints wallet2Addr
+
     callEndpoint @"reload" h4 mockReloadFlag
     utxos <- getEscrowInfoList h4
     let resolveParams1 = mkResolveParams $ escrowUtxo $ utxos !! 0

@@ -36,13 +36,13 @@ import Plutus.Contract.Test  ( (.&&.), checkPredicateOptions
 import Escrow        ( mkStartParams, mkCancelParams
                      , mkReceiverAddress, endpoints, escrowUtxo
                      )
-import Tests.Utils   ( emConfig, senderWallet, receiverWallet
-                     , receiverAddr, senderAddr
+import Tests.Utils   ( emConfig
+                     , wallet1, wallet2
+                     , wallet1Addr, wallet2Addr
                      , tokenACurrencySymbol, tokenAName
                      , tokenBCurrencySymbol, tokenBName
                      , getEscrowInfoList, mockReloadFlag
                      )
-
 testMsg :: String
 testMsg = "Starting and cancelling the escrow"
 
@@ -50,15 +50,14 @@ test :: TestTree
 test = checkPredicateOptions
        (defaultCheckOptions & emulatorConfig .~ emConfig)
        testMsg
-       (walletFundsChange senderWallet mempty
-        .&&.
-        walletFundsChange receiverWallet mempty
+       (    walletFundsChange wallet1 mempty
+       .&&. walletFundsChange wallet2 mempty
        )
        trace
 
 trace :: EmulatorTrace ()
 trace = do
-    let recAddr = mkReceiverAddress receiverAddr
+    let recAddr = mkReceiverAddress wallet2Addr
         startParams = mkStartParams
                       recAddr
                       100
@@ -66,11 +65,11 @@ trace = do
                       100
                       (assetClass tokenBCurrencySymbol tokenBName)
 
-    h1 <- activateContractWallet senderWallet $ endpoints senderAddr
+    h1 <- activateContractWallet wallet1 $ endpoints wallet1Addr
     callEndpoint @"start" h1 startParams
     void $ waitNSlots 10
 
-    h2 <- activateContractWallet receiverWallet $ endpoints receiverAddr
+    h2 <- activateContractWallet wallet2 $ endpoints wallet2Addr
     callEndpoint @"reload" h2 mockReloadFlag
     utxos <- getEscrowInfoList h2
 
