@@ -105,115 +105,50 @@ should reject them.
 Property Based Testing
 ----------------------
 
-Up to this point, for testing a complete backend, we are using the ``EmulatorTrace``
-for checking the off-chain implementation, also serving as some sort of humble e2e
-test. Obviously, for this kind of test, we need to think of some combination of
-operations that we translate on traces that will run on the emulator, and at the end,
-we check everything went as planned by checking wallet balances. Clearly, this
-approach requires thinking enough about particular traces trying to cover general
-and ideally all corner cases, which for many situations could be insufficient.
+Up to this point, regarding testing, we are using the ``EmulatorTrace``
+as some kind of integration test where the entire dApp flow is simulated by
+calling off-chain endpoints and checking wallet balances.
+This approach requires thinking enough about particular traces trying to cover interesting
+cases, but for many situations it could be insufficient.
 
 An ideal scenario would be to auto-generate sequences of operations, each one
-defining a trace, that can be run by the emulator and then check the result
-of every run fits with some specification of the dApp backend. The ``ContractModel``
-framework comes to attack this scenario in a very successful way.
+defining a trace, run it on the emulator and then check some desired properties.
+This way of testing is called *Property Based Testing*, offered by the
+``ContractModel`` framework.
 
-Performing Property Based Testing involves writing general properties about the
-server side operations. This means checking that `for any` randomly generated trace,
-the wallet balances at the end of the execution are `correct`, or there is always a
-way of retrieving locked tokens from any script utxo, among other interesting properties.
-The key part for these properties is the implementation of an instance of the
-``ContractModel`` typeclass over an ``EscrowModel`` type that will encode an
-`abstract state` of the dApp backend. The instance will implement the set of actions
-in correspondence to the operations together with a strategy to `arbitrarily` generate
-them. Besides that there will be a `specification` of each action over the ``EscrowModel``
-and finally a `semantic` of each action defined in term of the ``EmulatorTrace``.
+Instead of thinking concrete possible traces, the Property Based Testing approach
+consists of *specifying* what is the expected behavior after each dApp operation,
+*generating* random traces, running them on ``EmulatorTrace``, and finally checking that the
+final state on the emulator matches with the expected one according to the specification.
+For this, an instance of ``ContractModel`` typeclass must be defined.
+It specifies an `abstract state` of the dApp, how this state
+changes after the execution of each operation (which in this context is called `action`),
+how to `arbitrarily` generate sequence of operations, and how to relate each action with
+an off-chain operation, tipically an endpoint call. This `relation` between an action
+in the contract model and an off-chain operation could be considered as the `semantics`
+of the specification.
+Once the ``ContractModel`` instance is defined, different `properties` can be specified.
+Some of them are already partially implemented in plutus-apps lib and the developer just
+need to complete some holes related to the particular instance. The ``NoLockedFunds`` is
+an example of these properties, which expresses an invariant ensuring that there exists a
+way of retrieving tokens locked in a script.
 
 On the ``tests/Tests/Prop`` folder, we find the complete implementation related
-to property based testing. The relevant modules are ``Escrow`` where the properties
-are implemented, and ``EscrowModel`` where the ``ContractModel`` particular instance
-for the escrow can be found. Besides these modules, we have ``Gen`` which implements
+to Property Based Testing. The relevant modules are ``EscrowModel``, where the ``ContractModel`` instance
+is defined, and ``Escrow``, where the properties are implemented.
+Besides these modules, we have ``Gen`` which implements
 some helper functions to generate tokens, wallets, etc, randomly. Finally, the
 ``Extra`` module in which we implemented some helper off-chain code functionality
 needed for the ``ContractModel`` implementation.
 
-Writing properties
-~~~~~~~~~~~~~~~~~~
-
-There are many interesting properties we can implement following this approach.
-New ones defined by us or simply complete "holes" on some of the properties the
-plutus-apps library has to obtain known desirable properties. As we briefly mentioned
-on the ``Escrow`` module we implement a ``Basic`` strategy that will check the specification
-and the semantics we give for the ``EscrowModel`` coincides with respect of wallet's
-balances. Together with another more intersting property, called ``NoLockedFunds``,
-for checking we always can retrive the funds locked on any escrow script utxo.
-
-.. code:: Haskell
-
-   propBasic :: Actions EscrowModel -> Property
-   propBasic = propRunActionsWithOptions
-               (options & increaseMaxCollateral)
-               defaultCoverageOptions
-               (const $ pure True)
-
-The basic property comes almost for free from the ``ContractModel`` instance of
-the ``EscrowModel`` type, we just use ``propRunActionsWithOptions`` with default
-options. That is enough to check the wallets’ balance correspondence between the
-specification and the semantics. As we mentioned, a more interesting property can
-be performed. We check that it is impossible to `block` funds forever in the script
-utxo. The method for ensuring this is by implementing two strategies that will be a
-kind of `proofs` we always can claim the locked funds. A proof will be a general
-recipe for building a sequence of actions that will retrieve all the locked funds
-for any initial sequence of actions.
-
-.. code:: Haskell
-
-   propNoLockedFunds :: Property
-   propNoLockedFunds = checkNoLockedFundsProofWithOptions
-                       (options & increaseMaxCollateral)
-		       noLockProof
-
-   noLockProof :: NoLockedFundsProof EscrowModel
-   noLockProof = defaultNLFP
-                 { nlfpMainStrategy   = finishingMainStrategy
-                 , nlfpWalletStrategy = finishingWalletStrategy
-                 }
-
-To implement this property, we use ``checkNoLockedFundsProofWithOptions``, and
-besides some default options, we need to provide a ``NoLockedFundsProof`` that
-will implement the two strategies: ``finishingMainStrategy`` and ``finishingWalletStrategy``.
-These are the "holes" we mentioned before we need to complete.
-
-The implementation of ``finishingMainStrategy`` is proof that we can always
-claim the locked funds from the script utxo using any wallet. Given the escrow
-has a ``cancel`` operation, then for any unresolved escrow, we can always claim
-the locked funds using this operation. Thus, the sequence of actions for retrieving
-all the locked funds will be a sequence of ``cancels`` for all the created escrows.
-
-.. code:: Haskell
-
-   finishingMainStrategy :: DL EscrowModel ()
-   finishingMainStrategy = do
-       resolveMap <- viewContractState toResolve
-       sequence_ [ action (Cancel w tInfo)
-                 | w <- wallets
-                 , w `Map.member` resolveMap
-                 , tInfo <- fromJust $ Map.lookup w resolveMap
-                 ]
-
-We get all the escrows with ``viewContractState toResolve`` and then build the
-sequence of cancel actions for every wallet that started an escrow. In a similar
-way, we implement the ``finishingWalletStrategy``. The only difference here is
-that we prove a particular wallet can claim all its locked funds without any help
-from other wallets. Thus, in our example, both strategies are the same.
 
 Contract Model Instance
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The other core part we implement for writing properties is the ``ContractModel``
-instance. We start by implementing the ``EscrowModel`` data type that will represent
-an `abstract` state of the dApp, that is, all the escrows to be resolved or canceled.
-We implement an instance of the ``ContractModel`` for this type.
+Let's review how the ``ContractModel`` instance is defined in our Simple Escrow
+dApp. First, we define a data type called ``EscrowModel`` which specifies
+the state we want to predicate over. We define a list of all the escrows
+already started and waiting to be resolved or canceled.
 
 .. code:: Haskell
 
@@ -244,7 +179,7 @@ As part of the abstract representation of the dApp, we implement the `actions` t
 dApp can perform. This is one of the first things we implement to give an instance
 of the ``ContractModel``, together with, as we briefly mentioned, the `specification`
 and the `semantics` of each action, and a way to generate them `arbitrarily`. There
-are also other functions we need to implement, but we focus only on this four.
+are also other functions we need to implement, but we focus only on these.
 
 .. code:: Haskell
 
@@ -282,14 +217,17 @@ are also other functions we need to implement, but we focus only on this four.
        ...
        ...
 
-In this particular escrow example, the actions are closely related to the operations
-of the dApp server side support. We can ``Start``, ``Resolve`` or ``Cancel``, the
-start encodes the complete information for creating an escrow. The resolve and
-the cancel are very similar. In fact, it is  important to notice that the ``rWallet``
+In our example, the actions are closely related to the off-chain endpoints we offer
+to the users as operations, but in other examples it could be different.
+``Start`` action encodes the complete information for creating an escrow.
+``Resolve`` and ``Cancel`` are very similar and contains
+the information needed for resolving or canceling an escrow.
+It is  important to notice that the ``rWallet``
 field is the receiver wallet, and the sender wallet information that is the one
 which can perform the cancel operation is inside the ``ExchangeInfo``. This decision
-can be a little confusing at first, but it simplifies the implementation. For
-these actions we implement a function for randomly generate them.
+can be a little confusing at first, but it simplifies the implementation.
+
+Then, we implement a function for randomly generate sequence of actions
 
 .. code:: Haskell
 
@@ -306,12 +244,13 @@ these actions we implement a function for randomly generate them.
              ]
 
 The ``eArbitraryAction`` function randomly picks a wallet with ``genWallet`` and
-then randomly uses `one of` the given generators that can be ``genStart``,
+randomly uses `one of` the given generators that can be ``genStart``,
 ``genResolve`` or ``genCancel``.  For the last two, it uses the abstract state of
 the dApp for filling in correct escrow information. Notice that we can completely
 randomize a start, but to resolve or cancel, we need to have started an escrow.
-The actualization of the abstract state is performed by the specification of the
-each action, and also there we update the wallet balances.
+
+We have to specify how the state is updated after each action and also the wallet
+balances.
 
 .. code:: Haskell
 
@@ -400,3 +339,80 @@ to get the list of escrows we can resolve. We call the ``reload`` endpoint so th
 we can get the observable state and search for the escrow that matches the exchange
 information. Once we get the ``utxoEscrowInfo``, we call the ``resolve`` endpoint
 with the script utxo.
+
+Writing properties
+~~~~~~~~~~~~~~~~~~
+
+There are many interesting properties we can implement following this approach.
+Some of them are pre-defined in plutus-apps library and require to complete some
+specific part of the underlying implementation. Others are completely specific to
+the particular dApp, in our case the Simple Escrow.
+As we briefly mentioned, 
+
+
+
+on the ``Escrow`` module we implement a ``Basic`` strategy that will check the specification
+and the semantics we give for the ``EscrowModel``, which must match with the corresponding wallet's
+balances.
+
+Together with another more intersting property, called ``NoLockedFunds``,
+for checking we always can retrive the funds locked on any escrow script utxo.
+
+.. code:: Haskell
+
+   propBasic :: Actions EscrowModel -> Property
+   propBasic = propRunActionsWithOptions
+               (options & increaseMaxCollateral)
+               defaultCoverageOptions
+               (const $ pure True)
+
+The basic property comes almost for free from the ``ContractModel`` instance of
+the ``EscrowModel`` type, we just use ``propRunActionsWithOptions`` with default
+options. That is enough to check the wallets’ balance correspondence between the
+specification and the semantics. As we mentioned, a more interesting property can
+be performed. We check that it is impossible to `block` funds forever in the script
+utxo. The method for ensuring this is by implementing two strategies that will be a
+kind of `proofs` we always can claim the locked funds. A proof will be a general
+recipe for building a sequence of actions that will retrieve all the locked funds
+for any initial sequence of actions.
+
+.. code:: Haskell
+
+   propNoLockedFunds :: Property
+   propNoLockedFunds = checkNoLockedFundsProofWithOptions
+                       (options & increaseMaxCollateral)
+		       noLockProof
+
+   noLockProof :: NoLockedFundsProof EscrowModel
+   noLockProof = defaultNLFP
+                 { nlfpMainStrategy   = finishingMainStrategy
+                 , nlfpWalletStrategy = finishingWalletStrategy
+                 }
+
+To implement this property, we use ``checkNoLockedFundsProofWithOptions``, and
+besides some default options, we need to provide a ``NoLockedFundsProof`` that
+will implement the two strategies: ``finishingMainStrategy`` and ``finishingWalletStrategy``.
+These are the "holes" we mentioned before we need to complete.
+
+The implementation of ``finishingMainStrategy`` is proof that we can always
+claim the locked funds from the script utxo using any wallet. Given the escrow
+has a ``cancel`` operation, then for any unresolved escrow, we can always claim
+the locked funds using this operation. Thus, the sequence of actions for retrieving
+all the locked funds will be a sequence of ``cancels`` for all the created escrows.
+
+.. code:: Haskell
+
+   finishingMainStrategy :: DL EscrowModel ()
+   finishingMainStrategy = do
+       resolveMap <- viewContractState toResolve
+       sequence_ [ action (Cancel w tInfo)
+                 | w <- wallets
+                 , w `Map.member` resolveMap
+                 , tInfo <- fromJust $ Map.lookup w resolveMap
+                 ]
+
+We get all the escrows with ``viewContractState toResolve`` and then build the
+sequence of cancel actions for every wallet that started an escrow. In a similar
+way, we implement the ``finishingWalletStrategy``. The only difference here is
+that we prove a particular wallet can claim all its locked funds without any help
+from other wallets. Thus, in our example, both strategies are the same.
