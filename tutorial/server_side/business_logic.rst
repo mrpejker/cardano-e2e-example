@@ -5,25 +5,25 @@ An Escrow instance is fully specified by the following information:
 
 - Receiver's address.
 - Sender's address.
-- Asset Class and amount of token that the sender pays.
-- Asset Class and amount of token that the receiver pays.
+- Asset class and amount of tokens that the sender paid.
+- Asset class and amount of tokens that the receiver should pay.
 
 As we mentioned before, in the design we chose for this implementation, the sender
 starts an escrow by submitting a transaction that pays to a script an amount of some
-asset class. That script is parameterized in the receiver address,
+asset class. The script is parameterized on the receiver address,
 and the datum contains the rest of the information: sender's address, asset class and
 amount of tokens that the receiver must pay.
 For validating the resolution of an escrow we need to check that when
-the script utxo is being spent, the sender receives the corresponding amount of tokens,
+the script UTxO is being spent, the sender receives the corresponding amount of tokens,
 and the transaction is signed by the receiver.
 For validating that an escrow is canceled, the transaction spending
-the script utxo must be signed by the sender.
+the script UTxO must be signed by the sender.
 
-In the :code:`Business` module we implement the data-type corresponding to the `state`
+In the :code:`Business` module we implement the data type corresponding to the `state`
 of the dApp that will be located inside the `Datum`. We also implement the core checks
-and computations that will be used at building and validating the transactions.
+and computations that will be used when building and validating the transactions.
 
-In the :code:`Types` module we implement the data-types corresponding to the `Datum` and
+In the :code:`Types` module we implement the data types corresponding to the `Datum` and
 `Redeemer`, and some other boilerplate.
 
 Business
@@ -75,8 +75,8 @@ building and validating the resolution or cancellation of an escrow.
   valueToSender EscrowInfo{..} = assetClassValue rAssetClass rAmount
       
 
-For resolving an escrow, the transaction signer must be the `Receiver`, and
-function :code:`signerIsReceiver` should be used when validating.
+To resolve an escrow, the transaction signer must be the `Receiver`, and
+:code:`signerIsReceiver` should be used when validating.
 In addition to that, the transaction must pay to the sender the corresponding
 value specified in the `EscrowInfo`. The function
 :code:`valueToSender` should be used for computing that value at the moment of
@@ -84,19 +84,19 @@ building the transaction (off-chain), and for validating it (on-chain).
 Similarly, for validating the cancellation of an escrow, function :code:`signerIsSender`
 should be used.
 
-Due to the simplicity of this dApp example, the Business logic is a short module and
-doesn't contain too much code to share between off-chain and on-chain. In other
-cases, we could have a complex `state` that is updated on each transaction, and much more
-logic is implemented in the Business module. Nevertheless, even simple, this example
-has some pieces of code which are critical and can be shared for building and validating
-the transactions. 
+Due to the simplicity of this dApp example, the Business logic is a short
+module and doesn't contain too much code to be shared between off-chain and
+on-chain. In other cases with a complex `state`, much more logic should be
+implemented in the Business module. Nevertheless, even simple, this example
+still has code that is critical and can be used both for building and
+validating the transactions.
 
 Types
 -----
 
-In :code:`Types` module we basically define the validator Parameter, Datum and Redeemer types.
+In the :code:`Types` module we basically define the validator Parameter, Datum and Redeemer types.
 
-The Datum contains the Escrow info together with the Asset Class of the control token that
+The Datum contains the Escrow info together with the asset class of the control token that
 is minted at start. It's needed for knowing which token must be burned at resolving or
 canceling, and cannot be located in the parameter due to a circularity problem (we'll explain more
 about this later).
@@ -110,7 +110,7 @@ about this later).
       deriving Show
 
 
-The Redeemer type specifies the different ways to spend a script utxo. In this case we have two:
+The Redeemer type specifies the different ways to spend a script UTxO. In this case we have two:
 resolve or cancel.
 
 .. code:: haskell
@@ -119,5 +119,4 @@ resolve or cancel.
                       | ResolveEscrow
 
 
-The rest code in the module is mainly boilerplate.
-
+The rest of the code in the module is mostly boilerplate.
