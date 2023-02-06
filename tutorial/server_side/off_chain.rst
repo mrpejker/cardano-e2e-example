@@ -2,9 +2,9 @@ Off-Chain
 ==========
 
 The off-chain side of the server implementation is in charge of defining the interface
-for interacting with the client, and performing the necessary actions of each operation
-that basically consist of querying the blockchain and building transactions.
-We divide the :code:`OffChain` module in two: :code:`Interface` and :code:`Operations`.
+for interacting with the client and performing the necessary actions
+for each operation.
+We divide the ``OffChain`` module in two: ``Interface`` and ``Operations``.
 
 Inside :code:`Interface` we define the necessary types for specifying the
 endpoints that the PAB service will provide to the client, and a type for
@@ -33,12 +33,11 @@ PAB service will provide.
                   .\/ Endpoint "reload"  Integer
 
 We define an endpoint for each operation: `start`, `cancel` and `resolve`. Each one has
-some parameters with the necessary input information.
-In addition to them, we define a `reload` operation, which is used for
-getting some blockchain information from the dApp that we need in the client side.
+parameters with the necessary input information.
+In addition, we define a `reload` operation used for
+querying blockchain information that is needed in the client side.
 
-
-As we'll see later, when an end-user connects to the PAB service, the corresponding wallet
+As we will see later, when an end-user connects to the PAB service, the corresponding wallet
 address is set, so the parameter corresponding to the address that is performing
 the operation is implicit. In other words, once the frontend connects with the PAB service,
 it provides an API where the user address is set as a `context`.
@@ -59,12 +58,14 @@ we need to define the receiver address and the payments information:
     deriving (Generic)
     deriving anyclass (FromJSON, ToJSON)
 
-For canceling or resolving, the information needed is the reference to the utxo
-corresponding to the specific escrow instance. For finding a utxo in the blockchain,
-it's necessary the script address, and given that the validator is parameterized in the
-receiver address, we also need that information. So in conclusion, for both operations
-we need the scrip-utxo reference and the receiver address.
-    
+For canceling or resolving, it is required to have the reference to the script
+UTxO corresponding to the specific escrow instance.
+The validation script code must be included in the transaction and therefore,
+as it is parameterized on the receiver address, the receiver address is also
+required.
+
+In the case of canceling, as it is done by the sender, both requirements are
+included as parameters:
 
 .. code:: Haskell
 
@@ -76,9 +77,8 @@ we need the scrip-utxo reference and the receiver address.
     deriving anyclass (FromJSON, ToJSON)
 
 
-For resolving, given that the receiver address in `in the context` (the receiver is
-the only one that can resolve an escrow), we don't need to provide that as part
-of the endpoint parameter.
+For resolving, as it is done by the receiver, the receiver address is `in the
+context`, so we don't need to provide it as an endpoint parameter:
 
 .. code:: Haskell
 
@@ -87,13 +87,14 @@ of the endpoint parameter.
     deriving anyclass (FromJSON, ToJSON)
 
 
-In addition to the Schema, we define the Observable State. It corresponds to the information
-that we want to get from the client side.
-In this case, we want to provide, for each user, the list of escrows waiting to be resolved
-by this user. Thus, the frontend can display the list of escrows with their information.
-For each escrow we include the utxo reference, the Escrow Info (containing the sender's address
-and the asset class and amount to be paid for resolving), and the asset class and amount paid
-by the sender.
+In addition to the Schema, we define the Observable State. It corresponds to
+information that we want to make available to the client side through the PAB's
+status endpoint. In this case we want to provide the list of escrows waiting to
+be resolved by the connected user. This way, the frontend can display the
+information in the UI and provide the option to resolve them.
+For each escrow we include the UTxO reference, the Escrow Info (see
+:ref:`section 2.1 <business_business>`), and the asset class and amount paid
+by the sender:
 
 .. code:: Haskell
 

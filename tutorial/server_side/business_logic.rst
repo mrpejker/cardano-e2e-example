@@ -1,3 +1,5 @@
+.. _business:
+
 Business Logic and Types
 =========================
 
@@ -25,6 +27,9 @@ and computations that will be used when building and validating the transactions
 
 In the :code:`Types` module we implement the data types corresponding to the `Datum` and
 `Redeemer`, and some other boilerplate.
+
+
+.. _business_business:
 
 Business
 --------
