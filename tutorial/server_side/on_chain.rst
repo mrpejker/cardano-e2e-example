@@ -1,3 +1,5 @@
+.. _onchain:
+
 On-Chain
 ========
 

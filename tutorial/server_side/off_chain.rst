@@ -106,11 +106,7 @@ by the sender:
       deriving (Show, Generic)
       deriving anyclass (FromJSON, ToJSON)
 
-When the ``reload`` endpoint is called, the off-chain code obtains a list of
-``UtxoEscrowInfo`` belonging to the wallet triggering the operation.
-In addition to the escrow info, the Observable State includes a special integer ``reloadFlag``.
-The "reload" endpoint takes an integer as a parameter and sets it as the value of the ``reloadFlag``.
-This way, the caller is able to tell when the Observable State shown in the status is updated.
+In addition to the escrows information, the Observable State includes a special integer called ``reloadFlag``:
 
 .. code:: Haskell
 
@@ -121,13 +117,20 @@ This way, the caller is able to tell when the Observable State shown in the stat
       deriving (Show, Generic)
       deriving anyclass (FromJSON, ToJSON)
 
-The types defined here are the interface for communicating the client with the PAB service.
-The client will send the endpoints parameters as JSON objects, that are converted to the Haskell
-type, and vice-versa, the Observable State is converted to JSON for sending to the client.
-We are currently using the derived instances of :code:`FromJSON` and :code:`ToJSON`, but the developer
-can define an own definition, for having more control over the interface (and not depend on
-the `deriving` implementation).
+The ``reloadFlag`` is used as a way to signal to the client side that the
+Observable State has been updated in the PAB status after a call to the
+``reload`` endpoint (see :ref:`section 3.2 <offchain_operations>` below).
 
+The types defined here are the interface for communicating the client with the
+PAB service. The client will send the endpoints parameters as JSON objects that
+are converted to Haskell types. Vice versa, the Observable State is converted
+to JSON for sending to the client. For the conversions, we currently use
+derived instances of ``FromJSON`` and ``ToJSON``. To have more control over the
+interface, developers can define their own instantiations of the JSON
+conversion.
+
+
+.. _offchain_operations:
 
 Operations
 -----------
@@ -136,7 +139,7 @@ Now that we have defined the interface of our off-chain code, it's turn to imple
 for each operation. First, we define the function that connects each endpoint with the corresponding
 off-chain function. This function is called :code:`endpoints` and will be called from the PAB service
 module. It receives a :code:`WalletAddress` corresponding to the `connected` user that is calling
-the endpoint.
+the endpoint:
 
 .. code:: Haskell
 
@@ -158,12 +161,11 @@ the endpoint.
       reloadEp :: Promise (Last [UtxoEscrowInfo]) EscrowSchema Text ()
       reloadEp = endpoint @"reload" $ const $ reloadOp raddr
 
+Then we define functions for each operation. Let's review the ``startOp``,
+``resolveOp`` and ``reloadOp`` functions. We will show just some relevant code
+snippets here.
 
-Then we define functions for each operation. Let's review :code:`start`, :code:`resolve` and :code:`reload`
-functions. We will show just some relevant code snippets here.
-
-Starting an escrow consists of paying to a script the desired value that the sender wants to pay to the
-receiver, including in the datum the corresponding Escrow Info.
+First ``startOp``, that has the following header:
 
 .. code:: Haskell
 
@@ -174,12 +176,13 @@ receiver, including in the datum the corresponding Escrow Info.
       -> Contract w s Text ()
   startOp addr StartParams{..} = do
 
-So for specifying the transaction, we need to define the value and datum that will be part of
-the script-utxo
+Starting an escrow consists of paying to a script the value that the sender
+wants to pay to the receiver, including in the datum the corresponding escrow
+information. So for specifying the transaction, we need to define the value and
+datum that will be part of the script UTxO:
 
 .. code:: Haskell
 
-      let 
           senderVal = assetClassValue sendAssetClass sendAmount
           val       = minAda <> cTokenVal <> senderVal
           datum     = mkEscrowDatum (mkSenderAddress addr)
@@ -187,12 +190,12 @@ the script-utxo
                                     receiveAssetClass
                                     cTokenAsset
 
-The value consists of a minimum amount of ADA, the control token which will be minted in this transaction,
-and the tokens that should be paid to the receiver.
-In the datum we include the sender's address, the payment expected and the control token asset class, that
-will be burned at resolving or canceling.
+The value consists of a minimum amount of ADA, the control token that will be
+minted and the tokens that should be paid to the receiver.
+In the datum we include the sender's address, the payment expected and the
+control token asset class that will be burned at resolving or canceling.
 
-Then we specify the transaction by defining lookups and constraints
+Then we specify the transaction by defining lookups and constraints:
 
 .. code:: Haskell
 
@@ -207,27 +210,28 @@ Then we specify the transaction by defining lookups and constraints
                 , mustBeSignedBy senderPpkh
                 ]
   
-In :code:`lkp` we define the lookups. In this case we are not spending any script-utxo, but we
+In :code:`lkp` we define the lookups. In this case we are not spending any script UTxO, but we
+We will review their implementation in the :ref:`next section <onchain>`.
+
 are generating a new one and minting a token, so we declare the validator and minting policy.
-We'll review their implementation in the following section.
-
 In :code:`tx` we define the constraints. We declare that we pay to the script the defined datum and
-value, we mint the control token, and the transaction must be signed by the sender public key.
+value, we mint the control token, and we require that the transaction must be
+signed with the sender's public key.
 
-Now we just need to `yield` the specified unbalanced transaction for being accessible from the
-client side.
+Now we just need to `yield` the specified unbalanced making it accessible to
+the client side:
 
 .. code:: Haskell
 	  
           mkTxConstraints lkp tx >>= yieldUnbalancedTx
 
-This would be the unbalanced transaction that `is sent` to the client for balancing, signing and submitting:
+The following diagram illustrates the unbalanced transaction that is yielded to
+the client for balancing, signing and submitting:
 
 .. figure:: /img/unbalancedStart.png
 
 	    
-Let's review now the resolve operation. It receives the wallet address corresponding to the user
-triggering the operation and the reference of the utxo generated at start.
+Let's review now the resolve operation:
 
 .. code:: Haskell
 	  
@@ -238,11 +242,11 @@ triggering the operation and the reference of the utxo generated at start.
       -> Contract w s Text ()
   resolveOp addr ResolveParams{..} = do
 
-We have to build a transaction that spends the script utxo, pays to the sender
+We have to build a transaction that spends the script UTxO, pays to the sender
 the tokens specified in the Escrow Info, and burns the control token.
 We also have to specify that the receiver gets the payment in the corresponding
 address.
-First, we get the utxo and extract from there the Escrow Info.
+First, we get the UTxO and extract from there the Escrow Info:
 
 .. code:: Haskell
 
@@ -252,8 +256,8 @@ First, we get the utxo and extract from there the Escrow Info.
 
 We use some utility functions for it. :code:`lookupScriptUtxos` gets a list of
 utxos from a given address and containing a token of a given Asset Class.
-:code:`findMUtxo` gets the utxo content from a given utxo reference and a list
-of utxos. Finally :code:`getEscrowInfo` reads the datum of a given utxo and returns
+:code:`findMUtxo` gets the UTxO content from a given UTxO reference and a list
+of utxos. Finally :code:`getEscrowInfo` reads the datum of a given UTxO and returns
 the Escrow Info inside it.
 
 For defining the transaction, we need to specify the payment that goes to the sender and
@@ -264,14 +268,14 @@ the one that goes to the receiver.
       let cTokenVal      = assetClassValue cTokenAsset (-1)
           senderWallAddr = eInfoSenderWallAddr eInfo
           senderPayment  = valueToSender eInfo <> minAda
-          escrowVal      = utxo ^. decoratedTxOutValue
+          escrowVal      = UTxO ^. decoratedTxOutValue
           receivePayment = escrowVal <> cTokenVal
 
 The sender address is defined in the Escrow Info, and for defining the payment
 we use the function :code:`senderPayment`, implemented in the Business logic module.
 This function will be used too in the on-chain validator for checking that the payment received by
 the sender is correct.
-Regarding the receiver's payment, it's basically the entire value contained in the script utxo,
+Regarding the receiver's payment, it's basically the entire value contained in the script UTxO,
 without the control token, which must be burned. 
 
 Now we define the lookups and constraints.
@@ -292,8 +296,8 @@ Now we define the lookups and constraints.
               ]
 
 In addition to the validator and control token minting policy, we include
-in the lookups the utxo that is spent in this transaction.
-The constraints specify that we spend the script-utxo using the redeemer
+in the lookups the UTxO that is spent in this transaction.
+The constraints specify that we spend the script-UTxO using the redeemer
 :code:`resolveRedeemer`, we burn the control token, the transaction must be
 signed by the receiver, pays to the sender the corresponding tokens specified
 in the Escrow Info, and pays to the receiver the corresponding value.
@@ -302,7 +306,7 @@ in the Escrow Info, and pays to the receiver the corresponding value.
 
       mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
 
-The resulting unbalanced transaction is as follows
+The resulting unbalanced transaction is as follows:
 
 .. figure:: /img/unbalancedResolve.png
 
@@ -334,7 +338,7 @@ For updating the observable state we need to look for the list of utxos belongin
 to the script address (which is parameterized on the receiver address). Function
 ``lookupScriptUtxos`` is used for that, which looks for utxos of the given address
 and containing the given token, in our case the control token.
-Then we have to read the datum inside each utxo, using the auxiliary function
+Then we have to read the datum inside each UTxO, using the auxiliary function
 ``mkUtxoEscrowInfoFromTxOut``. Finally, we write the updated
 observable state by calling the monadic function ``tell``.
 
