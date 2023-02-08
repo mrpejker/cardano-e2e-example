@@ -211,19 +211,19 @@ Then we specify the transaction by defining lookups and constraints:
                 ]
   
 In :code:`lkp` we define the lookups. In this case we are not spending any script UTxO, but we
+are generating a new one and minting a token, so we declare the validator and minting policy.
 We will review their implementation in the :ref:`next section <onchain>`.
 
-are generating a new one and minting a token, so we declare the validator and minting policy.
 In :code:`tx` we define the constraints. We declare that we pay to the script the defined datum and
 value, we mint the control token, and we require that the transaction must be
 signed with the sender's public key.
 
-Now we just need to `yield` the specified unbalanced making it accessible to
-the client side:
+Now we just need to `yield` the specified unbalanced transaction making it
+accessible to the client side:
 
 .. code:: Haskell
 	  
-          mkTxConstraints lkp tx >>= yieldUnbalancedTx
+          mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
 
 The following diagram illustrates the unbalanced transaction that is yielded to
 the client for balancing, signing and submitting:
@@ -250,35 +250,32 @@ First, we get the UTxO and extract from there the Escrow Info:
 
 .. code:: Haskell
 
-      utxos <- lookupScriptUtxos contractAddress cTokenAsset
-      utxo  <- findMUtxo rpTxOutRef utxos
+      utxo  <- findMUtxo rpTxOutRef
       eInfo <- getEscrowInfo utxo
 
-We use some utility functions for it. :code:`lookupScriptUtxos` gets a list of
-utxos from a given address and containing a token of a given Asset Class.
-:code:`findMUtxo` gets the UTxO content from a given UTxO reference and a list
-of utxos. Finally :code:`getEscrowInfo` reads the datum of a given UTxO and returns
-the Escrow Info inside it.
+We use the following auxiliary functions for it: ``findMUtxo`` gets the UTxO
+content from a given UTxO reference, and ``getEscrowInfo`` reads the datum of a
+given UTxO and returns the Escrow Info inside it.
 
-For defining the transaction, we need to specify the payment that goes to the sender and
-the one that goes to the receiver.
+For defining the transaction, we need to specify the payment that goes to the
+sender and the one that goes to the receiver:
 
 .. code:: Haskell
 
       let cTokenVal      = assetClassValue cTokenAsset (-1)
           senderWallAddr = eInfoSenderWallAddr eInfo
           senderPayment  = valueToSender eInfo <> minAda
-          escrowVal      = UTxO ^. decoratedTxOutValue
+          escrowVal      = utxo ^. decoratedTxOutValue
           receivePayment = escrowVal <> cTokenVal
 
 The sender address is defined in the Escrow Info, and for defining the payment
-we use the function :code:`senderPayment`, implemented in the Business logic module.
+we use the function ``valueToSender``, implemented in the Business module.
 This function will be used too in the on-chain validator for checking that the payment received by
 the sender is correct.
-Regarding the receiver's payment, it's basically the entire value contained in the script UTxO,
-without the control token, which must be burned. 
+Regarding the receiver's payment, it is basically the entire value contained in
+the script UTxO, without the control token that must be burned.
 
-Now we define the lookups and constraints.
+Now we define the lookups and constraints:
 
 .. code:: Haskell
 
@@ -297,16 +294,18 @@ Now we define the lookups and constraints.
 
 In addition to the validator and control token minting policy, we include
 in the lookups the UTxO that is spent in this transaction.
-The constraints specify that we spend the script-UTxO using the redeemer
+The constraints specify that we spend the script UTxO using the redeemer
 :code:`resolveRedeemer`, we burn the control token, the transaction must be
 signed by the receiver, pays to the sender the corresponding tokens specified
 in the Escrow Info, and pays to the receiver the corresponding value.
+
+Finally, we build the unbalanced transaction and yield it:
 
 .. code:: Haskell
 
       mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
 
-The resulting unbalanced transaction is as follows:
+The following diagram illustrates the yielded transaction:
 
 .. figure:: /img/unbalancedResolve.png
 
@@ -315,7 +314,6 @@ Let's finally review the :code:`reload` operation, which doesn't generate any tr
 but it's in charge of reading the blockchain and writing
 the updated obervable state. It corresponds to a list containing
 the information of every escrow waiting to be resolved by the corresponding user address.
-
 
 .. code:: Haskell
 
