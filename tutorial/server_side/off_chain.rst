@@ -310,10 +310,10 @@ The following diagram illustrates the yielded transaction:
 .. figure:: /img/unbalancedResolve.png
 
 
-Let's finally review the :code:`reload` operation, which doesn't generate any transaction,
+Let's finally review the reload operation, which doesn't generate any transaction,
 but it's in charge of reading the blockchain and writing
 the updated obervable state. It corresponds to a list containing
-the information of every escrow waiting to be resolved by the corresponding user address.
+the information of every escrow waiting to be resolved by the corresponding user address:
 
 .. code:: Haskell
 
@@ -332,12 +332,9 @@ the information of every escrow waiting to be resolved by the corresponding user
 
       tell $ Last $ Just $ mkObservableState rFlag utxosEInfo
 
-For updating the observable state we need to look for the list of utxos belonging
-to the script address (which is parameterized on the receiver address). Function
-``lookupScriptUtxos`` is used for that, which looks for utxos of the given address
-and containing the given token, in our case the control token.
+For updating the observable state we need to look for the list of UTxOs
+belonging to the script address. Function ``lookupScriptUtxos`` is used for
+this, looking for UTxOs in the given address and containing the given token, in our case the control token.
 Then we have to read the datum inside each UTxO, using the auxiliary function
 ``mkUtxoEscrowInfoFromTxOut``. Finally, we write the updated
 observable state by calling the monadic function ``tell``.
-
-
