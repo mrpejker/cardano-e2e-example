@@ -225,9 +225,9 @@ can be found in the ``value`` attribute.
 Other uses
 ----------
 
-For the escrow example, `fullBalanceTx` is good enough to cover all our needs.
+For the escrow example, ``fullBalanceTx`` is good enough to cover all our needs.
 However, in some cases more flexibility may be needed. For instance, a possible
-balancing approach is to used hardcoded values for memory and CPU budget,
+balancing approach is to use hardcoded values for memory and CPU budget,
 removing the need for the budget service. In this case, the following lower
 level functions of the balancer library can be used:
 

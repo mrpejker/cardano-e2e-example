@@ -67,7 +67,7 @@ calling ``reload`` of the contract endpoints to get the observable state.
 Parameters
 ----------
 
-As we are using typescript, together with the main class we define dApp
+As we are using typescript, together with the main class, we define dApp
 specific datatypes. A first group of types is defined in ``parameters.tsx`` and
 is used to build valid parameters for the endpoint calls:
 
