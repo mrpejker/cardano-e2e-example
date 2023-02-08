@@ -187,7 +187,7 @@ mkControlTokenMintingPolicy addr _ ctx =
           "minted token")
           correctControlAssetClass
      && traceIfFalse
-          "Amount of tokens to pay to Receiver in Datum is less than 0"
+          "Amount of tokens to pay to Sender in Datum is less than 0"
           correctAmount
 
     correctSigner :: Bool
