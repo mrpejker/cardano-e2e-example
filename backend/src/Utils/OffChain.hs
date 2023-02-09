@@ -9,14 +9,15 @@ Stability   : develop
 module Utils.OffChain where
 
 -- Non-IOG imports
-import Control.Lens ( (^.), matching )
-import Data.Text    ( Text )
+import Control.Monad ( unless )
+import Control.Lens  ( (^.), matching )
+import Data.Text     ( Text )
 import Data.Map qualified as Map ( toList, filter )
 
 -- IOG imports
 import Ledger ( DecoratedTxOut(..), Address, TxOutRef, Datum, DatumHash
               , DatumFromQuery(..), PaymentPubKeyHash(..)
-              , decoratedTxOutDatum
+              , decoratedTxOutDatum, decoratedTxOutAddress
               , decoratedTxOutValue, _ScriptDecoratedTxOut
               , toPubKeyHash
               )
@@ -31,12 +32,13 @@ lookupScriptUtxos
     .  Address
     -> AssetClass
     -> Contract w s Text [(TxOutRef, DecoratedTxOut)]
-lookupScriptUtxos addr token =
-    Map.toList . Map.filter (txOutHasToken . (^. decoratedTxOutValue))
+lookupScriptUtxos addr ac =
+    Map.toList . Map.filter (valueHasOneToken ac . (^. decoratedTxOutValue))
     <$> utxosAt addr
-  where
-    txOutHasToken :: Value -> Bool
-    txOutHasToken v = assetClassValueOf v token == 1
+
+-- | Checks if the value has exactly one token of the given asset class.
+valueHasOneToken :: AssetClass -> Value -> Bool
+valueHasOneToken ac v = assetClassValueOf v ac == 1
 
 -- | Gets the Datum from a DecoratedTxOut. Throws an error if it can't find it.
 getDatumWithError
@@ -58,26 +60,16 @@ getDatumTxOut txOut =
         Right (_,_,_,(dh,DatumUnknown),_,_) -> datumFromHash dh
         _ -> return Nothing
 
--- | Finds the DecoratedTxOut from the given TxOutRef.
-findUtxoFromRef
-    :: forall w s
-    .  TxOutRef
-    -> Contract w s Text DecoratedTxOut
-findUtxoFromRef ref = unspentTxOutFromRef ref >>=
-                      maybe (throwError "Utxo not found") pure
-
 {- | Finds the unique utxo from the given TxOutRef and loads the datum on the
-     DecoratedTxOut, fails otherwise.
+     DecoratedTxOut.
 -}
-findMUtxo
+findUtxoFromRefWithDatum
     :: forall w s
     .  TxOutRef
-    -> [(TxOutRef, DecoratedTxOut)]
     -> Contract w s Text DecoratedTxOut
-findMUtxo ref utxos =
-    case filter ((==) ref . fst) utxos of
-        [(_, o)] -> decoratedTxOutDatum loadDatum o
-        _        -> throwError "Specified Utxo not found"
+findUtxoFromRefWithDatum ref =
+    unspentTxOutFromRef ref >>=
+    maybe (throwError "Utxo not found") (decoratedTxOutDatum loadDatum)
   where
     loadDatum
         :: (DatumHash, DatumFromQuery)
@@ -85,6 +77,27 @@ findMUtxo ref utxos =
     loadDatum d@(dh, DatumUnknown) =
         maybe d ((dh,) . DatumInBody) <$> datumFromHash dh
     loadDatum d = return d
+
+{- | Finds the unique utxo (loading the datum if needed) from the given TxOutRef.
+     The function fails if the utxo address doesn't match the given address or
+     the value doesn't have the given token asset class.
+-}
+findValidUtxoFromRef
+    :: forall w s
+    .  TxOutRef
+    -> Address
+    -> AssetClass
+    -> Contract w s Text DecoratedTxOut
+findValidUtxoFromRef ref addr ac = do
+    utxo <- findUtxoFromRefWithDatum ref
+
+    unless (utxo ^. decoratedTxOutAddress == addr) $
+        throwError "Wrong escrow address on the utxo"
+
+    unless (valueHasOneToken ac (utxo ^. decoratedTxOutValue)) $
+        throwError "The utxo doesn't have the token"
+
+    return utxo
 
 -- | Gets the PaymentPubKeyHash for the given Address
 getPpkhFromAddress
