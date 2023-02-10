@@ -241,6 +241,8 @@ Let's review now the resolve operation:
       -> ResolveParams
       -> Contract w s Text ()
   resolveOp addr ResolveParams{..} = do
+      ....
+      ....
 
 We have to build a transaction that spends the script UTxO, pays to the sender
 the tokens specified in the Escrow Info, and burns the control token.
@@ -250,11 +252,12 @@ First, we get the UTxO and extract from there the Escrow Info:
 
 .. code:: Haskell
 
-      utxo  <- findMUtxo rpTxOutRef
+      utxo  <- findValidUtxoFromRef rpTxOutRef contractAddress cTokenAsset
       eInfo <- getEscrowInfo utxo
 
-We use the following auxiliary functions for it: ``findMUtxo`` gets the UTxO
-content from a given UTxO reference, and ``getEscrowInfo`` reads the datum of a
+We use the following auxiliary functions for it: ``findValidUtxoFromRef`` gets the UTxO
+content from a given UTxO reference if the address is the given one, and the value
+contains a token of the given asset class. The function  ``getEscrowInfo`` reads the datum of a
 given UTxO and returns the Escrow Info inside it.
 
 For defining the transaction, we need to specify the payment that goes to the
@@ -270,7 +273,7 @@ sender and the one that goes to the receiver:
 
 The sender address is defined in the Escrow Info, and for defining the payment
 we use the function ``valueToSender``, implemented in the Business module.
-This function will be used too in the on-chain validator for checking that the payment received by
+This function will be also used in the on-chain validator for checking that the payment received by
 the sender is correct.
 Regarding the receiver's payment, it is basically the entire value contained in
 the script UTxO, without the control token that must be burned.
