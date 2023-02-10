@@ -28,6 +28,27 @@ In summary, we must have the following folder structure:
    ├── plutus-apps
    └── plutus-budget-service
 
+The easiest way to have everything running doing a minimal configuration is
+by using docker. We have docker files for the backend, frontend, and budget-service.
+The instructions for running this last service can be found on the `plutus-budget-service/README <https://github.com/joinplank/plutus-budget-service/blob/main/README.md#running-the-server-through-docker>`_.
+Next we will see how to use a public deployed instance of this service.
+
+Using ``docker-compose`` we build and run the other two services. We just need
+first to configure which instances of the indexer and the budget-service we will
+use. Everything about the indexer can be found in the coming :ref:`subsection <indexer_blockfrost>`.
+We setup the budget-service by setting the environment variable ``REACT_APP_BUDGET_URL``
+on the ``cardano-e2e-example/frontend/.env``, with ``http://escrow.joinplank.com:3001/``.
+After that, we just execute:
+
+.. code-block:: bash
+
+   $> docker-compose up --build
+
+The ``docker-compose`` building will take several minutes. Once everthing is
+running we can access de dApp on the url `http://localhost:3000 <http://localhost:3000>`_.
+In case we don't want to use docker, we can install everything locally, as we
+explain next.
+
 Server side
 -----------
 
@@ -50,17 +71,23 @@ Generally, we just need to edit ``/etc/nix/nix.conf`` by adding the following li
 Now, we must get inside the ``plutus-apps`` repository folder, and checkout the release
 corresponding to `this particular commit <https://github.com/joinplank/plutus-apps/commit/a58d3a1934a4a3788da7815540a892dfe417b3bb>`_:
 
-``$ git checkout a58d3a1934a4a3788da7815540a892dfe417b3bb``
+.. code-block:: bash
+
+   $> git checkout a58d3a1934a4a3788da7815540a892dfe417b3bb
 
 Then, we must run
 
-``$ nix-shell``
+.. code-block:: bash
+
+   $> nix-shell
 
 to install all the needed dependencies and get inside the development environment.
 From this environment we will compile and run the services.
 The first time is going to take some minutes. If the process succeeds,
 you will get a new prompt indicating that you are effectively inside a
 Nix environment. From now on we will assume we are always inside this environment.
+
+.. _indexer_blockfrost:
 
 Indexer/Blockfrost
 ~~~~~~~~~~~~~~~~~~
