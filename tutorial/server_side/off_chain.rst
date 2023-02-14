@@ -260,8 +260,8 @@ content from a given UTxO reference if the address is the given one, and the val
 contains a token of the given asset class. The function  ``getEscrowInfo`` reads the datum of a
 given UTxO and returns the Escrow Info inside it.
 
-For defining the transaction, we need to specify the payment that goes to the
-sender and the one that goes to the receiver:
+For defining the transaction, we need to specify the payments to sender
+and receiver:
 
 .. code:: Haskell
 
