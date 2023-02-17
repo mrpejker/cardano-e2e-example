@@ -4,15 +4,15 @@ On-Chain
 ========
 
 The on-chain side of the server implementation consists of validators and minting policies.
-In our example, the sender locks in a script-utxo the tokens to be paid to the
+In our example, the sender locks into a script UTxO the tokens to be paid to the
 receiver, containing in the datum all the necessary information. In order to check
-that it's valid, a `control token` is minted in the same transaction,
-so a validation can be performed by running the corresponding minting policy.
-For canceling or resolving, it's necessary to spend the script-utxo, which must
-contain the control token, so the validator performs all the necessary checks.
+that it is valid, a `control token` is minted in the same transaction,
+so validation can be performed by running the corresponding minting policy.
+For canceling or resolving it is necessary to spend the script UTxO, so the
+corresonding validator performs all the necessary checks.
 
-In the :code:`OnChain` module, we find the Haskell implementation of the 
-validator and the minting policy, as boolean functions.
+In the :code:`OnChain` module we find the Haskell implementation of the
+validator and the minting policy as boolean functions.
 In the :code:`Validator` module we define mostly boilerplate code for compiling to Plutus.
 
 OnChain Module
@@ -34,16 +34,17 @@ scope. Thus we must explictly import from the Prelude all we need:
 Minting Policy
 ~~~~~~~~~~~~~~
 
-Starting an escrow involves minting a *control token*, thus running a validation
+Starting an escrow involves minting a *control token*, thus running the validation
 implemented on its minting policy. We use this
-fact to ensure some good starting properties on the script-utxo we are creating.
-For that, we have to distinguish if we are minting or burning by checking 
-information inside the script context: if the amount of minted tokens is -1 we
-are burning, if it's 1 we are minting. If the transaction mints a different amount
-of tokens, the minting policy fails and so the start operation.
-If we are minting the control token, then we have to check that it's paid to the
-escrow script and the datum is correct.
-
+fact to ensure some good starting properties on the script UTxO we are creating.
+A similar approach is proposed in this
+`blogpost <https://well-typed.com/blog/2022/08/plutus-initial-conditions/>`_.
+For that, we have to distinguish if we are minting or burning by checking the
+information in the script context: if the amount of minted tokens is -1 we
+are burning, if it is 1 we are minting. If the transaction mints a different
+amount of tokens, the minting policy fails and so does the start operation.
+If we are minting the control token, then we have to check that it is paid to
+the escrow script and that the datum is correct:
 
 .. code:: Haskell
 
@@ -62,9 +63,9 @@ escrow script and the datum is correct.
      where
        ....
 
-The minting policy is parameterized on the script address of the escrow utxo we are
-creating, so we know where the control token must go. We check that it's paid
-to the script-utxo in function :code:`controlTokenPaid`
+The minting policy is parameterized on the script address of the escrow UTxO we
+are creating, so we know where the control token must go. We check that it is
+paid to the script UTxO in ``controlTokenPaid``:
 
 .. code:: Haskell
 
@@ -84,14 +85,17 @@ to the script-utxo in function :code:`controlTokenPaid`
                                       flattenValue $ txInfoMint info
       
 
-As we mentioned before, we ensure that only one token is being minted, and it's implemented
-by calling :code:`getSingleton` from the Utils, which takes a list and fails (calling :code:`traceError`)
-if the list doesn't contain exactly one element. It's also used for getting the unique
-output utxo belonging to the script.
+Here, the escrow UTxO output is obtained using ``outputsAt``, and with the
+utility ``getSingleton`` we get it from the list or fail if there is more than
+one output at the same address.
+Also, the minting information is extracted by using ``flattenValue`` together
+with ``getSingleton``, failing if it is found that more than one asset is being
+minted.
 
-For ensuring that the datum is correct we need to check that the `sender address` coincides with
-the transaction signer, the amount of tokens to receive is greater than zero, and the control
-token Asset Class is the one that it's being minted.
+To ensure that the datum is correct we need to check that the sender address
+corresponds to the transaction signer's payment key, the amount of tokens to
+receive is greater than zero, and the control token Asset Class is the one that
+is being minted.
 
 .. code:: Haskell
 
@@ -104,7 +108,7 @@ token Asset Class is the one that it's being minted.
        && traceIfFalse "The receive amount of tokens to exchange is not positive"
                        correctAmount
 
-For implementing those three checks we simply read the script-utxo datum and
+For implementing these three checks we simply read the script UTxO datum and
 compare its information with the expected one.
 
 
@@ -114,15 +118,16 @@ Validator
 The on-chain validator, as we briefly mentioned, is parameterized on the receiver
 address. This design decision allows us to have a unique script address for each
 ``ReceiverAddress``. Given that we are minting a control token, it would be
-desired to include in the parameter its asset class too for checking that it's burned
-when canceling or resolving. However we can't do it because
-a circularity problem: in the control token minting policy we need the script
-address for ensuring that the token is paid to the corresponding utxo. We solved
-this issue by including in the datum the control token asset class, as we showed before.
+desired to include in the parameter its asset class for checking that it is
+burned when canceling or resolving. However, we can't do this because of
+a circularity problem: in the minting policy we need the script address for
+ensuring that the token is paid to the corresponding UTxO. We solve
+this issue by including the control token asset class in the datum, as we
+showed before.
 
-The validator will run when the script-uxto is spent, and it corresponds to `Cancel` and
+The validator will run when the script UTxO is spent, and it corresponds to `Cancel` and
 `Resolve` operations, which are the only two constructors of :code:`EscrowRedeemer` type. In both
-cases we have to check that the control token is burned and only one script utxo is spent.
+cases we have to check that the control token is burned and only one script UTxO is spent.
 The latter check is important for preventing `double satisfaction attacks <https://plutus.readthedocs.io/en/latest/reference/writing-scripts/common-weaknesses/double-satisfaction.html>`_. 
 
 .. code:: haskell
