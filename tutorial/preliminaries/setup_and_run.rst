@@ -28,6 +28,13 @@ In summary, we must have the following folder structure:
    ├── plutus-apps
    └── plutus-budget-service
 
+
+We'll see how to setup and run the example using docker,
+or installing everything on the local machine.
+   
+Docker
+------
+   
 The easiest way to have everything running doing a minimal configuration is
 by using docker. We have docker files for the backend, frontend, and budget-service.
 The instructions for running this last service can be found on the `plutus-budget-service/README <https://github.com/joinplank/plutus-budget-service/blob/main/README.md#running-the-server-through-docker>`_.
@@ -35,7 +42,7 @@ Next we will see how to use a public deployed instance of this service.
 
 Using ``docker-compose`` we build and run the other two services. We just need
 first to configure which instances of the indexer and the budget-service we will
-use. Everything about the indexer can be found in the coming :ref:`subsection <indexer_blockfrost>`.
+use. Everything about the indexer can be found in the coming :ref:`subsection <setup_server_side>`.
 We setup the budget-service by setting the environment variable ``REACT_APP_BUDGET_URL``
 on the ``cardano-e2e-example/frontend/.env``, with ``http://escrow.joinplank.com:3001/``.
 After that, we just execute:
@@ -45,12 +52,17 @@ After that, we just execute:
    $> docker-compose up --build
 
 The ``docker-compose`` building will take several minutes. Once everthing is
-running we can access de dApp on the url `http://localhost:3000 <http://localhost:3000>`_.
+running we can access the dApp on the url `http://localhost:3000 <http://localhost:3000>`_.
 In case we don't want to use docker, we can install everything locally, as we
 explain next.
 
+Local
+-----
+
+.. _setup_server_side:
+
 Server side
------------
+~~~~~~~~~~~
 
 We will use Nix for compiling and running the services.
 The flow will be as follows:
@@ -87,10 +99,8 @@ The first time is going to take some minutes. If the process succeeds,
 you will get a new prompt indicating that you are effectively inside a
 Nix environment. From now on we will assume we are always inside this environment.
 
-.. _indexer_blockfrost:
 
-Indexer/Blockfrost
-~~~~~~~~~~~~~~~~~~
+**Indexer/Blockfrost**
 
 We will use a public instance of Blockfrost, so we must get a token key from its
 `website <https://blockfrost.dev/docs/overview/getting-started>`_. Once
@@ -109,8 +119,7 @@ The advantage of using Blockfrost is that we don't have to setup
 and sync our own indexer, but if Blockfrost is not an option,
 we can setup and run the plutus-apps indexer.
 
-Budget
-~~~~~~
+**Budget**
 
 This service allows us to evaluate Plutus scripts to know the memory and CPU
 execution units. First, inside a Nix environment, we must get into the ``plutus-budget-service`` folder and run:
@@ -157,12 +166,11 @@ endpoint of the service with the example we can find in the root folder:
      }
    }
 
-PAB
-~~~
+**PAB**
 
 The PAB will run the off-chain code for building unbalanced transactions, using
 the indexer for querying the blockchain. First, we need to get
-into de `backend` folder to compile everything with :code:`cabal build escrow-pab`.
+into the `backend` folder to compile everything with :code:`cabal build escrow-pab`.
 This will take some minutes the first time.
 
 To run this service, we will use the ``pab-config-preprod.yaml``
@@ -248,7 +256,7 @@ endpoint of the PAB:
 Also, we can access the swagger through `localhost:9080/swagger/swagger-ui <http://localhost:9080/swagger/swagger-ui>`_.
 
 Client side
------------
+~~~~~~~~~~~
 
 The client side, as we mentioned, is going to run the dApp webpage service. In
 contrast with the server side, we don’t need a particular environment,
