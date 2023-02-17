@@ -4,13 +4,19 @@
 
 The Simple Escrow dApp will be implemented in the Cardano blockchain using Plutus Scripts.
 
-Each time a user starts an escrow, a new script UTxO is created, containing in the datum the information of this particular instance: payment details together with the sender addresses. A special *control Token* is minted each time a new escrow instance is started, ensuring that the produced UTxO is well-formed and the information is right. The Asset Class of this Token is also stored in the datum to check it is burned when the escrow is cancelled or resolved.
+Each time a user starts an escrow, a new script UTxO is created, containing in the datum the information of this particular instance:
+payment details together with the sender addresses.
+In order to ensure initial conditions of the escrow, a special *control Token* is minted at start.
+This strategy follows the ideas described in [this article](https://well-typed.com/blog/2022/08/plutus-initial-conditions/)
+from Well-Typed, where the minted NFT is called the *state token*.
 
-The script is parameterized by the receiver address.  This allows each user to find all escrows they need to resolve more quickly.
+The script is parameterized by the receiver address.  This allows each user to find all escrows they need to resolve in an easy way.
+The *control Token* Minting Policy is parameterized by the script address, which is needed for ensuring that
+the token is paid to the right script utxo. Because of this dependency, it's not possible to include the control token
+asset class in the script parameter, which would be desiderable. It's solved including the asset class in the datum.
 
-The *control Token* Minting Policy is parameterized by the contract address.
-
-When an escrow instance is canceled or resolved, the corresponding UTxO is spent, and funds go to the corresponding wallet addresses. The control Token is burned.
+When an escrow instance is canceled or resolved, the corresponding UTxO is spent, and funds go to the corresponding wallet addresses.
+The control Token is burned.
 
 ## Script UTxO
 
@@ -72,12 +78,12 @@ In the **Resolve operation** the validator checks:
 
 ### **Control Token minting policy**
 
-The token minting policy is parametrized by the contract address and has the following checks:
+The token minting policy is parametrized by the script address and has the following checks:
 
 **Minting:**
 
 - Only one token with the correct token name is minted
-- The token is paid to the contract address
+- The token is paid to the script address
 - The sender’s address is signing the transaction
 - The token being minted is the correct control token
 - The amount of tokens that the receiver wants to offer is more than 0

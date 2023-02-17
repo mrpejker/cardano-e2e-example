@@ -102,7 +102,7 @@ Query the instance status
 -------------------------
 
 The status function retrieves the contract instance status from the PAB. In the
-status a lot of useful information can be found, such as the logs, the
+status, a lot of useful information can be found, such as the logs, the
 observable state and the yielded transactions.
 
 After activating an instance or calling an endpoint, the status will eventually
@@ -157,7 +157,7 @@ Each entry in the list is of ``ExportTx`` type and has three fields:
 
 * ``transaction``: The CBOR of the unbalanced transaction in hexadecimal format.
 * ``inputs``: A list with information for each of the transaction input UTxOs
-  included in the lookups (``unspentOutputs`` lookup) (TODO: check this!). Each
+  included in the lookups (``unspentOutputs`` lookup). Each
   entry includes the following fields:
 
     * ``id``: Transaction ID for the UTxO.

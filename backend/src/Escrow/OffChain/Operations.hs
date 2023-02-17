@@ -70,7 +70,9 @@ import Escrow.Validator ( Escrowing
 import Escrow.Types   ( eInfo, cTokenName, mkEscrowDatum
                       , cancelRedeemer, resolveRedeemer
                       )
-import Utils.OffChain ( lookupScriptUtxos, findMUtxo, getDatumWithError )
+import Utils.OffChain ( lookupScriptUtxos, findValidUtxoFromRef
+                      , getDatumWithError
+                      )
 import Utils.OnChain  ( minAda )
 import Utils.WalletAddress ( WalletAddress
                            , waPaymentPubKeyHash
@@ -132,7 +134,7 @@ startOp addr StartParams{..} = do
               , mustBeSignedBy senderPpkh
               ]
 
-    mkTxConstraints lkp tx >>= yieldUnbalancedTx
+    mkTxConstraints @Escrowing lkp tx >>= yieldUnbalancedTx
     logInfo @String "Escrow started"
     logInfo @String $ "Escrow Address: " ++ show contractAddress
     logInfo @String $ "Control Token Currency Symbol: " ++ show cTokenCurrency
@@ -156,8 +158,7 @@ cancelOp addr CancelParams{..} = do
         cTokenAsset    = assetClass cTokenCurrency cTokenName
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos <- lookupScriptUtxos contractAddress cTokenAsset
-    utxo  <- findMUtxo cpTxOutRef utxos
+    utxo  <- findValidUtxoFromRef cpTxOutRef contractAddress cTokenAsset
     eInfo <- getEscrowInfo utxo
 
     unless (signerIsSender (unPaymentPubKeyHash senderPpkh) (sender eInfo))
@@ -198,8 +199,7 @@ resolveOp addr ResolveParams{..} = do
         cTokenAsset    = assetClass cTokenCurrency cTokenName
         cTokenVal      = assetClassValue cTokenAsset (-1)
 
-    utxos <- lookupScriptUtxos contractAddress cTokenAsset
-    utxo  <- findMUtxo rpTxOutRef utxos
+    utxo  <- findValidUtxoFromRef rpTxOutRef contractAddress cTokenAsset
     eInfo <- getEscrowInfo utxo
 
     let senderWallAddr = eInfoSenderWallAddr eInfo

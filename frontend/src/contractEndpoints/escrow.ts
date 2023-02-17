@@ -118,7 +118,7 @@ export class EscrowEndpoints {
     const balancerResult = await this.balancer.fullBalanceTx(
       etx,
       walletInfo,
-      { feeUpperBound: 1000000, mergeSignerOutputs: false },
+      { feeUpperBound: 2000000 },
       this.txBudgetApi
     );
     if (failed(balancerResult)) {
@@ -174,7 +174,7 @@ export class EscrowEndpoints {
     const balancerResult = await this.balancer.fullBalanceTx(
       etx,
       walletInfo,
-      { feeUpperBound: 1000000, mergeSignerOutputs: false },
+      { feeUpperBound: 2000000 },
       this.txBudgetApi
     );
     if (failed(balancerResult)) {
@@ -214,7 +214,7 @@ export class EscrowEndpoints {
     const balancerResult = await this.balancer.fullBalanceTx(
       etx,
       walletInfo,
-      { feeUpperBound: 1000000, mergeSignerOutputs: false },
+      { feeUpperBound: 2000000 },
       this.txBudgetApi
     );
     if (failed(balancerResult)) {

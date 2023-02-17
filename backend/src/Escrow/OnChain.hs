@@ -180,14 +180,13 @@ mkControlTokenMintingPolicy addr _ ctx =
     correctDatum :: Bool
     correctDatum =
         traceIfFalse
-          "Sender address in Datum doesn't coincide with transaction signer"
+          "The signer is not the sender on the escrow"
           correctSigner
      && traceIfFalse
-          ("Control token Asset Class in Datum doesn't coincide with the" <>
-          "minted token")
+          "The asset minted does not match with the control token"
           correctControlAssetClass
      && traceIfFalse
-          "Amount of tokens to pay to Receiver in Datum is less than 0"
+          "The receive amount of tokens to exchange is not positive"
           correctAmount
 
     correctSigner :: Bool

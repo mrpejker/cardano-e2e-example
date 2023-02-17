@@ -418,23 +418,23 @@ const ContractInformation = ({ currentContractState, contractEndpoints }: Contra
             }
             return <tr key={i}>
               <td>
-                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/transaction/${txHash}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/transaction/${txHash}`} target="_blank" rel="noopener noreferrer">
                   {`${txHash.substring(0,8)}...${txHash.substring(txHash.length - 8)}`}
                 </a>
               </td>
               <td>
-                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/address/${escrowInfo.sender}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/address/${escrowInfo.sender}`} target="_blank" rel="noopener noreferrer">
                   {`${escrowInfo.sender.substring(0,8)}...${escrowInfo.sender.substring(escrowInfo.sender.length - 8)}`}
                 </a></td>
               <td> {escrowPayment[1]} </td>
               <td>
-                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${sendAsset}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${sendAsset}`} target="_blank" rel="noopener noreferrer">
                 {escrowPayment[0].tokenName}
                 </a>
               </td>
               <td> {escrowInfo.rAmount} </td>
               <td>
-                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${receiveAsset}`}>
+                <a href={`https://${cardanoScanUrlPrefix}cardanoscan.io/token/${receiveAsset}`} target="_blank" rel="noopener noreferrer">
                   {escrowInfo.rAssetClass.tokenName}
                 </a>
               </td>
