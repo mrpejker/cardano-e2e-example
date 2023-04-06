@@ -1,5 +1,5 @@
 {
-  "name": "@frontend/v2",
+  "name": "cardano-e2e-example-frontend",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -27,7 +27,7 @@
     "bootstrap": "^5.1.3",
     "buffer": "^6.0.3",
     "camelcase": "^6.1.0",
-    "cardano-pab-client": "0.0.9",
+    "cardano-pab-client": "0.0.10",
     "case-sensitive-paths-webpack-plugin": "2.3.0",
     "cbor": "^8.1.0",
     "css-loader": "4.3.0",
